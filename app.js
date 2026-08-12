@@ -21,6 +21,14 @@ document.querySelectorAll("[data-go]").forEach(btn=>btn.onclick=()=>{
   showView(btn.dataset.go);
   if(btn.dataset.action) document.getElementById("lTipo").value=btn.dataset.action;
 });
+document.querySelectorAll("[data-account]").forEach(btn=>btn.onclick=()=>{
+  const conta=btn.dataset.account;
+  document.getElementById("lConta").value=conta;
+  document.getElementById("filtroConta").value=conta;
+  renderLancamentos();
+  showView("lancamentos");
+});
+
 function showView(id){
   document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active",v.id===id));
   document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active",t.dataset.view===id));
@@ -37,7 +45,8 @@ document.getElementById("formLancamento").onsubmit=e=>{
     id:uid(), conta:lConta.value, tipo:lTipo.value,
     valor:Number(lValor.value), data:lData.value, descricao:lDescricao.value.trim()
   });
-  e.target.reset(); lData.value=hoje(); save();
+  const contaAtual=lConta.value;
+  e.target.reset(); lConta.value=contaAtual; lData.value=hoje(); save();
 };
 document.getElementById("filtroConta").onchange=renderLancamentos;
 
@@ -62,16 +71,8 @@ function markPayment(id){
   }
   save();
 }
-function removePayment(id){
-  if(confirm("Excluir este registro?")){
-    state.pagamentos=state.pagamentos.filter(x=>x.id!==id); save();
-  }
-}
-function removeLanc(id){
-  if(confirm("Excluir este lançamento?")){
-    state.lancamentos=state.lancamentos.filter(x=>x.id!==id); save();
-  }
-}
+function removePayment(id){ if(confirm("Excluir este registro?")){ state.pagamentos=state.pagamentos.filter(x=>x.id!==id); save(); } }
+function removeLanc(id){ if(confirm("Excluir este lançamento?")){ state.lancamentos=state.lancamentos.filter(x=>x.id!==id); save(); } }
 
 function addItem(data={descricao:"",qtd:1,valor:""}){
   const frag=document.getElementById("itemTemplate").content.cloneNode(true);
@@ -102,17 +103,13 @@ function calcBudget(){
 
 document.getElementById("oImagens").onchange=async e=>{
   pendingImages=[];
-  for(const file of [...e.target.files].slice(0,6)){
-    pendingImages.push(await compressImage(file,1100,.75));
-  }
+  for(const file of [...e.target.files].slice(0,6)){ pendingImages.push(await compressImage(file,1100,.75)); }
   renderImagePreview();
 };
 function compressImage(file,maxDim=1100,quality=.75){
   return new Promise((resolve,reject)=>{
-    const img=new Image();
-    const reader=new FileReader();
-    reader.onload=()=>img.src=reader.result;
-    reader.onerror=reject;
+    const img=new Image(), reader=new FileReader();
+    reader.onload=()=>img.src=reader.result; reader.onerror=reject;
     img.onload=()=>{
       let {width,height}=img;
       const scale=Math.min(1,maxDim/Math.max(width,height));
@@ -124,9 +121,7 @@ function compressImage(file,maxDim=1100,quality=.75){
     reader.readAsDataURL(file);
   });
 }
-function renderImagePreview(){
-  previewImagens.innerHTML=pendingImages.map(src=>`<img src="${src}" alt="Imagem do orçamento">`).join("");
-}
+function renderImagePreview(){ previewImagens.innerHTML=pendingImages.map(src=>`<img src="${src}" alt="Imagem do orçamento">`).join(""); }
 
 document.getElementById("formOrcamento").onsubmit=e=>{
   e.preventDefault();
@@ -139,28 +134,13 @@ document.getElementById("formOrcamento").onsubmit=e=>{
     data:oData.value, descricao:oDescricao.value.trim(), itens:items,
     imagens:[...pendingImages], observacoes:oObservacoes.value.trim(), total
   };
-  try{
-    state.orcamentos.unshift(orc);
-    save();
-  }catch(err){
-    alert("Não foi possível salvar. Tente usar menos imagens ou imagens menores.");
-    state.orcamentos=state.orcamentos.filter(x=>x.id!==orc.id);
-    return;
-  }
-  e.target.reset(); oData.value=hoje(); pendingImages=[]; renderImagePreview();
-  itensOrcamento.innerHTML=""; addItem();
+  try{ state.orcamentos.unshift(orc); save(); }
+  catch(err){ alert("Não foi possível salvar. Tente usar menos imagens ou imagens menores."); state.orcamentos=state.orcamentos.filter(x=>x.id!==orc.id); return; }
+  e.target.reset(); oData.value=hoje(); pendingImages=[]; renderImagePreview(); itensOrcamento.innerHTML=""; addItem();
 };
 
-function removeBudget(id){
-  if(confirm("Excluir este orçamento?")){
-    state.orcamentos=state.orcamentos.filter(x=>x.id!==id); save();
-  }
-}
-function printBudget(id){
-  const o=state.orcamentos.find(x=>x.id===id); if(!o)return;
-  printArea.innerHTML=budgetHTML(o);
-  window.print();
-}
+function removeBudget(id){ if(confirm("Excluir este orçamento?")){ state.orcamentos=state.orcamentos.filter(x=>x.id!==id); save(); } }
+function printBudget(id){ const o=state.orcamentos.find(x=>x.id===id); if(!o)return; printArea.innerHTML=budgetHTML(o); window.print(); }
 function budgetHTML(o){
   return `<div class="print-doc">
     <h1>ORÇAMENTO Nº ${o.numero}</h1>
@@ -179,19 +159,14 @@ function budgetHTML(o){
 function shareWhatsApp(id){
   const o=state.orcamentos.find(x=>x.id===id); if(!o)return;
   const text=`Olá, ${o.cliente}. Segue o orçamento nº ${o.numero}, no valor total de ${brl(o.total)}.`;
-  const url=o.whatsapp
-    ? `https://wa.me/${o.whatsapp}?text=${encodeURIComponent(text)}`
-    : `https://wa.me/?text=${encodeURIComponent(text)}`;
+  const url=o.whatsapp ? `https://wa.me/${o.whatsapp}?text=${encodeURIComponent(text)}` : `https://wa.me/?text=${encodeURIComponent(text)}`;
   window.open(url,"_blank");
 }
 function nativeShare(id){
   const o=state.orcamentos.find(x=>x.id===id); if(!o)return;
   const text=`Orçamento nº ${o.numero} - ${o.cliente} - Total ${brl(o.total)}.`;
-  if(navigator.share){
-    navigator.share({title:`Orçamento ${o.numero}`,text}).catch(()=>{});
-  }else{
-    shareWhatsApp(id);
-  }
+  if(navigator.share){ navigator.share({title:`Orçamento ${o.numero}`,text}).catch(()=>{}); }
+  else{ shareWhatsApp(id); }
 }
 function escapeHtml(s=""){return s.replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));}
 
@@ -199,10 +174,6 @@ function renderSummary(){
   const sum=(conta,tipo)=>state.lancamentos.filter(x=>x.conta===conta&&x.tipo===tipo).reduce((a,b)=>a+b.valor,0);
   saldoPF.textContent=brl(sum("PF","entrada")-sum("PF","saida"));
   saldoCNPJ.textContent=brl(sum("CNPJ","entrada")-sum("CNPJ","saida"));
-  const pend=state.pagamentos.filter(p=>p.status==="pendente");
-  totalReceber.textContent=brl(pend.filter(p=>p.tipo==="receber").reduce((a,b)=>a+b.valor,0));
-  totalPagar.textContent=brl(pend.filter(p=>p.tipo==="pagar").reduce((a,b)=>a+b.valor,0));
-  totalAtrasado.textContent=brl(pend.filter(isLate).reduce((a,b)=>a+b.valor,0));
 }
 function renderLancamentos(){
   const f=filtroConta.value;

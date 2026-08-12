@@ -11,7 +11,7 @@
   <header class="topbar">
     <div>
       <h1>Meu Financeiro</h1>
-      <p>Controle simples de PF, CNPJ, pagamentos e orçamentos</p>
+      <p>Escolha Pessoa Física ou CNPJ para começar</p>
     </div>
   </header>
 
@@ -24,19 +24,20 @@
 
   <main>
     <section id="inicio" class="view active">
-      <div class="cards">
-        <article class="card"><span>Saldo Pessoa Física</span><strong id="saldoPF">R$ 0,00</strong></article>
-        <article class="card"><span>Saldo CNPJ</span><strong id="saldoCNPJ">R$ 0,00</strong></article>
-        <article class="card"><span>A receber</span><strong id="totalReceber">R$ 0,00</strong></article>
-        <article class="card"><span>A pagar</span><strong id="totalPagar">R$ 0,00</strong></article>
-        <article class="card alert"><span>Atrasados</span><strong id="totalAtrasado">R$ 0,00</strong></article>
-      </div>
+      <div class="account-choice">
+        <button class="account-button" data-account="PF">
+          <span class="account-title">Pessoa Física</span>
+          <span class="account-label">Saldo atual</span>
+          <strong id="saldoPF">R$ 0,00</strong>
+          <span class="account-cta">Abrir lançamentos</span>
+        </button>
 
-      <div class="quick-actions">
-        <button class="primary" data-go="lancamentos" data-action="entrada">+ Entrada</button>
-        <button class="primary" data-go="lancamentos" data-action="saida">+ Saída</button>
-        <button class="secondary" data-go="pagamentos">+ Pagamento</button>
-        <button class="secondary" data-go="orcamentos">+ Orçamento</button>
+        <button class="account-button" data-account="CNPJ">
+          <span class="account-title">CNPJ</span>
+          <span class="account-label">Saldo atual</span>
+          <strong id="saldoCNPJ">R$ 0,00</strong>
+          <span class="account-cta">Abrir lançamentos</span>
+        </button>
       </div>
     </section>
 
@@ -56,8 +57,8 @@
               <option value="saida">Saída</option>
             </select>
           </label>
-          <label>Valor
-            <input id="lValor" type="number" min="0" step="0.01" inputmode="decimal" required />
+          <label>Valor (R$)
+            <input id="lValor" type="number" min="0" step="0.01" inputmode="decimal" placeholder="10,00" required />
           </label>
           <label>Data
             <input id="lData" type="date" required />
@@ -98,8 +99,8 @@
               <option value="receber">A receber</option>
             </select>
           </label>
-          <label>Valor
-            <input id="pValor" type="number" min="0" step="0.01" inputmode="decimal" required />
+          <label>Valor (R$)
+            <input id="pValor" type="number" min="0" step="0.01" inputmode="decimal" placeholder="10,00" required />
           </label>
           <label>Vencimento
             <input id="pVencimento" type="date" required />
@@ -172,13 +173,12 @@
     <div class="budget-item">
       <input class="iDescricao" type="text" placeholder="Item / serviço" required />
       <input class="iQtd" type="number" min="1" step="1" value="1" inputmode="numeric" required />
-      <input class="iValor" type="number" min="0" step="0.01" placeholder="Valor" inputmode="decimal" required />
+      <input class="iValor" type="number" min="0" step="0.01" placeholder="R$ 10,00" inputmode="decimal" required />
       <button type="button" class="danger removeItem">×</button>
     </div>
   </template>
 
   <div id="printArea"></div>
-
   <script src="app.js"></script>
 </body>
 </html>
