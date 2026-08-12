@@ -11,7 +11,7 @@
   <header class="topbar">
     <div>
       <h1>Meu Financeiro</h1>
-      <p>Escolha Pessoa Física ou CNPJ para começar</p>
+      <p>Controle simples de Pessoa Física e CNPJ</p>
     </div>
   </header>
 
@@ -39,11 +39,23 @@
           <span class="account-cta">Abrir lançamentos</span>
         </button>
       </div>
+
+      <div class="home-summary">
+        <article class="summary-card">
+          <span>Próximos 7 dias</span>
+          <strong id="prox7dias">R$ 0,00</strong>
+          <small>a pagar</small>
+        </article>
+      </div>
     </section>
 
     <section id="lancamentos" class="view">
       <div class="panel">
-        <h2>Novo lançamento</h2>
+        <div class="section-header">
+          <h2>Novo lançamento</h2>
+          <button class="small" data-view-link="inicio">Voltar ao início</button>
+        </div>
+
         <form id="formLancamento" class="form-grid">
           <label>Conta
             <select id="lConta" required>
@@ -51,21 +63,26 @@
               <option value="CNPJ">CNPJ</option>
             </select>
           </label>
+
           <label>Tipo
             <select id="lTipo" required>
               <option value="entrada">Entrada</option>
               <option value="saida">Saída</option>
             </select>
           </label>
-          <label>Valor (R$)
+
+          <label>Valor
             <input id="lValor" type="number" min="0" step="0.01" inputmode="decimal" placeholder="10,00" required />
           </label>
+
           <label>Data
             <input id="lData" type="date" required />
           </label>
+
           <label class="full">Descrição
             <input id="lDescricao" type="text" maxlength="120" placeholder="Ex.: mercado, pagamento de cliente..." required />
           </label>
+
           <button class="primary full" type="submit">Salvar lançamento</button>
         </form>
       </div>
@@ -85,7 +102,11 @@
 
     <section id="pagamentos" class="view">
       <div class="panel">
-        <h2>Novo pagamento / recebimento</h2>
+        <div class="section-header">
+          <h2>Novo pagamento / recebimento</h2>
+          <button class="small" data-view-link="inicio">Voltar ao início</button>
+        </div>
+
         <form id="formPagamento" class="form-grid">
           <label>Conta
             <select id="pConta" required>
@@ -93,44 +114,91 @@
               <option value="CNPJ">CNPJ</option>
             </select>
           </label>
+
           <label>Tipo
             <select id="pTipo" required>
               <option value="pagar">A pagar</option>
               <option value="receber">A receber</option>
             </select>
           </label>
-          <label>Valor (R$)
+
+          <label>Valor
             <input id="pValor" type="number" min="0" step="0.01" inputmode="decimal" placeholder="10,00" required />
           </label>
+
           <label>Vencimento
             <input id="pVencimento" type="date" required />
           </label>
+
           <label class="full">Descrição
-            <input id="pDescricao" type="text" maxlength="120" placeholder="Ex.: empréstimo, conta de energia..." required />
+            <input id="pDescricao" type="text" maxlength="120" placeholder="Ex.: Luz, Água, Internet, Empréstimo..." required />
           </label>
+
           <button class="primary full" type="submit">Salvar</button>
         </form>
       </div>
 
+      <div class="payment-summary">
+        <article class="summary-card">
+          <span>A vencer</span>
+          <strong id="totalAVencer">R$ 0,00</strong>
+        </article>
+        <article class="summary-card today">
+          <span>Vence hoje</span>
+          <strong id="totalHoje">R$ 0,00</strong>
+        </article>
+        <article class="summary-card overdue">
+          <span>Atrasadas</span>
+          <strong id="totalAtrasado">R$ 0,00</strong>
+        </article>
+        <article class="summary-card">
+          <span>Pagas</span>
+          <strong id="totalPagas">R$ 0,00</strong>
+        </article>
+        <article class="summary-card">
+          <span>A receber</span>
+          <strong id="totalReceber">R$ 0,00</strong>
+        </article>
+        <article class="summary-card">
+          <span>Recebidos</span>
+          <strong id="totalRecebidos">R$ 0,00</strong>
+        </article>
+      </div>
+
       <div class="panel">
-        <h2>Pendências</h2>
+        <div class="payment-filter">
+          <button class="filter-btn active" data-filter="todos">Todos</button>
+          <button class="filter-btn" data-filter="a-vencer">A vencer</button>
+          <button class="filter-btn" data-filter="hoje">Hoje</button>
+          <button class="filter-btn" data-filter="atrasadas">Atrasadas</button>
+          <button class="filter-btn" data-filter="pagas">Pagas</button>
+          <button class="filter-btn" data-filter="receber">A receber</button>
+          <button class="filter-btn" data-filter="recebidos">Recebidos</button>
+        </div>
         <div id="listaPagamentos" class="list"></div>
       </div>
     </section>
 
     <section id="orcamentos" class="view">
       <div class="panel">
-        <h2>Novo orçamento</h2>
+        <div class="section-header">
+          <h2>Novo orçamento</h2>
+          <button class="small" data-view-link="inicio">Voltar ao início</button>
+        </div>
+
         <form id="formOrcamento" class="form-grid">
           <label>Cliente
             <input id="oCliente" type="text" required />
           </label>
+
           <label>WhatsApp
             <input id="oWhatsApp" type="tel" inputmode="tel" placeholder="5511999999999" />
           </label>
+
           <label>Data
             <input id="oData" type="date" required />
           </label>
+
           <label class="full">Descrição
             <textarea id="oDescricao" rows="3" placeholder="Descrição do serviço"></textarea>
           </label>
@@ -147,6 +215,7 @@
             <input id="oImagens" type="file" accept="image/*" multiple />
             <small>As imagens serão reduzidas para economizar espaço.</small>
           </label>
+
           <div id="previewImagens" class="image-grid full"></div>
 
           <label class="full">Observações
@@ -173,10 +242,44 @@
     <div class="budget-item">
       <input class="iDescricao" type="text" placeholder="Item / serviço" required />
       <input class="iQtd" type="number" min="1" step="1" value="1" inputmode="numeric" required />
-      <input class="iValor" type="number" min="0" step="0.01" placeholder="R$ 10,00" inputmode="decimal" required />
+      <input class="iValor" type="number" min="0" step="0.01" placeholder="10,00" inputmode="decimal" required />
       <button type="button" class="danger removeItem">×</button>
     </div>
   </template>
+
+  <div id="editModal" class="modal hidden">
+    <div class="modal-card">
+      <h3>Editar registro</h3>
+      <form id="formEditarPagamento" class="form-grid">
+        <input id="editId" type="hidden" />
+        <label>Conta
+          <select id="editConta" required>
+            <option value="PF">Pessoa Física</option>
+            <option value="CNPJ">CNPJ</option>
+          </select>
+        </label>
+        <label>Tipo
+          <select id="editTipo" required>
+            <option value="pagar">A pagar</option>
+            <option value="receber">A receber</option>
+          </select>
+        </label>
+        <label>Valor
+          <input id="editValor" type="number" min="0" step="0.01" required />
+        </label>
+        <label>Vencimento
+          <input id="editVencimento" type="date" required />
+        </label>
+        <label class="full">Descrição
+          <input id="editDescricao" type="text" required />
+        </label>
+        <div class="full modal-actions">
+          <button type="button" class="secondary" id="cancelarEdicao">Cancelar</button>
+          <button type="submit" class="primary">Salvar alteração</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
   <div id="printArea"></div>
   <script src="app.js"></script>

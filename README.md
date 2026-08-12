@@ -1,9 +1,31 @@
-# Meu Financeiro V1 Final
+# Meu Financeiro V2
 
-Última revisão da V1:
+Aplicativo pessoal simples para uso em celular e computador.
+
+## V2
 - Landing inicial separada em Pessoa Física e CNPJ.
-- Cada botão abre os lançamentos com a conta correta pré-selecionada.
-- Valores exibidos no padrão brasileiro, como R$ 10,00.
-- Demais funções preservadas: lançamentos, pagamentos, orçamentos, imagens, PDF/impressão e WhatsApp.
+- Botão Início volta corretamente para a landing.
+- Lançamentos de entrada e saída por PF ou CNPJ.
+- Pagamentos livres: Luz, Água, Internet, Empréstimo etc.
+- Estados de pagamentos:
+  - A vencer
+  - Vence hoje
+  - Atrasadas
+  - Pagas
+  - A receber
+  - Recebidos
+- Totais por estado.
+- Próximos 7 dias a pagar na landing.
+- Editar, excluir e marcar como pago/recebido.
+- Orçamentos com imagens, PDF/impressão e WhatsApp preservados.
+- Valores exibidos em padrão brasileiro: R$ 10,00.
 
-Os dados continuam armazenados localmente no navegador (localStorage).
+## Dados
+A aplicação mantém a chave `meu_financeiro_v1` no localStorage para preservar compatibilidade com registros anteriores.
+
+## Publicação
+Substitua no GitHub Pages os quatro arquivos:
+- index.html
+- styles.css
+- app.js
+- README.md
