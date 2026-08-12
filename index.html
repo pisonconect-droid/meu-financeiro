@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#111827" />
+  <title>Meu Financeiro</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>Meu Financeiro</h1>
+      <p>Controle simples de PF, CNPJ, pagamentos e orçamentos</p>
+    </div>
+  </header>
+
+  <nav class="tabs" aria-label="Navegação principal">
+    <button class="tab active" data-view="inicio">Início</button>
+    <button class="tab" data-view="lancamentos">Lançamentos</button>
+    <button class="tab" data-view="pagamentos">Pagamentos</button>
+    <button class="tab" data-view="orcamentos">Orçamentos</button>
+  </nav>
+
+  <main>
+    <section id="inicio" class="view active">
+      <div class="cards">
+        <article class="card"><span>Saldo Pessoa Física</span><strong id="saldoPF">R$ 0,00</strong></article>
+        <article class="card"><span>Saldo CNPJ</span><strong id="saldoCNPJ">R$ 0,00</strong></article>
+        <article class="card"><span>A receber</span><strong id="totalReceber">R$ 0,00</strong></article>
+        <article class="card"><span>A pagar</span><strong id="totalPagar">R$ 0,00</strong></article>
+        <article class="card alert"><span>Atrasados</span><strong id="totalAtrasado">R$ 0,00</strong></article>
+      </div>
+
+      <div class="quick-actions">
+        <button class="primary" data-go="lancamentos" data-action="entrada">+ Entrada</button>
+        <button class="primary" data-go="lancamentos" data-action="saida">+ Saída</button>
+        <button class="secondary" data-go="pagamentos">+ Pagamento</button>
+        <button class="secondary" data-go="orcamentos">+ Orçamento</button>
+      </div>
+    </section>
+
+    <section id="lancamentos" class="view">
+      <div class="panel">
+        <h2>Novo lançamento</h2>
+        <form id="formLancamento" class="form-grid">
+          <label>Conta
+            <select id="lConta" required>
+              <option value="PF">Pessoa Física</option>
+              <option value="CNPJ">CNPJ</option>
+            </select>
+          </label>
+          <label>Tipo
+            <select id="lTipo" required>
+              <option value="entrada">Entrada</option>
+              <option value="saida">Saída</option>
+            </select>
+          </label>
+          <label>Valor
+            <input id="lValor" type="number" min="0" step="0.01" inputmode="decimal" required />
+          </label>
+          <label>Data
+            <input id="lData" type="date" required />
+          </label>
+          <label class="full">Descrição
+            <input id="lDescricao" type="text" maxlength="120" placeholder="Ex.: mercado, pagamento de cliente..." required />
+          </label>
+          <button class="primary full" type="submit">Salvar lançamento</button>
+        </form>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">
+          <h2>Histórico</h2>
+          <select id="filtroConta">
+            <option value="TODOS">Todos</option>
+            <option value="PF">Pessoa Física</option>
+            <option value="CNPJ">CNPJ</option>
+          </select>
+        </div>
+        <div id="listaLancamentos" class="list"></div>
+      </div>
+    </section>
+
+    <section id="pagamentos" class="view">
+      <div class="panel">
+        <h2>Novo pagamento / recebimento</h2>
+        <form id="formPagamento" class="form-grid">
+          <label>Conta
+            <select id="pConta" required>
+              <option value="PF">Pessoa Física</option>
+              <option value="CNPJ">CNPJ</option>
+            </select>
+          </label>
+          <label>Tipo
+            <select id="pTipo" required>
+              <option value="pagar">A pagar</option>
+              <option value="receber">A receber</option>
+            </select>
+          </label>
+          <label>Valor
+            <input id="pValor" type="number" min="0" step="0.01" inputmode="decimal" required />
+          </label>
+          <label>Vencimento
+            <input id="pVencimento" type="date" required />
+          </label>
+          <label class="full">Descrição
+            <input id="pDescricao" type="text" maxlength="120" placeholder="Ex.: empréstimo, conta de energia..." required />
+          </label>
+          <button class="primary full" type="submit">Salvar</button>
+        </form>
+      </div>
+
+      <div class="panel">
+        <h2>Pendências</h2>
+        <div id="listaPagamentos" class="list"></div>
+      </div>
+    </section>
+
+    <section id="orcamentos" class="view">
+      <div class="panel">
+        <h2>Novo orçamento</h2>
+        <form id="formOrcamento" class="form-grid">
+          <label>Cliente
+            <input id="oCliente" type="text" required />
+          </label>
+          <label>WhatsApp
+            <input id="oWhatsApp" type="tel" inputmode="tel" placeholder="5511999999999" />
+          </label>
+          <label>Data
+            <input id="oData" type="date" required />
+          </label>
+          <label class="full">Descrição
+            <textarea id="oDescricao" rows="3" placeholder="Descrição do serviço"></textarea>
+          </label>
+
+          <div class="full">
+            <div class="panel-title">
+              <h3>Itens</h3>
+              <button type="button" id="addItem" class="small">+ Item</button>
+            </div>
+            <div id="itensOrcamento"></div>
+          </div>
+
+          <label class="full">Imagens
+            <input id="oImagens" type="file" accept="image/*" multiple />
+            <small>As imagens serão reduzidas para economizar espaço.</small>
+          </label>
+          <div id="previewImagens" class="image-grid full"></div>
+
+          <label class="full">Observações
+            <textarea id="oObservacoes" rows="3"></textarea>
+          </label>
+
+          <div class="total-box full">
+            <span>Total</span>
+            <strong id="oTotal">R$ 0,00</strong>
+          </div>
+
+          <button class="primary full" type="submit">Salvar orçamento</button>
+        </form>
+      </div>
+
+      <div class="panel">
+        <h2>Histórico de orçamentos</h2>
+        <div id="listaOrcamentos" class="list"></div>
+      </div>
+    </section>
+  </main>
+
+  <template id="itemTemplate">
+    <div class="budget-item">
+      <input class="iDescricao" type="text" placeholder="Item / serviço" required />
+      <input class="iQtd" type="number" min="1" step="1" value="1" inputmode="numeric" required />
+      <input class="iValor" type="number" min="0" step="0.01" placeholder="Valor" inputmode="decimal" required />
+      <button type="button" class="danger removeItem">×</button>
+    </div>
+  </template>
+
+  <div id="printArea"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
