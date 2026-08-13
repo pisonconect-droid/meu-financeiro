@@ -93,7 +93,7 @@ function saveNav(view,account=null){
 function restoreNavigation(){
   const n=navState||{view:"home",account:null};
   if(n.view==="area"&&n.account)return openArea(n.account,false);
-  if(n.view==="budget")return openBudgets(false);
+  if(n.view==="budget")return openBudgetView(false);
   if(n.view==="calendar"&&n.account)return openAccountCalendar(n.account,false);
   goHome(false);
 }
@@ -116,8 +116,8 @@ async function loadAll(){
 
 document.querySelectorAll("[data-account]").forEach(b=>b.onclick=()=>openArea(b.dataset.account));
 $("homeBtn").onclick=()=>{if(navState.view==="calendar"&&calendarReturnAccount)openArea(calendarReturnAccount);else goHome()};
-$("openBudgets").onclick=()=>openBudgets();
-$("openBudgetsFromCNPJ").onclick=()=>openBudgets();
+$("openBudgets").onclick=()=>openBudgetView();
+$("openBudgetsFromCNPJ").onclick=()=>openBudgetView();
 $("btnCalendar").onclick=()=>openAccountCalendar(current);
 
 function setView(id){document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active",v.id===id))}
@@ -135,7 +135,7 @@ function openArea(a,save=true){
   if(save)saveNav("area",a);
   render();renderFixas();renderBudgetSummary();
 }
-function openBudgets(save=true){
+function openBudgetView(save=true){
   current="CNPJ";calendarReturnAccount=null;setView("budgetView");
   $("homeBtn").classList.remove("hidden");$("subtitle").textContent="Orçamentos · CNPJ";
   if(save)saveNav("budget","CNPJ");
