@@ -37,3 +37,8 @@ Pacote congelado de correções e melhorias.
 Saldo anterior: - R$ 1.500,00
 Resultado líquido do serviço: + R$ 2.000,00
 Saldo esperado: + R$ 500,00
+
+
+## Correção de cache/navegação
+- app.js e styles.css carregados com versão para evitar cache antigo no GitHub Pages.
+- Acesso a Orçamentos usa acionamento global estável como proteção adicional.
