@@ -1,8 +1,9 @@
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 let session=null,current=null,authMode="login";
-let state={mov:[],contas:[],orc:[],orcItens:[],orcCustos:[],orcFotos:[],fixas:[],profile:null};
+let state={mov:[],contas:[],orc:[],orcItens:[],orcCustos:[],orcFotos:[],fixas:[],categorias:[],profile:null};
 let editingOrcId=null;
 let movCategoryFilter="TODOS";
+let reportYear=new Date().getFullYear();
 let pendingPhotos=[];
 let calDate=new Date(),selectedDate=null,calFilter="TODOS";
 let navState=JSON.parse(sessionStorage.getItem("mf_nav")||'{"view":"home","account":null}');
@@ -102,7 +103,7 @@ function restoreNavigation(){
 }
 
 async function loadAll(){
-  const [m,c,o,oi,oc,of,f,p]=await Promise.all([
+  const [m,c,o,oi,oc,of,f,cat,p]=await Promise.all([
     sb.from("movimentacoes").select("*").order("data",{ascending:false}).order("created_at",{ascending:false}),
     sb.from("contas").select("*").order("vencimento"),
     sb.from("orcamentos").select("*").order("created_at",{ascending:false}),
@@ -110,12 +111,13 @@ async function loadAll(){
     sb.from("orcamento_custos").select("*"),
     sb.from("orcamento_fotos").select("*").order("created_at",{ascending:true}),
     sb.from("contas_fixas").select("*").order("descricao"),
+    sb.from("categorias").select("*").eq("ativa",true).order("nome"),
     sb.from("profiles").select("*").eq("id",uid()).maybeSingle()
   ]);
-  const er=m.error||c.error||o.error||oi.error||oc.error||of.error||f.error||p.error;
+  const er=m.error||c.error||o.error||oi.error||oc.error||of.error||f.error||cat.error||p.error;
   if(er){alert(er.message);return}
-  state={mov:m.data||[],contas:c.data||[],orc:o.data||[],orcItens:oi.data||[],orcCustos:oc.data||[],orcFotos:of.data||[],fixas:f.data||[],profile:p.data||null};
-  render();renderCalendar();renderFixas();renderBudgetSummary();
+  state={mov:m.data||[],contas:c.data||[],orc:o.data||[],orcItens:oi.data||[],orcCustos:oc.data||[],orcFotos:of.data||[],fixas:f.data||[],categorias:cat.data||[],profile:p.data||null};
+  await ensureDefaultCategories();renderCategoryUI();render();renderCalendar();renderFixas();renderFinancialReport();renderBudgetSummary();
 }
 
 document.querySelectorAll("[data-account]").forEach(b=>b.onclick=()=>openArea(b.dataset.account));
@@ -131,13 +133,13 @@ function goHome(save=true){
   if(save)saveNav("home",null);render();renderBudgetSummary();
 }
 function openArea(a,save=true){
-  current=a;calendarReturnAccount=null;setView("area");
+  current=a;movCategoryFilter="TODOS";calendarReturnAccount=null;setView("area");
   $("homeBtn").classList.remove("hidden");
   $("accountName").textContent=accountName(a);
   $("subtitle").textContent=accountName(a);
   $("orcSummaryWrap").classList.toggle("hidden",a!=="CNPJ");
   if(save)saveNav("area",a);
-  render();renderFixas();renderBudgetSummary();
+  renderCategoryUI();render();renderFixas();renderFinancialReport();renderBudgetSummary();
 }
 function openBudgetView(save=true){
   current="CNPJ";calendarReturnAccount=null;setView("budgetView");
@@ -167,7 +169,7 @@ function openMov(tipo,x=null,forcedDate=null,forcedAccount=null){
   $("descricao").value=x?.descricao||"";$("valor").value=x?.valor||"";
   $("data").value=x?.data||forcedDate||hoje();$("data").dataset.tipo=tipo;
   $("categoryWrap").classList.toggle("hidden",tipo==="entrada");
-  $("categoria").value=x?.categoria||(tipo==="entrada"?"Receita":"Despesas operacionais");
+  fillCategorySelect($("categoria"),current,x?.categoria||(tipo==="entrada"?"Receita":""));
   $("dateLabel").childNodes[0].nodeValue="Data ";
   $("modal").classList.remove("hidden");
 }
@@ -249,29 +251,183 @@ function saldo(a){return state.mov.filter(x=>x.conta===a).reduce((s,x)=>s+(x.tip
 const sum=a=>a.reduce((s,x)=>s+Number(x.valor),0);
 
 
+
+const defaultCategories={
+  PF:["Receita","Moradia","Alimentação","Mercado","Transporte","Saúde","Lazer","Empréstimos","Transferência","Outros"],
+  CNPJ:["Receita","Peças / materiais","Combustível","Alimentação em serviço","Pedágio / viagem","Ferramentas","Terceirização","Impostos","Despesas administrativas","Custos do serviço","Transferência","Outros"]
+};
+const protectedCategories=new Set(["Receita","Transferência","Peças / materiais","Custos do serviço"]);
+
+async function ensureDefaultCategories(){
+  if(!uid())return;
+  const missing=[];
+  for(const conta of ["PF","CNPJ"]){
+    const existing=new Set(state.categorias.filter(c=>c.conta===conta).map(c=>c.nome));
+    for(const nome of defaultCategories[conta]){
+      if(!existing.has(nome))missing.push({user_id:uid(),conta,nome,protegida:protectedCategories.has(nome),ativa:true});
+    }
+  }
+  if(missing.length){
+    const {error}=await sb.from("categorias").upsert(missing,{onConflict:"user_id,conta,nome"});
+    if(error){console.warn("Categorias padrão:",error.message);return}
+    const {data}=await sb.from("categorias").select("*").eq("ativa",true).order("nome");
+    state.categorias=data||state.categorias;
+  }
+}
+
+function categoryNames(conta=current){
+  const list=state.categorias.filter(c=>c.conta===conta&&c.ativa).map(c=>c.nome);
+  return [...new Set(list)].sort((a,b)=>a.localeCompare(b,"pt-BR"));
+}
+function fillCategorySelect(select,conta,value=""){
+  if(!select)return;
+  const names=categoryNames(conta);
+  select.innerHTML=names.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join("");
+  if(value&&names.includes(value))select.value=value;
+  else if(names.length)select.value=names[0];
+}
+function renderCategoryUI(){
+  if(!current)return;
+  const names=categoryNames(current);
+  const filters=["TODOS",...names];
+  $("categoryFilters").innerHTML=filters.map(n=>`<button type="button" data-mov-cat="${esc(n)}" class="${movCategoryFilter===n?"active":""}">${n==="TODOS"?"Tudo":esc(n)}</button>`).join("");
+  $("categoryFilters").querySelectorAll("[data-mov-cat]").forEach(b=>b.onclick=()=>{
+    movCategoryFilter=b.dataset.movCat;
+    renderCategoryUI();render();
+  });
+  fillCategorySelect($("categoria"),current,$("categoria")?.value);
+  fillCategorySelect($("budgetCostCategory"),"CNPJ",$("budgetCostCategory")?.value);
+}
+
 function inferCategory(x){
   if(x.categoria)return x.categoria;
   if(x.origem==="transferencia")return"Transferência";
   if(x.origem==="orcamento_pago"||x.tipo==="entrada")return"Receita";
   if(x.origem==="orcamento_custo_item")return"Peças / materiais";
   if(x.origem==="orcamento_custo_servico")return"Custos do serviço";
-  return"Despesas operacionais";
+  return x.conta==="PF"?"Outros":"Despesas administrativas";
 }
-document.querySelectorAll("[data-mov-cat]").forEach(b=>b.onclick=()=>{
-  movCategoryFilter=b.dataset.movCat;
-  document.querySelectorAll("[data-mov-cat]").forEach(x=>x.classList.toggle("active",x===b));
-  render();
-});
 
+$("manageCategoriesBtn").onclick=()=>openCategories();
+$("closeCategories").onclick=()=>$("categoriesModal").classList.add("hidden");
+function openCategories(){
+  $("categoriesTitle").textContent=`Categorias · ${accountName(current)}`;
+  $("categoryId").value="";$("categoryName").value="";
+  renderCategoriesList();$("categoriesModal").classList.remove("hidden");
+}
+function renderCategoriesList(){
+  const list=state.categorias.filter(c=>c.conta===current&&c.ativa);
+  $("categoriesList").innerHTML=list.length?list.map(c=>`<div class="item category-item"><div><b>${esc(c.nome)}</b>${c.protegida?'<div class="meta">Categoria do sistema</div>':""}</div><div class="actions">${c.protegida?"":`<button onclick="editCategory('${c.id}')">Editar</button><button class="danger" onclick="deleteCategory('${c.id}')">Excluir</button>`}</div></div>`).join(""):`<p class="meta">Nenhuma categoria.</p>`;
+}
+$("categoryForm").onsubmit=async e=>{
+  e.preventDefault();
+  const id=$("categoryId").value,nome=$("categoryName").value.trim();
+  if(!nome)return;
+  const payload={user_id:uid(),conta:current,nome,protegida:false,ativa:true};
+  const q=id?sb.from("categorias").update({nome}).eq("id",id):sb.from("categorias").insert(payload);
+  const {error}=await q;
+  if(error)return alert("Categoria: "+error.message);
+  $("categoryId").value="";$("categoryName").value="";
+  await loadAll();openCategories();
+};
+function editCategory(id){
+  const c=state.categorias.find(x=>x.id===id);if(!c||c.protegida)return;
+  $("categoryId").value=id;$("categoryName").value=c.nome;$("categoryName").focus();
+}
+async function deleteCategory(id){
+  const c=state.categorias.find(x=>x.id===id);if(!c||c.protegida)return;
+  if(!confirm(`Excluir a categoria "${c.nome}"? Lançamentos antigos manterão o nome já salvo.`))return;
+  const {error}=await sb.from("categorias").update({ativa:false}).eq("id",id);
+  if(error)return alert(error.message);
+  await loadAll();openCategories();
+}
+
+
+function isTransfer(x){return x.origem==="transferencia"||inferCategory(x)==="Transferência"}
+function reportIncomeRows(conta,year,month=null){
+  return state.mov.filter(x=>{
+    const d=String(x.data||"");
+    return x.conta===conta&&x.tipo==="entrada"&&!isTransfer(x)&&d.startsWith(String(year))&&(month===null||d.slice(5,7)===String(month).padStart(2,"0"));
+  });
+}
+function reportExpenseRows(conta,year,month=null){
+  return state.mov.filter(x=>{
+    const d=String(x.data||"");
+    return x.conta===conta&&x.tipo==="saida"&&!isTransfer(x)&&d.startsWith(String(year))&&(month===null||d.slice(5,7)===String(month).padStart(2,"0"));
+  });
+}
+function reportTransferRows(conta,year){
+  return state.mov.filter(x=>x.conta===conta&&isTransfer(x)&&String(x.data||"").startsWith(String(year)));
+}
+function availableReportYears(conta){
+  const yrs=new Set([new Date().getFullYear()]);
+  state.mov.filter(x=>x.conta===conta).forEach(x=>{
+    const y=Number(String(x.data||"").slice(0,4));
+    if(y)yrs.add(y);
+  });
+  return [...yrs].sort((a,b)=>b-a);
+}
+function setupReportYear(){
+  if(!current||!$("reportYear"))return;
+  const yrs=availableReportYears(current);
+  if(!yrs.includes(reportYear))reportYear=yrs[0]||new Date().getFullYear();
+  $("reportYear").innerHTML=yrs.map(y=>`<option value="${y}" ${y===reportYear?"selected":""}>${y}</option>`).join("");
+}
+$("reportYear").onchange=()=>{
+  reportYear=Number($("reportYear").value)||new Date().getFullYear();
+  renderFinancialReport();
+};
+function renderFinancialReport(){
+  if(!current||!$("annualMonthlyRows"))return;
+  setupReportYear();
+  const y=reportYear;
+  const income=reportIncomeRows(current,y);
+  const expenses=reportExpenseRows(current,y);
+  const transfers=reportTransferRows(current,y);
+  const incomeTotal=income.reduce((s,x)=>s+Number(x.valor||0),0);
+  const expenseTotal=expenses.reduce((s,x)=>s+Number(x.valor||0),0);
+  const transferTotal=transfers.reduce((s,x)=>s+Number(x.valor||0),0);
+  const result=incomeTotal-expenseTotal;
+
+  $("reportTitle").textContent=`Resumo ${y} · ${accountName(current)}`;
+  $("reportSubtitle").textContent=current==="CNPJ"
+    ?"Faturamento e despesas operacionais. Transferências ficam separadas."
+    :"Entradas e gastos pessoais. Transferências ficam separadas.";
+  $("annualIncomeLabel").textContent=current==="CNPJ"?"Faturamento":"Entradas";
+  $("monthlyIncomeHead").textContent=current==="CNPJ"?"Faturamento":"Entradas";
+  $("annualExpenseLabel").textContent=current==="CNPJ"?"Despesas":"Gastos";
+  $("annualIncome").textContent=brl(incomeTotal);
+  $("annualExpense").textContent=brl(expenseTotal);
+  $("annualResult").textContent=brl(result);
+  $("annualResult").className="money-value "+(result>0?"positive":result<0?"negative":"");
+  $("annualTransfers").textContent=brl(transferTotal);
+
+  const meses=["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+  $("annualMonthlyRows").innerHTML=meses.map((nome,i)=>{
+    const inc=reportIncomeRows(current,y,i+1).reduce((s,x)=>s+Number(x.valor||0),0);
+    const exp=reportExpenseRows(current,y,i+1).reduce((s,x)=>s+Number(x.valor||0),0);
+    const res=inc-exp;
+    return `<tr><td>${nome}</td><td class="money-inline">${brl(inc)}</td><td class="money-inline">${brl(exp)}</td><td class="money-inline ${res>0?"positive":res<0?"negative":""}">${brl(res)}</td></tr>`;
+  }).join("");
+
+  const byCat={};
+  expenses.forEach(x=>{
+    const cat=inferCategory(x);
+    byCat[cat]=(byCat[cat]||0)+Number(x.valor||0);
+  });
+  const cats=Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
+  $("annualCategoryRows").innerHTML=cats.length
+    ? cats.map(([cat,val])=>`<div class="category-report-row"><span>${esc(cat)}</span><strong class="money-inline">${brl(val)}</strong></div>`).join("")
+    : `<p class="meta">Nenhum gasto registrado neste ano.</p>`;
+}
 function render(){
   $("saldoPF").textContent=brl(saldo("PF"));
   $("saldoCNPJ").textContent=brl(saldo("CNPJ"));
-  const mes=hoje().slice(0,7);
+  const agora=new Date(),mes=agora.getMonth()+1,ano=agora.getFullYear();
   if(current){
-    const mm=state.mov.filter(x=>x.conta===current&&String(x.data||"").startsWith(mes));
-    const entradas=mm.filter(x=>x.tipo==="entrada").reduce((s,x)=>s+Number(x.valor),0);
-    const gastos=mm.filter(x=>x.tipo==="saida").reduce((s,x)=>s+Number(x.valor),0);
-    $("summaryLabel1").textContent=current==="CNPJ"?"Receitas do mês":"Entradas do mês";
+    const entradas=reportIncomeRows(current,ano,mes).reduce((s,x)=>s+Number(x.valor||0),0);
+    const gastos=reportExpenseRows(current,ano,mes).reduce((s,x)=>s+Number(x.valor||0),0);
+    $("summaryLabel1").textContent=current==="CNPJ"?"Faturamento do mês":"Entradas do mês";
     $("summaryLabel2").textContent=current==="CNPJ"?"Despesas do mês":"Gastos do mês";
     $("summaryLabel3").textContent="Resultado do mês";
     $("summaryValue1").textContent=brl(entradas);
@@ -352,6 +508,7 @@ function renderFixas(){
 $("btnOrc").onclick=()=>{
   resetOrc(false);
   $("orcFormWrap").classList.remove("hidden");
+  $("saveOrcBtn").textContent="Salvar orçamento";
   $("existingPhotos").innerHTML="";
   $("orcData").value=hoje();
   $("orcPrestador").value=state.profile?.prestador_nome||state.profile?.nome||"";
@@ -364,6 +521,7 @@ $("addCostBtn").onclick=()=>addCost();
 
 function resetOrc(hide=true){
   editingOrcId=null;
+  if($("saveOrcBtn"))$("saveOrcBtn").textContent="Salvar orçamento";
   pendingPhotos=[];
   $("orcForm").reset();
   $("orcItens").innerHTML="";
@@ -396,12 +554,12 @@ function addOrcItem(data=null){
 }
 function addCost(data=null){
   const f=$("costTemplate").content.cloneNode(true),r=f.querySelector(".cost-row");
+  fillCategorySelect(r.querySelector(".cCat"),"CNPJ",data?.categoria||"Custos do serviço");
   if(data){
     r.querySelector(".cDesc").value=data.descricao||"";
-    r.querySelector(".cCat").value=data.categoria||"Custos do serviço";
     r.querySelector(".cVal").value=data.valor??0;
   }
-  r.querySelectorAll("input").forEach(i=>i.oninput=calcOrc);
+  r.querySelectorAll("input,select").forEach(i=>i.oninput=calcOrc);
   r.querySelector(".remove-cost").onclick=()=>{r.remove();calcOrc()};
   $("orcCustos").appendChild(f);
   calcOrc();
@@ -414,6 +572,7 @@ function editOrc(id){
     return;
   }
   editingOrcId=id;
+  $("saveOrcBtn").textContent="Salvar alterações";
   $("orcForm").reset();
   $("orcItens").innerHTML="";
   $("orcCustos").innerHTML="";
@@ -593,7 +752,7 @@ async function aprovarOrc(id){
 function openApprovedCost(id){
   $("budgetCostOrcId").value=id;
   $("budgetCostDesc").value="";
-  $("budgetCostCategory").value="Custos do serviço";
+  fillCategorySelect($("budgetCostCategory"),"CNPJ","Custos do serviço");
   $("budgetCostValue").value="";
   $("budgetCostDate").value=hoje();
   $("budgetCostModal").classList.remove("hidden");
@@ -634,6 +793,84 @@ async function delOrc(id){
     if(error)alert(error.message);else loadAll();
   }
 }
+
+async function imageUrlToData(url){
+  const r=await fetch(url);if(!r.ok)throw new Error("Falha ao carregar foto");
+  const blob=await r.blob();
+  return await new Promise((resolve,reject)=>{
+    const fr=new FileReader();fr.onload=()=>resolve(fr.result);fr.onerror=reject;fr.readAsDataURL(blob);
+  });
+}
+function pdfSafe(v){return String(v??"").replace(/[^\x20-\x7EÀ-ÿ]/g," ")}
+async function gerarPdfCliente(id){
+  const o=state.orc.find(x=>x.id===id);if(!o)return;
+  const its=state.orcItens.filter(x=>x.orcamento_id===id);
+  const fotos=state.orcFotos.filter(x=>x.orcamento_id===id);
+  const {jsPDF}=window.jspdf||{};
+  if(!jsPDF)return alert("Gerador de PDF não carregou. Atualize a página e tente novamente.");
+
+  const doc=new jsPDF({unit:"mm",format:"a4"});
+  const pageW=210,margin=16,contentW=pageW-margin*2;
+  let y=18;
+  const line=(txt,size=10,bold=false)=>{
+    doc.setFont("helvetica",bold?"bold":"normal");doc.setFontSize(size);
+    const lines=doc.splitTextToSize(pdfSafe(txt),contentW);
+    doc.text(lines,margin,y);y+=lines.length*(size*0.42)+2;
+  };
+  const ensure=(needed=20)=>{if(y+needed>282){doc.addPage();y=18}};
+
+  doc.setFont("helvetica","bold");doc.setFontSize(18);
+  doc.text("ORÇAMENTO / RELATÓRIO DE SERVIÇO",margin,y);y+=9;
+  doc.setDrawColor(180);doc.line(margin,y,pageW-margin,y);y+=7;
+
+  line(`Prestador: ${o.prestador||state.profile?.prestador_nome||state.profile?.nome||"-"}`,10,true);
+  line(`Orçamento Nº ${o.numero}   Data: ${dataBR(o.data)}`);
+  line(`Cliente: ${o.cliente||"-"}`,11,true);
+  if(o.whatsapp)line(`WhatsApp: ${o.whatsapp}`);
+  if(o.equipamento_modelo)line(`Equipamento / Modelo: ${o.equipamento_modelo}`);
+  if(o.descricao){y+=2;line("Descrição do serviço",11,true);line(o.descricao);}
+
+  ensure(25);y+=3;line("ITENS COMERCIAIS",12,true);
+  its.forEach(i=>{
+    ensure(10);
+    const tipo=i.tipo==="mao_obra"?"M.O.":"Item";
+    line(`${tipo}: ${i.descricao} — ${i.quantidade} x ${brl(i.valor_unitario)} = ${brl(Number(i.quantidade)*Number(i.valor_unitario))}`,9);
+  });
+  ensure(18);y+=4;
+  doc.setFillColor(245,245,245);doc.roundedRect(margin,y-5,contentW,14,2,2,"F");
+  doc.setFont("helvetica","bold");doc.setFontSize(13);
+  doc.text(`TOTAL: ${brl(o.total)}`,pageW-margin,y+4,{align:"right"});y+=16;
+
+  if(fotos.length){
+    ensure(24);line("REGISTRO FOTOGRÁFICO",12,true);
+    for(const grupo of ["antes","depois"]){
+      const gf=fotos.filter(f=>(f.tipo||"antes")===grupo);
+      if(!gf.length)continue;
+      ensure(18);line(grupo==="antes"?"ANTES":"DEPOIS",11,true);
+      for(const f of gf){
+        const url=await signedPhotoUrl(f.storage_path);if(!url)continue;
+        try{
+          const data=await imageUrlToData(url);
+          ensure(72);
+          const props=doc.getImageProperties(data);
+          const maxW=contentW,maxH=65;
+          const scale=Math.min(maxW/props.width,maxH/props.height);
+          const w=props.width*scale,h=props.height*scale;
+          doc.addImage(data,props.fileType||"JPEG",margin,y,w,h);
+          y+=h+5;
+        }catch(e){console.warn("Foto PDF",e)}
+      }
+    }
+  }
+
+  ensure(20);y+=4;
+  doc.setDrawColor(190);doc.line(margin,y,pageW-margin,y);y+=6;
+  line("Documento comercial. Custos internos e resultado financeiro não fazem parte deste documento.",8);
+
+  const filename=`orcamento-${o.numero}-${(o.cliente||"cliente").replace(/[^a-zA-Z0-9À-ÿ]+/g,"-")}.pdf`;
+  doc.save(filename);
+}
+
 function renderOrc(){
   $("orcList").innerHTML=state.orc.length?state.orc.map(o=>{
     const its=state.orcItens.filter(x=>x.orcamento_id===o.id);
@@ -647,7 +884,7 @@ function renderOrc(){
       <div class="budget-split"><span>Total cobrado <b class="money-inline">${brl(o.total)}</b></span><span>Custo itens <b class="money-inline">${brl(custoItens)}</b></span><span>Custos serviço <b class="money-inline">${brl(custoServico)}</b></span><span>Resultado ${o.status==="pago"?"real":"previsto"} <b class="money-inline">${brl(o.status==="pago"?o.resultado:resultado)}</b></span></div>
       ${its.map(i=>`<div class="meta">${i.tipo==="peca"?"Item":"M.O."}: ${esc(i.descricao)} · ${i.quantidade} × ${moneySpan(i.valor_unitario)}${Number(i.custo_unitario||0)>0?` · custo ${moneySpan(Number(i.custo_unitario)*Number(i.quantidade))}`:""}</div>`).join("")}
       ${custos.length?`<div class="internal-box"><b>Custos internos</b>${custos.map(c=>`<div class="meta">${esc(c.descricao)} · ${esc(c.categoria||"Custos do serviço")} · ${moneySpan(c.valor)}</div>`).join("")}</div>`:""}${fotos.length?`<button type="button" class="small" onclick="openBudgetPhotos(\'${o.id}\')">📷 Fotos (${fotos.length})</button>`:""}
-      <div class="actions">${["rascunho","orcamento","enviado","aprovado"].includes(o.status)?`<button onclick="editOrc('${o.id}')">Editar</button>`:""}${(o.status==="rascunho"||o.status==="orcamento")?`<button onclick="enviarOrc('${o.id}')">Marcar enviado</button><button class="warning" onclick="aprovarOrc('${o.id}')">Aprovar</button>`:""}${o.status==="enviado"?`<button class="warning" onclick="aprovarOrc('${o.id}')">Aprovar</button>`:""}${o.status==="aprovado"?`<button onclick="openApprovedCost(\'${o.id}\')">+ Registrar custo</button><button class="success" onclick="pagarOrc(\'${o.id}\')">Marcar pago</button>`:""}${o.status==="pago"?`<button class="warning" onclick="recalcularPago('${o.id}')">Recalcular</button>`:`<button class="danger" onclick="delOrc('${o.id}')">Excluir</button>`}</div>
+      <div class="actions"><button onclick="gerarPdfCliente('${o.id}')">Gerar PDF</button>${["rascunho","orcamento","enviado","aprovado"].includes(o.status)?`<button onclick="editOrc('${o.id}')">Editar</button>`:""}${(o.status==="rascunho"||o.status==="orcamento")?`<button onclick="enviarOrc('${o.id}')">Marcar enviado</button><button class="warning" onclick="aprovarOrc('${o.id}')">Aprovar</button>`:""}${o.status==="enviado"?`<button class="warning" onclick="aprovarOrc('${o.id}')">Aprovar</button>`:""}${o.status==="aprovado"?`<button onclick="openApprovedCost(\'${o.id}\')">+ Registrar custo</button><button class="success" onclick="pagarOrc(\'${o.id}\')">Marcar pago</button>`:""}${o.status==="pago"?`<button class="warning" onclick="recalcularPago('${o.id}')">Recalcular</button>`:`<button class="danger" onclick="delOrc('${o.id}')">Excluir</button>`}</div>
     </div></details>`;
   }).join(""):`<p class="meta">Nenhum orçamento.</p>`;
 }
@@ -716,5 +953,5 @@ document.querySelectorAll("[data-cal-action]").forEach(b=>b.onclick=()=>{
 });
 
 window.delMov=delMov;window.delConta=delConta;window.editMov=editMov;window.editConta=editConta;window.pagarConta=pagarConta;
-window.removePendingPhoto=removePendingPhoto;window.openBudgetPhotos=openBudgetPhotos;window.openApprovedCost=openApprovedCost;window.editFixed=editFixed;window.delFixed=delFixed;window.editOrc=editOrc;window.enviarOrc=enviarOrc;window.aprovarOrc=aprovarOrc;window.pagarOrc=pagarOrc;window.recalcularPago=recalcularPago;window.delOrc=delOrc;
+window.editCategory=editCategory;window.deleteCategory=deleteCategory;window.gerarPdfCliente=gerarPdfCliente;window.removePendingPhoto=removePendingPhoto;window.openBudgetPhotos=openBudgetPhotos;window.openApprovedCost=openApprovedCost;window.editFixed=editFixed;window.delFixed=delFixed;window.editOrc=editOrc;window.enviarOrc=enviarOrc;window.aprovarOrc=aprovarOrc;window.pagarOrc=pagarOrc;window.recalcularPago=recalcularPago;window.delOrc=delOrc;
 start();
