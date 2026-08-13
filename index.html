@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111827">
 <title>Meu Financeiro</title>
-<link rel="stylesheet" href="styles.css?v=6.6.1">
+<link rel="stylesheet" href="styles.css?v=7.1.3">
 </head>
 <body>
 <section id="auth" class="auth"><div class="card auth-card"><h1>Meu Financeiro</h1><p>Acesse seus dados no computador e no celular.</p><div class="tabs"><button id="tabLogin" class="active" type="button">Entrar</button><button id="tabSignup" type="button">Criar conta</button></div><form id="authForm"><label id="nomeWrap" class="hidden">Nome<input id="nome"></label><label>E-mail<input id="email" type="email" required></label><label>Senha<input id="senha" type="password" minlength="6" required></label><button id="authSubmit" class="primary">Entrar</button><p id="authMsg" class="msg"></p></form></div></section>
@@ -27,7 +27,18 @@
 </div>
 <div class="quick four"><button id="btnEntrada" class="primary" type="button">+ Entrada</button><button id="btnGasto" type="button">+ Gasto</button><button id="btnTransfer" type="button">Transferir</button><button id="btnCalendar" type="button">Calendário</button></div>
 
-<details class="card accordion acc-daily" open><summary><span>Dia a dia</span><small>Entradas e gastos rápidos</small></summary><div class="accordion-body"><div id="movList"></div></div></details>
+<details class="card accordion acc-daily" open><summary><span>Dia a dia</span><small>Entradas e gastos organizados por categoria</small></summary>
+<div class="accordion-body">
+  <div class="category-filters" id="categoryFilters">
+    <button type="button" data-mov-cat="TODOS" class="active">Tudo</button>
+    <button type="button" data-mov-cat="Receita">Receitas</button>
+    <button type="button" data-mov-cat="Peças / materiais">Peças</button>
+    <button type="button" data-mov-cat="Custos do serviço">Serviço</button>
+    <button type="button" data-mov-cat="Despesas operacionais">Despesas</button>
+    <button type="button" data-mov-cat="Transferência">Transferências</button>
+  </div>
+  <div id="movList"></div>
+</div></details>
 
 <details class="card accordion acc-bills" open><summary><span>Contas</span><small>Água, luz, internet, empréstimos e outras</small></summary><div class="accordion-body"><div class="section-action"><button id="btnConta" class="primary small" type="button">+ Adicionar conta</button></div><div class="cols">
 <details class="bill-group overdue" open><summary>Atrasadas <span class="money-value" id="tAtrasadas">R$ 0,00</span></summary><div id="atrasadas"></div></details>
@@ -66,6 +77,15 @@
 <div class="head item-head"><div><h3>Itens comerciais</h3><small>Valor cobrado aparece para o cliente. Custo real fica interno.</small></div><button type="button" id="addItem" class="small">+ Item</button></div>
 <div id="orcItens"></div>
 <details class="internal-box" open><summary>Custos internos do serviço</summary><p class="meta">Gasolina, almoço, pedágio, ajudante e outros custos que o cliente não vê.</p><div class="section-action"><button type="button" id="addCostBtn" class="small">+ Custo interno</button></div><div id="orcCustos"></div></details>
+<details class="internal-box" open><summary>Fotos do serviço</summary>
+  <p class="meta">Registre o estado do equipamento antes e depois do serviço.</p>
+  <div class="photo-actions">
+    <label class="photo-picker">📷 Fotos — Antes<input id="orcFotosAntes" type="file" accept="image/*" multiple></label>
+    <label class="photo-picker">📷 Fotos — Depois<input id="orcFotosDepois" type="file" accept="image/*" multiple></label>
+  </div>
+  <div id="existingPhotos" class="photo-existing"></div>
+  <div id="photoPreview" class="photo-grid"></div>
+</details>
 <div class="budget-totals"><div><span>Peças / itens cobrados</span><strong class="money-value" id="totalPecas">R$ 0,00</strong></div><div><span>M.O. cobrada</span><strong class="money-value" id="totalMO">R$ 0,00</strong></div><div><span>Custo real dos itens</span><strong class="money-value" id="totalCustoItens">R$ 0,00</strong></div><div><span>Custos do serviço</span><strong class="money-value" id="totalCustoServico">R$ 0,00</strong></div><div class="grand"><span>Total cobrado</span><strong class="money-value" id="orcTotal">R$ 0,00</strong></div><div class="grand result"><span>Resultado previsto</span><strong class="money-value" id="orcResultado">R$ 0,00</strong></div></div>
 <div class="form-actions"><button id="cancelOrc" type="button">Cancelar</button><button class="primary">Salvar orçamento</button></div>
 </form></div><div id="orcList"></div></div></details>
@@ -74,7 +94,28 @@
 <section id="calendarView" class="view"><div class="card"><div class="calendar-head"><button id="prevMonth" type="button">‹</button><h2 id="monthTitle"></h2><button id="nextMonth" type="button">›</button></div><div class="calendar-filter"><button data-cal-filter="TODOS" class="active" type="button">Tudo</button><button data-cal-filter="PF" type="button">Pessoa Física</button><button data-cal-filter="CNPJ" type="button">CNPJ</button></div><div class="weekdays"><span>Dom</span><span>Seg</span><span>Ter</span><span>Qua</span><span>Qui</span><span>Sex</span><span>Sáb</span></div><div id="calendarGrid" class="calendar-grid"></div></div><div class="card"><div class="head"><h2 id="selectedDateTitle">Selecione um dia</h2><button id="calendarAddBtn" class="primary small hidden" type="button">+ Lançar neste dia</button></div><div id="calendarEvents"></div></div></section>
 </main></div>
 
-<div id="modal" class="modal hidden"><div class="card modal-card"><div class="head"><h2 id="modalTitle"></h2><button id="closeModal" type="button">×</button></div><form id="modalForm"><input id="editId" type="hidden"><input id="mode" type="hidden"><label>Descrição<input id="descricao" required></label><label>Valor (R$)<input id="valor" type="number" step="0.01" min="0" required></label><label id="dateLabel">Data<input id="data" type="date" required></label><button class="primary">Salvar</button></form></div></div>
+<div id="modal" class="modal hidden"><div class="card modal-card"><div class="head"><h2 id="modalTitle"></h2><button id="closeModal" type="button">×</button></div><form id="modalForm"><input id="editId" type="hidden"><input id="mode" type="hidden"><label>Descrição<input id="descricao" required></label><label>Valor (R$)<input id="valor" type="number" step="0.01" min="0" required></label>
+<label id="categoryWrap">Categoria<select id="categoria">
+<option value="Despesas operacionais">Despesas operacionais</option>
+<option value="Peças / materiais">Peças / materiais</option>
+<option value="Custos do serviço">Custos do serviço</option>
+<option value="Receita">Receita</option>
+<option value="Outros">Outros</option>
+</select></label><label id="dateLabel">Data<input id="data" type="date" required></label><button class="primary">Salvar</button></form></div></div>
+
+<div id="budgetCostModal" class="modal hidden"><div class="card modal-card">
+<div class="head"><h2>Registrar custo do serviço</h2><button id="closeBudgetCost" type="button">×</button></div>
+<form id="budgetCostForm"><input id="budgetCostOrcId" type="hidden">
+<label>Descrição<input id="budgetCostDesc" placeholder="Ex.: gasolina" required></label>
+<label>Categoria<select id="budgetCostCategory">
+<option value="Custos do serviço">Custos do serviço</option>
+<option value="Peças / materiais">Peças / materiais</option>
+<option value="Despesas operacionais">Despesas operacionais</option>
+<option value="Outros">Outros</option>
+</select></label>
+<label>Valor (R$)<input id="budgetCostValue" type="number" min="0.01" step="0.01" required></label>
+<label>Data<input id="budgetCostDate" type="date" required></label>
+<button class="primary">Registrar gasto</button></form></div></div>
 
 <div id="transferModal" class="modal hidden"><div class="card modal-card"><div class="head"><h2>Transferir valor</h2><button id="closeTransfer" type="button">×</button></div><form id="transferForm"><p id="transferDirection" class="transfer-direction"></p><label>Descrição<input id="transferDesc" value="Transferência"></label><label>Valor (R$)<input id="transferValue" type="number" min="0.01" step="0.01" required></label><label>Data<input id="transferDate" type="date" required></label><button class="primary">Transferir</button></form></div></div>
 
@@ -83,6 +124,10 @@
 <div id="calendarActionModal" class="modal hidden"><div class="card modal-card"><div class="head"><h2>Novo lançamento</h2><button id="closeCalendarAction" type="button">×</button></div><p id="calendarActionDate" class="transfer-direction"></p><div class="calendar-actions"><button data-cal-action="entrada" class="primary" type="button">+ Entrada</button><button data-cal-action="saida" type="button">+ Gasto</button><button data-cal-action="conta" type="button">+ Conta a pagar</button></div><label>Conta<select id="calendarAccount"><option value="PF">Pessoa Física</option><option value="CNPJ">CNPJ</option></select></label></div></div>
 
 <template id="budgetItemTemplate"><div class="budget-item-row"><select class="iTipo"><option value="peca">Peça / item</option><option value="mao_obra">M.O.</option></select><input class="iDesc" placeholder="Descrição" required><input class="iQtd" type="number" value="1" min="0.01" step="0.01" required><input class="iVal" type="number" step="0.01" min="0" placeholder="Valor cobrado" required><input class="iCusto" type="number" step="0.01" min="0" placeholder="Custo real"><button class="danger remove-budget-item" type="button">×</button></div></template>
-<template id="costTemplate"><div class="cost-row"><input class="cDesc" placeholder="Ex.: Gasolina" required><input class="cVal" type="number" step="0.01" min="0" placeholder="Valor" required><button class="danger remove-cost" type="button">×</button></div></template>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js"></script><script src="app.js?v=6.6.1"></script>
+<template id="costTemplate"><div class="cost-row">
+<input class="cDesc" placeholder="Ex.: Gasolina" required>
+<select class="cCat"><option value="Custos do serviço">Custos do serviço</option><option value="Peças / materiais">Peças / materiais</option><option value="Despesas operacionais">Despesas operacionais</option><option value="Outros">Outros</option></select>
+<input class="cVal" type="number" step="0.01" min="0" placeholder="Valor" required>
+<button class="danger remove-cost" type="button">×</button></div></template>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js"></script><script src="app.js?v=7.1.3"></script>
 </body></html>

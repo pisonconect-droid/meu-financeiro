@@ -42,3 +42,367 @@ header{position:sticky;top:0;z-index:40;box-shadow:0 10px 30px rgba(17,24,39,.12
   .budget-hero{flex-direction:column;align-items:stretch}
   .budget-kpis{grid-template-columns:1fr 1fr}
 }
+
+.category-filters{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px}
+.category-filters button{padding:7px 10px;border-radius:999px;font-size:12px}
+.category-filters button.active{background:#111827;color:#fff;border-color:#111827}
+.photo-picker{display:inline-flex;align-items:center;gap:8px;border:1px solid #cbd5e1;border-radius:9px;padding:9px 12px;font-weight:700;cursor:pointer;background:#fff}
+.photo-picker input{display:none}
+.photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:10px}
+.photo-thumb{border:1px solid #dbe3ef;border-radius:10px;padding:10px;background:#fff;display:flex;justify-content:space-between;gap:8px;align-items:center}
+.photo-thumb span{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cost-row{grid-template-columns:minmax(160px,2fr) minmax(150px,1fr) minmax(100px,1fr) auto}
+@media(max-width:700px){.cost-row{grid-template-columns:1fr}.category-filters{overflow-x:auto;flex-wrap:nowrap}}
+
+.photo-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+.photo-existing{margin-top:10px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.photo-existing-title{width:100%;margin-bottom:2px}
+.photo-chip,.photo-tag{display:inline-block;border-radius:999px;padding:4px 8px;font-size:11px;font-weight:800}
+.photo-chip.antes,.photo-tag.antes{background:#dbeafe;color:#1d4ed8}
+.photo-chip.depois,.photo-tag.depois{background:#dcfce7;color:#166534}
+.photo-thumb>div{min-width:0;display:flex;align-items:center;gap:6px}
+
+
+/* =========================================================
+   V7.1.1 — AJUSTE RESPONSIVO MOBILE
+   Somente apresentação. Não altera regras financeiras.
+   ========================================================= */
+@media (max-width: 700px){
+  body{overflow-x:hidden}
+  .app-shell,.page,.content,.container,main{max-width:100%;min-width:0}
+  .topbar{padding:10px 12px;gap:8px}
+  .topbar .inner{gap:8px;min-width:0}
+  .brand{min-width:0}
+  .brand h1{font-size:20px;line-height:1.05}
+  .brand .meta{font-size:12px}
+  .top-actions{gap:6px;flex-wrap:nowrap}
+  .top-actions button,.top-actions .btn{padding:9px 10px;font-size:13px}
+  .back-btn{padding:9px 10px;min-width:auto}
+
+  .hero,.panel,.accordion,.orc-card{min-width:0;max-width:100%}
+  .hero{padding:18px 16px}
+  .hero h2{font-size:27px}
+  .hero-stats{gap:8px}
+  .hero-stat{min-width:0;padding:10px}
+
+  .accordion-head{display:grid;grid-template-columns:1fr auto;gap:6px 10px;align-items:start}
+  .accordion-head .meta{grid-column:1/2;text-align:left}
+  .accordion-body{padding:14px 12px}
+
+  .orc-card{
+    display:block !important;
+    width:100% !important;
+    overflow:hidden;
+    padding:14px !important;
+  }
+  .orc-card > *{min-width:0 !important;max-width:100% !important;width:100% !important}
+  .orc-summary,.orc-detail{width:100% !important;max-width:100% !important}
+  .orc-summary{margin-bottom:14px}
+  .orc-summary h3,.orc-title{
+    white-space:normal !important;
+    overflow-wrap:anywhere;
+    word-break:normal;
+    font-size:18px;
+    line-height:1.2;
+  }
+  .orc-detail .meta,.orc-card .meta{
+    white-space:normal !important;
+    overflow-wrap:anywhere;
+  }
+
+  .orc-metrics,.orc-values,.metrics-grid{
+    display:grid !important;
+    grid-template-columns:1fr !important;
+    gap:8px !important;
+    width:100% !important;
+  }
+  .orc-metrics > *, .orc-values > *, .metrics-grid > *{
+    width:100% !important;
+    min-width:0 !important;
+    max-width:100% !important;
+  }
+  .metric,.summary-box{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    min-width:0;
+  }
+  .metric strong,.summary-box strong{white-space:nowrap}
+
+  .internal-box,.cost-box{
+    width:100% !important;
+    min-width:0 !important;
+    max-width:100% !important;
+    overflow-wrap:anywhere;
+  }
+
+  .orc-actions,.actions,.card-actions{
+    display:flex !important;
+    flex-wrap:wrap !important;
+    gap:8px !important;
+    width:100% !important;
+    justify-content:flex-start !important;
+  }
+  .orc-actions button,.actions button,.card-actions button{
+    flex:1 1 135px;
+    min-width:0;
+    white-space:normal;
+  }
+
+  .photo-actions{display:grid;grid-template-columns:1fr;gap:8px}
+  .photo-picker{width:100%;box-sizing:border-box}
+  .photo-grid,.photo-existing{max-width:100%;overflow:hidden}
+
+  input,select,textarea,button{max-width:100%;box-sizing:border-box}
+}
+
+@media (max-width: 430px){
+  .topbar{align-items:flex-start}
+  .top-actions button,.top-actions .btn{font-size:12px;padding:8px}
+  .hero h2{font-size:25px}
+  .orc-actions button,.actions button,.card-actions button{flex-basis:100%}
+}
+
+
+/* =========================================================
+   V7.1.2 — CORREÇÃO MOBILE DEFINITIVA DO CARD DE ORÇAMENTO
+   ========================================================= */
+@media (max-width: 700px){
+
+  /* O <details> do orçamento vira fluxo vertical */
+  details.budget-record{
+    display:block !important;
+    width:100% !important;
+    max-width:100% !important;
+    min-width:0 !important;
+    overflow:hidden !important;
+    box-sizing:border-box !important;
+  }
+
+  details.budget-record > summary{
+    display:flex !important;
+    flex-direction:column !important;
+    align-items:flex-start !important;
+    gap:8px !important;
+    width:100% !important;
+    max-width:100% !important;
+    min-width:0 !important;
+    box-sizing:border-box !important;
+  }
+
+  details.budget-record > summary > div{
+    width:100% !important;
+    max-width:100% !important;
+    min-width:0 !important;
+  }
+
+  details.budget-record > summary > b{
+    width:auto !important;
+    max-width:100% !important;
+    white-space:normal !important;
+  }
+
+  .budget-detail{
+    display:block !important;
+    width:100% !important;
+    max-width:100% !important;
+    min-width:0 !important;
+    overflow:hidden !important;
+    box-sizing:border-box !important;
+    padding-top:12px !important;
+  }
+
+  .budget-detail > *{
+    max-width:100% !important;
+    min-width:0 !important;
+    box-sizing:border-box !important;
+  }
+
+  .budget-detail .meta{
+    white-space:normal !important;
+    overflow-wrap:anywhere !important;
+    word-break:break-word !important;
+  }
+
+  .budget-split{
+    display:grid !important;
+    grid-template-columns:1fr !important;
+    gap:8px !important;
+    width:100% !important;
+    max-width:100% !important;
+    min-width:0 !important;
+  }
+
+  .budget-split > span{
+    display:flex !important;
+    justify-content:space-between !important;
+    align-items:flex-start !important;
+    gap:12px !important;
+    width:100% !important;
+    max-width:100% !important;
+    min-width:0 !important;
+    box-sizing:border-box !important;
+    white-space:normal !important;
+  }
+
+  .budget-split > span > b{
+    flex:0 0 auto !important;
+    white-space:nowrap !important;
+  }
+
+  .budget-detail .internal-box{
+    width:100% !important;
+    max-width:100% !important;
+    min-width:0 !important;
+    overflow:hidden !important;
+    box-sizing:border-box !important;
+  }
+
+  .budget-detail .actions{
+    display:grid !important;
+    grid-template-columns:1fr !important;
+    gap:8px !important;
+    width:100% !important;
+    max-width:100% !important;
+    min-width:0 !important;
+    margin-top:12px !important;
+  }
+
+  .budget-detail .actions button{
+    display:block !important;
+    width:100% !important;
+    max-width:100% !important;
+    min-width:0 !important;
+    margin:0 !important;
+    box-sizing:border-box !important;
+    white-space:normal !important;
+    text-align:center !important;
+  }
+
+  /* Formulário e linhas do orçamento */
+  .budget-item-row{
+    display:grid !important;
+    grid-template-columns:1fr !important;
+    gap:8px !important;
+    width:100% !important;
+  }
+
+  .cost-row{
+    display:grid !important;
+    grid-template-columns:1fr !important;
+    gap:8px !important;
+    width:100% !important;
+  }
+
+  .form-grid{
+    display:grid !important;
+    grid-template-columns:1fr !important;
+    gap:10px !important;
+  }
+
+  .budget-totals{
+    display:grid !important;
+    grid-template-columns:1fr !important;
+    gap:8px !important;
+  }
+
+  .budget-totals > div{
+    width:100% !important;
+    min-width:0 !important;
+  }
+
+  /* evita qualquer largura herdada do desktop */
+  #budgetView,
+  #orcWrap,
+  #orcList,
+  #orcList > *{
+    width:100% !important;
+    max-width:100% !important;
+    min-width:0 !important;
+    box-sizing:border-box !important;
+  }
+}
+
+@media (max-width: 430px){
+  details.budget-record{border-radius:12px !important}
+  .budget-detail{padding-left:0 !important;padding-right:0 !important}
+}
+
+
+/* =========================================================
+   V7.1.3 — MOBILE: BOTÕES VISÍVEIS E CARD COM ALTURA AUTOMÁTICA
+   ========================================================= */
+@media (max-width: 700px){
+
+  details.budget-record,
+  details.budget-record[open]{
+    height:auto !important;
+    min-height:0 !important;
+    max-height:none !important;
+    overflow:visible !important;
+  }
+
+  details.budget-record > summary{
+    position:relative !important;
+    height:auto !important;
+    min-height:0 !important;
+    max-height:none !important;
+    overflow:visible !important;
+  }
+
+  .budget-detail{
+    position:relative !important;
+    display:block !important;
+    height:auto !important;
+    min-height:0 !important;
+    max-height:none !important;
+    overflow:visible !important;
+    clear:both !important;
+  }
+
+  .budget-detail .internal-box{
+    position:relative !important;
+    height:auto !important;
+    max-height:none !important;
+    overflow:visible !important;
+  }
+
+  .budget-detail .actions{
+    position:relative !important;
+    inset:auto !important;
+    float:none !important;
+    clear:both !important;
+    display:grid !important;
+    grid-template-columns:1fr !important;
+    width:100% !important;
+    max-width:100% !important;
+    height:auto !important;
+    max-height:none !important;
+    overflow:visible !important;
+    margin:14px 0 0 !important;
+    padding:0 !important;
+    z-index:2 !important;
+  }
+
+  .budget-detail .actions button{
+    position:relative !important;
+    display:block !important;
+    visibility:visible !important;
+    opacity:1 !important;
+    transform:none !important;
+    width:100% !important;
+    min-height:44px !important;
+    max-width:100% !important;
+  }
+
+  #orcList{
+    overflow:visible !important;
+    height:auto !important;
+    max-height:none !important;
+  }
+
+  #orcList > details{
+    margin-bottom:14px !important;
+  }
+}
