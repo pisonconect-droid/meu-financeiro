@@ -2,8 +2,6 @@ const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{aut
 let session=null,current=null,authMode="login";
 let state={mov:[],contas:[],orc:[],orcItens:[],orcCustos:[],fixas:[],profile:null};
 let calDate=new Date(),selectedDate=null,calFilter="TODOS";
-let navState=JSON.parse(sessionStorage.getItem("mf_nav")||'{"view":"home","account":null}');
-let calendarReturnAccount=null;
 let privacyHidden=localStorage.getItem("mf_privacy_hidden")==="1";
 
 const $=id=>document.getElementById(id);
@@ -18,7 +16,7 @@ const moneySpan=v=>`<span class="money-inline">${brl(v)}</span>`;
 
 function applyPrivacy(){
   document.body.classList.toggle("values-hidden",privacyHidden);
-  $("privacyBtn").textContent=privacyHidden?"🙈 Exibir":"👁 Valores";
+  $("privacyBtn").textContent=privacyHidden?"🙈":"👁";
   $("privacyBtn").title=privacyHidden?"Exibir valores":"Ocultar valores";
 }
 $("privacyBtn").onclick=()=>{privacyHidden=!privacyHidden;localStorage.setItem("mf_privacy_hidden",privacyHidden?"1":"0");applyPrivacy()};
@@ -62,41 +60,21 @@ async function ensureProfile(user,nome=""){
 }
 $("logout").onclick=()=>sb.auth.signOut();
 
-sb.auth.onAuthStateChange(async(event,s)=>{
+sb.auth.onAuthStateChange(async(_e,s)=>{
   session=s;
-  if(s?.user){
-    await ensureProfile(s.user);
-    showApp(false);
-    await loadAll();
-    if(event==="SIGNED_IN"||event==="INITIAL_SESSION")restoreNavigation();
-  }else showAuth();
+  if(s?.user){await ensureProfile(s.user);showApp();await loadAll()}
+  else showAuth();
 });
 
 async function start(){
   applyPrivacy();
   const {data}=await sb.auth.getSession();
   session=data.session;
-  if(session?.user){await ensureProfile(session.user);showApp(false);await loadAll();restoreNavigation()}
+  if(session?.user){await ensureProfile(session.user);showApp();await loadAll()}
   else showAuth();
 }
 function showAuth(){$("auth").classList.remove("hidden");$("app").classList.add("hidden")}
-function showApp(reset=false){
-  $("auth").classList.add("hidden");
-  $("app").classList.remove("hidden");
-  $("userEmail").textContent=session.user.email||"";
-  if(reset)goHome();
-}
-function saveNav(view,account=null){
-  navState={view,account};
-  sessionStorage.setItem("mf_nav",JSON.stringify(navState));
-}
-function restoreNavigation(){
-  const n=navState||{view:"home",account:null};
-  if(n.view==="area"&&n.account)return openArea(n.account,false);
-  if(n.view==="budget")return openBudgetView(false);
-  if(n.view==="calendar"&&n.account)return openAccountCalendar(n.account,false);
-  goHome(false);
-}
+function showApp(){$("auth").classList.add("hidden");$("app").classList.remove("hidden");$("userEmail").textContent=session.user.email||"";goHome()}
 
 async function loadAll(){
   const [m,c,o,oi,oc,f,p]=await Promise.all([
@@ -111,45 +89,18 @@ async function loadAll(){
   const er=m.error||c.error||o.error||oi.error||oc.error||f.error||p.error;
   if(er){alert(er.message);return}
   state={mov:m.data||[],contas:c.data||[],orc:o.data||[],orcItens:oi.data||[],orcCustos:oc.data||[],fixas:f.data||[],profile:p.data||null};
-  render();renderCalendar();renderFixas();renderBudgetSummary();
+  render();renderCalendar();renderFixas();
 }
 
 document.querySelectorAll("[data-account]").forEach(b=>b.onclick=()=>openArea(b.dataset.account));
-$("homeBtn").onclick=()=>{if(navState.view==="calendar"&&calendarReturnAccount)openArea(calendarReturnAccount);else goHome()};
-$("openBudgets").onclick=()=>openBudgetView();
-$("openBudgetsFromCNPJ").onclick=()=>openBudgetView();
-$("btnCalendar").onclick=()=>openAccountCalendar(current);
+$("homeBtn").onclick=goHome;
+$("openCalendar").onclick=openCalendar;
+$("calendarToday").textContent=dataBR(hoje());
 
 function setView(id){document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active",v.id===id))}
-function goHome(save=true){
-  current=null;calendarReturnAccount=null;setView("home");
-  $("homeBtn").classList.add("hidden");$("subtitle").textContent="Escolha uma área";
-  if(save)saveNav("home",null);render();renderBudgetSummary();
-}
-function openArea(a,save=true){
-  current=a;calendarReturnAccount=null;setView("area");
-  $("homeBtn").classList.remove("hidden");
-  $("accountName").textContent=accountName(a);
-  $("subtitle").textContent=accountName(a);
-  $("orcSummaryWrap").classList.toggle("hidden",a!=="CNPJ");
-  if(save)saveNav("area",a);
-  render();renderFixas();renderBudgetSummary();
-}
-function openBudgetView(save=true){
-  current="CNPJ";calendarReturnAccount=null;setView("budgetView");
-  $("homeBtn").classList.remove("hidden");$("subtitle").textContent="Orçamentos · CNPJ";
-  if(save)saveNav("budget","CNPJ");
-  renderOrc();renderBudgetSummary();
-}
-function openAccountCalendar(account,save=true){
-  if(!account)return;
-  current=account;calendarReturnAccount=account;calFilter=account;
-  document.querySelectorAll("[data-cal-filter]").forEach(x=>x.classList.toggle("active",x.dataset.calFilter===account));
-  setView("calendarView");$("homeBtn").classList.remove("hidden");
-  $("subtitle").textContent=`Calendário · ${accountName(account)}`;
-  if(save)saveNav("calendar",account);
-  renderCalendar();
-}
+function goHome(){current=null;setView("home");$("homeBtn").classList.add("hidden");$("subtitle").textContent="Escolha uma área";render()}
+function openArea(a){current=a;setView("area");$("homeBtn").classList.remove("hidden");$("accountName").textContent=accountName(a);$("subtitle").textContent=accountName(a);$("orcWrap").classList.toggle("hidden",a!=="CNPJ");render();renderFixas()}
+function openCalendar(){current=null;setView("calendarView");$("homeBtn").classList.remove("hidden");$("subtitle").textContent="Calendário financeiro";renderCalendar()}
 
 $("btnEntrada").onclick=()=>openMov("entrada");
 $("btnGasto").onclick=()=>openMov("saida");
@@ -243,18 +194,6 @@ const sum=a=>a.reduce((s,x)=>s+Number(x.valor),0);
 function render(){
   $("saldoPF").textContent=brl(saldo("PF"));
   $("saldoCNPJ").textContent=brl(saldo("CNPJ"));
-  const mes=hoje().slice(0,7);
-  if(current){
-    const mm=state.mov.filter(x=>x.conta===current&&String(x.data||"").startsWith(mes));
-    const entradas=mm.filter(x=>x.tipo==="entrada").reduce((s,x)=>s+Number(x.valor),0);
-    const gastos=mm.filter(x=>x.tipo==="saida").reduce((s,x)=>s+Number(x.valor),0);
-    $("summaryLabel1").textContent=current==="CNPJ"?"Receitas do mês":"Entradas do mês";
-    $("summaryLabel2").textContent=current==="CNPJ"?"Despesas do mês":"Gastos do mês";
-    $("summaryLabel3").textContent="Resultado do mês";
-    $("summaryValue1").textContent=brl(entradas);
-    $("summaryValue2").textContent=brl(gastos);
-    $("summaryValue3").textContent=brl(entradas-gastos);
-  }
   if(!current)return;
   const s=saldo(current);
   $("saldoAtual").textContent=brl(s);
@@ -274,7 +213,7 @@ function render(){
   if(current==="CNPJ")renderOrc();
 }
 function listMov(a){
-  return a.length?a.slice(0,60).map(x=>`<div class="item"><div><b>${esc(x.descricao)}</b><div class="meta">${dataBR(x.data)} · ${x.tipo==="entrada"?"Entrada":"Gasto"}${x.origem==="transferencia"?" · Transferência":""}</div></div><div><b class="money-inline ${x.tipo==="entrada"?"positive":"negative"}">${x.tipo==="entrada"?"+":"-"} ${brl(x.valor)}</b><div class="actions">${x.origem!=="transferencia"&&x.origem!=="orcamento_pago"&&!String(x.origem||"").startsWith("orcamento_custo")?`<button onclick="editMov('${x.id}')">Editar</button>`:""}${x.origem==="orcamento_pago"||String(x.origem||"").startsWith("orcamento_custo")?"":`<button class="danger" onclick="delMov('${x.id}')">Excluir</button>`}</div></div></div>`).join(""):`<p class="meta">Nenhum lançamento.</p>`;
+  return a.length?a.slice(0,60).map(x=>`<div class="item"><div><b>${esc(x.descricao)}</b><div class="meta">${dataBR(x.data)} · ${x.tipo==="entrada"?"Entrada":"Gasto"}${x.origem==="transferencia"?" · Transferência":""}</div></div><div><b class="money-inline ${x.tipo==="entrada"?"positive":"negative"}">${x.tipo==="entrada"?"+":"-"} ${brl(x.valor)}</b><div class="actions">${x.origem!=="orcamento_pago"&&!String(x.origem||"").startsWith("orcamento_custo")?`<button onclick="editMov('${x.id}')">Editar</button>`:""}<button class="danger" onclick="delMov('${x.id}')">Excluir</button></div></div></div>`).join(""):`<p class="meta">Nenhum lançamento.</p>`;
 }
 function listConta(a,open){
   return a.length?a.map(x=>`<div class="item"><div><b>${esc(x.descricao)}</b><div class="meta">Vence ${dataBR(x.vencimento)}</div></div><div><b class="money-inline">${brl(x.valor)}</b><div class="actions">${open?`<button onclick="pagarConta('${x.id}')">Marcar paga</button><button onclick="editConta('${x.id}')">Editar</button>`:""}<button class="danger" onclick="delConta('${x.id}')">Excluir</button></div></div></div>`).join(""):`<p class="meta">Nenhuma conta.</p>`;
@@ -341,19 +280,10 @@ function resetOrc(){
 }
 function addOrcItem(){
   const f=$("budgetItemTemplate").content.cloneNode(true),r=f.querySelector(".budget-item-row");
-  const tipo=r.querySelector(".iTipo"),custo=r.querySelector(".iCusto");
-  const syncTipo=()=>{
-    const mao=tipo.value==="mao_obra";
-    custo.disabled=mao;
-    custo.value=mao?"0":custo.value;
-    custo.placeholder=mao?"M.O. não é custo":"Custo real";
-    calcOrc();
-  };
   r.querySelectorAll("input,select").forEach(i=>i.oninput=calcOrc);
-  tipo.onchange=syncTipo;
   r.querySelector(".remove-budget-item").onclick=()=>{r.remove();calcOrc()};
   $("orcItens").appendChild(f);
-  syncTipo();
+  calcOrc();
 }
 function addCost(){
   const f=$("costTemplate").content.cloneNode(true),r=f.querySelector(".cost-row");
@@ -381,7 +311,7 @@ function calcOrc(){
   const its=orcItems(),custos=orcCosts();
   const pecas=its.filter(x=>x.tipo==="peca").reduce((s,x)=>s+x.quantidade*x.valor_unitario,0);
   const mo=its.filter(x=>x.tipo==="mao_obra").reduce((s,x)=>s+x.quantidade*x.valor_unitario,0);
-  const custoItens=its.filter(x=>x.tipo==="peca").reduce((s,x)=>s+x.quantidade*x.custo_unitario,0);
+  const custoItens=its.reduce((s,x)=>s+x.quantidade*x.custo_unitario,0);
   const custoServico=custos.reduce((s,x)=>s+x.valor,0);
   const total=pecas+mo,resultado=total-custoItens-custoServico;
   $("totalPecas").textContent=brl(pecas);
@@ -401,7 +331,7 @@ $("orcForm").onsubmit=async e=>{
   const {data:o,error}=await sb.from("orcamentos").insert({
     user_id:uid(),prestador,cliente:$("orcCliente").value.trim(),whatsapp:$("orcWhatsapp").value,
     equipamento_modelo:$("orcEquipamento").value.trim(),data:$("orcData").value,descricao:$("orcDesc").value,
-    total:t.total,subtotal_pecas:t.pecas,subtotal_mao_obra:t.mo,custo_itens:t.custoItens,custo_servico:t.custoServico,resultado:t.resultado,status:"rascunho"
+    total:t.total,subtotal_pecas:t.pecas,subtotal_mao_obra:t.mo,custo_itens:t.custoItens,custo_servico:t.custoServico,resultado:t.resultado,status:"orcamento"
   }).select().single();
   if(error)return alert(error.message);
   const r=await sb.from("orcamento_itens").insert(its.map(x=>({user_id:uid(),orcamento_id:o.id,...x})));
@@ -413,22 +343,9 @@ $("orcForm").onsubmit=async e=>{
   resetOrc();
   await loadAll();
 };
-async function enviarOrc(id){
-  if(!confirm("Marcar este orçamento como enviado ao cliente?"))return;
-  const {error}=await sb.from("orcamentos").update({status:"enviado"}).eq("id",id).eq("status","rascunho");
-  if(error)alert(error.message);else loadAll();
-}
 async function aprovarOrc(id){
-  if(!confirm("Confirmar que o cliente aprovou este orçamento?"))return;
-  const {error}=await sb.from("orcamentos").update({status:"aprovado"}).eq("id",id).in("status",["rascunho","enviado"]);
+  const {error}=await sb.from("orcamentos").update({status:"aprovado"}).eq("id",id).eq("status","orcamento");
   if(error)alert(error.message);else loadAll();
-}
-async function recalcularPago(id){
-  if(!confirm("Recalcular este orçamento pago usando a regra correta, sem descontar a M.O.?"))return;
-  const {data,error}=await sb.rpc("recalcular_orcamento_pago",{p_orcamento_id:id});
-  if(error)return alert("Recalcular: "+error.message);
-  alert("Orçamento corrigido. Resultado líquido: "+brl(data));
-  await loadAll();
 }
 async function pagarOrc(id){
   if(!confirm("Confirmar pagamento? O saldo CNPJ ficará com o valor recebido menos os custos reais cadastrados."))return;
@@ -447,31 +364,17 @@ function renderOrc(){
   $("orcList").innerHTML=state.orc.length?state.orc.map(o=>{
     const its=state.orcItens.filter(x=>x.orcamento_id===o.id);
     const custos=state.orcCustos.filter(x=>x.orcamento_id===o.id);
-    const custoItens=its.filter(x=>x.tipo==="peca").reduce((s,x)=>s+Number(x.quantidade)*Number(x.custo_unitario||0),0);
+    const custoItens=its.reduce((s,x)=>s+Number(x.quantidade)*Number(x.custo_unitario||0),0);
     const custoServico=custos.reduce((s,x)=>s+Number(x.valor),0);
     const resultado=Number(o.total)-custoItens-custoServico;
-    return `<details class="item budget-record"><summary><div><b>Orçamento ${o.numero} · ${esc(o.cliente)}</b><div class="meta">${dataBR(o.data)}${o.equipamento_modelo?` · ${esc(o.equipamento_modelo)}`:""}</div><span class="status-pill ${o.status}">${({orcamento:"Rascunho",rascunho:"Rascunho",enviado:"Enviado",aprovado:"Aprovado",pago:"Pago"}[o.status]||o.status)}</span></div><b class="money-inline">${brl(o.total)}</b></summary><div class="budget-detail">
+    return `<details class="item budget-record"><summary><div><b>Orçamento ${o.numero} · ${esc(o.cliente)}</b><div class="meta">${dataBR(o.data)}${o.equipamento_modelo?` · ${esc(o.equipamento_modelo)}`:""}</div><span class="status-pill ${o.status}">${o.status==="orcamento"?"Orçamento":o.status==="aprovado"?"Aprovado":"Pago"}</span></div><b class="money-inline">${brl(o.total)}</b></summary><div class="budget-detail">
       <div class="meta"><b>Prestador:</b> ${esc(o.prestador||"-")}</div>
       <div class="budget-split"><span>Total cobrado <b class="money-inline">${brl(o.total)}</b></span><span>Custo itens <b class="money-inline">${brl(custoItens)}</b></span><span>Custos serviço <b class="money-inline">${brl(custoServico)}</b></span><span>Resultado ${o.status==="pago"?"real":"previsto"} <b class="money-inline">${brl(o.status==="pago"?o.resultado:resultado)}</b></span></div>
       ${its.map(i=>`<div class="meta">${i.tipo==="peca"?"Item":"M.O."}: ${esc(i.descricao)} · ${i.quantidade} × ${moneySpan(i.valor_unitario)}${Number(i.custo_unitario||0)>0?` · custo ${moneySpan(Number(i.custo_unitario)*Number(i.quantidade))}`:""}</div>`).join("")}
       ${custos.length?`<div class="internal-box"><b>Custos internos</b>${custos.map(c=>`<div class="meta">${esc(c.descricao)} · ${moneySpan(c.valor)}</div>`).join("")}</div>`:""}
-      <div class="actions">${(o.status==="rascunho"||o.status==="orcamento")?`<button onclick="enviarOrc('${o.id}')">Marcar enviado</button><button class="warning" onclick="aprovarOrc('${o.id}')">Aprovar</button>`:""}${o.status==="enviado"?`<button class="warning" onclick="aprovarOrc('${o.id}')">Aprovar</button>`:""}${o.status==="aprovado"?`<button class="success" onclick="pagarOrc('${o.id}')">Marcar pago</button>`:""}${o.status==="pago"?`<button class="warning" onclick="recalcularPago('${o.id}')">Recalcular</button>`:`<button class="danger" onclick="delOrc('${o.id}')">Excluir</button>`}</div>
+      <div class="actions">${o.status==="orcamento"?`<button class="warning" onclick="aprovarOrc('${o.id}')">Aprovar</button>`:""}${o.status==="aprovado"?`<button class="success" onclick="pagarOrc('${o.id}')">Marcar pago</button>`:""}${o.status!=="pago"?`<button class="danger" onclick="delOrc('${o.id}')">Excluir</button>`:""}</div>
     </div></details>`;
   }).join(""):`<p class="meta">Nenhum orçamento.</p>`;
-}
-
-
-function renderBudgetSummary(){
-  const mes=hoje().slice(0,7);
-  const ativos=state.orc.filter(o=>!["pago"].includes(o.status)).length;
-  const pagosMes=state.orc.filter(o=>o.status==="pago"&&String(o.pago_em||o.data||"").startsWith(mes)).length;
-  if($("homeBudgetCount"))$("homeBudgetCount").textContent=`${ativos} ativo${ativos===1?"":"s"}`;
-  if($("budgetOpenCount"))$("budgetOpenCount").textContent=ativos;
-  if($("budgetPaidMonth"))$("budgetPaidMonth").textContent=pagosMes;
-  if($("orcSummary")){
-    const ultimos=state.orc.slice(0,3);
-    $("orcSummary").innerHTML=ultimos.length?ultimos.map(o=>`<div class="item"><div><b>#${o.numero} · ${esc(o.cliente)}</b><div class="meta">${({rascunho:"Rascunho",orcamento:"Rascunho",enviado:"Enviado",aprovado:"Aprovado",pago:"Pago"}[o.status]||o.status)}</div></div><b class="money-inline">${brl(o.total)}</b></div>`).join(""):`<p class="meta">Nenhum orçamento ainda.</p>`;
-  }
 }
 
 // CALENDÁRIO
@@ -511,7 +414,7 @@ function renderSelectedDate(){
   const ev=calEvents(selectedDate);
   $("calendarEvents").innerHTML=ev.length?ev.map(e=>`<div class="event ${e.type}"><b>${esc(e.title)}</b><div class="meta">${esc(e.meta)}</div></div>`).join(""):`<p class="meta">Nenhum lançamento ou vencimento neste dia.</p>`;
 }
-$("calendarAddBtn").onclick=()=>{if(calendarReturnAccount)$("calendarAccount").value=calendarReturnAccount;
+$("calendarAddBtn").onclick=()=>{
   $("calendarActionDate").textContent=dataBR(selectedDate);
   $("calendarActionModal").classList.remove("hidden");
 };
@@ -524,5 +427,5 @@ document.querySelectorAll("[data-cal-action]").forEach(b=>b.onclick=()=>{
 });
 
 window.delMov=delMov;window.delConta=delConta;window.editMov=editMov;window.editConta=editConta;window.pagarConta=pagarConta;
-window.editFixed=editFixed;window.delFixed=delFixed;window.enviarOrc=enviarOrc;window.aprovarOrc=aprovarOrc;window.pagarOrc=pagarOrc;window.recalcularPago=recalcularPago;window.delOrc=delOrc;
+window.editFixed=editFixed;window.delFixed=delFixed;window.aprovarOrc=aprovarOrc;window.pagarOrc=pagarOrc;window.delOrc=delOrc;
 start();
