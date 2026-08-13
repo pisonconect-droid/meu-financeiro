@@ -1,125 +1,104 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#111827">
-  <title>Meu Financeiro</title>
-  <link rel="stylesheet" href="styles.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Meu Financeiro</title>
+<link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<header class="topbar">
-  <button id="homeBtn" class="home-btn hidden" type="button">← Início</button>
-  <div><h1>Meu Financeiro</h1><p id="subtitle">Escolha uma área para começar</p></div>
+<section id="auth" class="auth">
+  <div class="card auth-card">
+    <h1>Meu Financeiro</h1>
+    <p>Acesse seus dados no computador e no celular.</p>
+    <div class="tabs">
+      <button id="tabLogin" class="active">Entrar</button>
+      <button id="tabSignup">Criar conta</button>
+    </div>
+    <form id="authForm">
+      <label id="nomeWrap" class="hidden">Nome<input id="nome"></label>
+      <label>E-mail<input id="email" type="email" required></label>
+      <label>Senha<input id="senha" type="password" minlength="6" required></label>
+      <button id="authSubmit" class="primary">Entrar</button>
+      <p id="authMsg" class="msg"></p>
+    </form>
+  </div>
+</section>
+
+<div id="app" class="hidden">
+<header>
+  <button id="homeBtn" class="ghost hidden">← Início</button>
+  <div><h1>Meu Financeiro</h1><small id="subtitle">Escolha uma área</small></div>
+  <div class="user"><span id="userEmail"></span><button id="logout" class="ghost">Sair</button></div>
 </header>
 
 <main>
-  <section id="homeView" class="view active">
-    <div class="account-grid">
-      <button class="account-card" data-open-account="PF">
-        <span>Pessoa Física</span>
-        <strong id="homeSaldoPF">R$ 0,00</strong>
-        <small>Organizar minhas finanças</small>
-      </button>
-      <button class="account-card" data-open-account="CNPJ">
-        <span>CNPJ</span>
-        <strong id="homeSaldoCNPJ">R$ 0,00</strong>
-        <small>Organizar empresa e orçamentos</small>
-      </button>
-    </div>
-  </section>
-
-  <section id="accountView" class="view">
-    <div class="balance-card">
-      <span id="accountName">Pessoa Física</span>
-      <small>Saldo atual</small>
-      <strong id="accountBalance">R$ 0,00</strong>
-      <b id="balanceStatus">ZERADO</b>
-    </div>
-
-    <div class="quick-actions">
-      <button id="addEntrada" class="primary" type="button">+ Entrada</button>
-      <button id="addGasto" class="secondary" type="button">+ Gasto</button>
-    </div>
-
-    <section class="panel">
-      <div class="panel-head"><div><h2>Dia a dia</h2><p>Entradas e gastos rápidos</p></div></div>
-      <div id="dailyList" class="list"></div>
-    </section>
-
-    <section class="panel">
-      <div class="panel-head">
-        <div><h2>Contas</h2><p>Água, luz, internet, empréstimos e outras</p></div>
-        <button id="addConta" class="primary compact" type="button">+ Adicionar conta</button>
-      </div>
-
-      <div class="bill-columns">
-        <div class="bill-column overdue">
-          <div class="column-title"><span>Atrasadas</span><strong id="totalAtrasadas">R$ 0,00</strong></div>
-          <div id="listAtrasadas" class="list"></div>
-        </div>
-        <div class="bill-column pending">
-          <div class="column-title"><span>A pagar</span><strong id="totalAPagar">R$ 0,00</strong></div>
-          <div id="listAPagar" class="list"></div>
-        </div>
-        <div class="bill-column paid">
-          <div class="column-title"><span>Pagas</span><strong id="totalPagas">R$ 0,00</strong></div>
-          <div id="listPagas" class="list"></div>
-        </div>
-      </div>
-    </section>
-
-    <section id="budgetSection" class="panel hidden">
-      <div class="panel-head">
-        <div><h2>Orçamentos</h2><p>Crie orçamento com imagens e compartilhe com o cliente</p></div>
-        <button id="newBudgetBtn" class="primary compact" type="button">+ Criar orçamento</button>
-      </div>
-      <div id="budgetFormWrap" class="hidden">
-        <form id="budgetForm" class="form-grid">
-          <label>Cliente<input id="oCliente" required></label>
-          <label>WhatsApp<input id="oWhatsApp" type="tel" inputmode="tel" placeholder="5511999999999"></label>
-          <label>Data<input id="oData" type="date" required></label>
-          <label class="full">Descrição<textarea id="oDescricao" rows="2"></textarea></label>
-          <div class="full">
-            <div class="panel-head mini"><h3>Itens</h3><button id="addItemBtn" class="small" type="button">+ Item</button></div>
-            <div id="budgetItems"></div>
-          </div>
-          <label class="full">Imagens<input id="oImagens" type="file" accept="image/*" multiple><small>Até 6 imagens.</small></label>
-          <div id="imagePreview" class="image-grid full"></div>
-          <label class="full">Observações<textarea id="oObs" rows="2"></textarea></label>
-          <div class="total-box full"><span>Total</span><strong id="oTotal">R$ 0,00</strong></div>
-          <div class="form-actions full"><button id="cancelBudget" class="secondary" type="button">Cancelar</button><button class="primary" type="submit">Salvar orçamento</button></div>
-        </form>
-      </div>
-      <div id="budgetList" class="list"></div>
-    </section>
-  </section>
-</main>
-
-<div id="modal" class="modal hidden">
-  <div class="modal-card">
-    <div class="panel-head"><h2 id="modalTitle">Novo</h2><button id="closeModal" class="icon-btn" type="button">×</button></div>
-    <form id="modalForm" class="form-grid">
-      <input id="editId" type="hidden">
-      <input id="formMode" type="hidden">
-      <label id="descLabel" class="full">Descrição<input id="mDescricao" maxlength="120" required></label>
-      <label>Valor (R$)<input id="mValor" type="number" min="0" step="0.01" inputmode="decimal" placeholder="10,00" required></label>
-      <label id="dateLabel">Data<input id="mData" type="date" required></label>
-      <div class="form-actions full"><button id="cancelModal" class="secondary" type="button">Cancelar</button><button class="primary" type="submit">Salvar</button></div>
-    </form>
+<section id="home" class="view active">
+  <div class="accounts">
+    <button data-account="PF" class="account"><b>Pessoa Física</b><strong id="saldoPF">R$ 0,00</strong></button>
+    <button data-account="CNPJ" class="account"><b>CNPJ</b><strong id="saldoCNPJ">R$ 0,00</strong></button>
   </div>
+</section>
+
+<section id="area" class="view">
+  <div class="card saldo">
+    <h2 id="accountName"></h2><small>Saldo atual</small>
+    <strong id="saldoAtual">R$ 0,00</strong><b id="statusSaldo">ZERADO</b>
+  </div>
+
+  <div class="quick">
+    <button id="btnEntrada" class="primary">+ Entrada</button>
+    <button id="btnGasto">+ Gasto</button>
+  </div>
+
+  <div class="card">
+    <h2>Dia a dia</h2>
+    <div id="movList"></div>
+  </div>
+
+  <div class="card">
+    <div class="head"><div><h2>Contas</h2><small>Água, luz, internet, empréstimos e outras</small></div><button id="btnConta" class="primary small">+ Adicionar conta</button></div>
+    <div class="cols">
+      <div><h3>Atrasadas <span id="tAtrasadas">R$ 0,00</span></h3><div id="atrasadas"></div></div>
+      <div><h3>A pagar <span id="tPagar">R$ 0,00</span></h3><div id="pagar"></div></div>
+      <div><h3>Pagas <span id="tPagas">R$ 0,00</span></h3><div id="pagas"></div></div>
+    </div>
+  </div>
+
+  <div id="orcWrap" class="card hidden">
+    <div class="head"><h2>Orçamentos</h2><button id="btnOrc" class="primary small">+ Criar orçamento</button></div>
+    <div id="orcFormWrap" class="hidden">
+      <form id="orcForm">
+        <label>Cliente<input id="orcCliente" required></label>
+        <label>WhatsApp<input id="orcWhatsapp"></label>
+        <label>Data<input id="orcData" type="date" required></label>
+        <label>Descrição<textarea id="orcDesc"></textarea></label>
+        <div id="orcItens"></div>
+        <button type="button" id="addItem" class="small">+ Item</button>
+        <div class="total">Total <strong id="orcTotal">R$ 0,00</strong></div>
+        <button class="primary">Salvar orçamento</button>
+      </form>
+    </div>
+    <div id="orcList"></div>
+  </div>
+</section>
+</main>
 </div>
 
-<template id="itemTemplate">
-  <div class="budget-item">
-    <input class="iDesc" placeholder="Item / serviço" required>
-    <input class="iQtd" type="number" min="1" step="1" value="1" required>
-    <input class="iValor" type="number" min="0" step="0.01" placeholder="Valor" required>
-    <button class="danger remove-item" type="button">×</button>
-  </div>
-</template>
+<div id="modal" class="modal hidden">
+ <div class="card modal-card">
+   <div class="head"><h2 id="modalTitle"></h2><button id="closeModal">×</button></div>
+   <form id="modalForm">
+     <input id="editId" type="hidden"><input id="mode" type="hidden">
+     <label>Descrição<input id="descricao" required></label>
+     <label>Valor (R$)<input id="valor" type="number" step="0.01" min="0" required></label>
+     <label id="dateLabel">Data<input id="data" type="date" required></label>
+     <button class="primary">Salvar</button>
+   </form>
+ </div>
+</div>
 
-<div id="printArea"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
 <script src="app.js"></script>
-</body>
-</html>
+</body></html>

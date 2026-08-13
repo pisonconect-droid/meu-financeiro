@@ -1,27 +1,36 @@
-# Meu Financeiro V3
+# Meu Financeiro V4 — Supabase
 
-Versão simplificada para uso diário no celular.
+Primeira versão online sincronizada.
 
-## Estrutura
-- Tela inicial: Pessoa Física e CNPJ.
-- Cada área mostra saldo atual e status Positivo / Negativo / Zerado.
-- Dia a dia: + Entrada e + Gasto.
-- Contas: + Adicionar conta.
-- Contas organizadas automaticamente em:
-  - Atrasadas
-  - A pagar
-  - Pagas
-- Contas podem ser editadas, excluídas e marcadas como pagas.
-- CNPJ mantém a área de Orçamentos.
-- Orçamentos mantêm imagens, PDF/impressão e WhatsApp.
-- Valores em Real (R$).
+## Inclui
+- Login e criação de conta.
+- Sessão persistente.
+- Dados sincronizados pelo Supabase.
+- Pessoa Física e CNPJ.
+- Entradas, gastos e saldo.
+- Contas: atrasadas, a pagar e pagas.
+- Orçamentos básicos gravados no Supabase.
 
-## Armazenamento
-Mantida a chave `meu_financeiro_v1` no localStorage para compatibilidade.
+## Configuração
+Antes de publicar, edite `config.js`:
 
-## GitHub Pages
-Substitua os quatro arquivos do repositório:
+```js
+const SUPABASE_URL = "SUA_PROJECT_URL";
+const SUPABASE_PUBLISHABLE_KEY = "SUA_PUBLISHABLE_KEY";
+```
+
+Use somente a **Publishable key**.
+
+Nunca coloque no GitHub:
+- Secret key
+- service_role
+- senha do banco
+
+## Arquivos
 - index.html
 - styles.css
 - app.js
+- config.js
 - README.md
+
+As próximas etapas adicionam Peças + M.O., status Aprovado/Pago, transferências, calendário e acordeões.

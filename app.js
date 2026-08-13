@@ -1,106 +1,97 @@
-const KEY="meu_financeiro_v1";
-let state=load();
-let currentAccount=null;
-let pendingImages=[];
+const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+let session=null,current=null,authMode="login";
+let state={mov:[],contas:[],orc:[]};
 
-function load(){
-  try{
-    const s=JSON.parse(localStorage.getItem(KEY))||{};
-    return {lancamentos:Array.isArray(s.lancamentos)?s.lancamentos:[],pagamentos:Array.isArray(s.pagamentos)?s.pagamentos:[],orcamentos:Array.isArray(s.orcamentos)?s.orcamentos:[]};
-  }catch{return {lancamentos:[],pagamentos:[],orcamentos:[]}}
-}
-function save(){localStorage.setItem(KEY,JSON.stringify(state));renderAll()}
-function id(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
-function today(){return new Date().toISOString().slice(0,10)}
-function money(v){return Number(v||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}
-function dateBR(v){if(!v)return"";const[y,m,d]=v.split("-");return`${d}/${m}/${y}`}
-function esc(s=""){return s.replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
-function accountLabel(a){return a==="PF"?"Pessoa Física":"CNPJ"}
+const $=id=>document.getElementById(id);
+const brl=v=>Number(v||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+const hoje=()=>new Date().toISOString().slice(0,10);
+const dataBR=s=>{if(!s)return"";const[y,m,d]=s.split("-");return`${d}/${m}/${y}`};
+const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
+const uid=()=>session?.user?.id;
 
-document.querySelectorAll("[data-open-account]").forEach(b=>b.onclick=()=>openAccount(b.dataset.openAccount));
-homeBtn.onclick=showHome;
-function showHome(){currentAccount=null;homeView.classList.add("active");accountView.classList.remove("active");homeBtn.classList.add("hidden");subtitle.textContent="Escolha uma área para começar";renderHome();window.scrollTo(0,0)}
-function openAccount(a){currentAccount=a;homeView.classList.remove("active");accountView.classList.add("active");homeBtn.classList.remove("hidden");accountName.textContent=accountLabel(a);subtitle.textContent=accountLabel(a);budgetSection.classList.toggle("hidden",a!=="CNPJ");renderAll();window.scrollTo(0,0)}
+function setAuth(m){authMode=m;$("tabLogin").classList.toggle("active",m==="login");$("tabSignup").classList.toggle("active",m==="signup");$("nomeWrap").classList.toggle("hidden",m!=="signup");$("authSubmit").textContent=m==="login"?"Entrar":"Criar conta";$("authMsg").textContent=""}
+$("tabLogin").onclick=()=>setAuth("login");$("tabSignup").onclick=()=>setAuth("signup");
+$("authForm").onsubmit=async e=>{e.preventDefault();$("authMsg").textContent="";try{
+ const email=$("email").value.trim(),password=$("senha").value;
+ if(authMode==="signup"){
+  const nome=$("nome").value.trim();
+  const {data,error}=await sb.auth.signUp({email,password,options:{data:{nome},emailRedirectTo:"https://pisonconect-droid.github.io/meu-financeiro/"}});
+  if(error)throw error;
+  if(data.session)await ensureProfile(data.user,nome);
+  $("authMsg").style.color="#047857";$("authMsg").textContent=data.session?"Conta criada.":"Conta criada. Confirme seu e-mail e depois entre.";
+ }else{const {error}=await sb.auth.signInWithPassword({email,password});if(error)throw error}
+}catch(err){$("authMsg").style.color="#b91c1c";$("authMsg").textContent=err.message||"Erro ao autenticar."}};
+async function ensureProfile(user,nome=""){if(!user)return;await sb.from("profiles").upsert({id:user.id,nome:nome||user.user_metadata?.nome||""},{onConflict:"id"})}
+$("logout").onclick=()=>sb.auth.signOut();
 
-addEntrada.onclick=()=>openMovement("entrada");
-addGasto.onclick=()=>openMovement("saida");
-addConta.onclick=()=>openBill();
+sb.auth.onAuthStateChange(async(_e,s)=>{session=s;if(s?.user){await ensureProfile(s.user);showApp();await loadAll()}else showAuth()});
+async function start(){const {data}=await sb.auth.getSession();session=data.session;if(session?.user){await ensureProfile(session.user);showApp();await loadAll()}else showAuth()}
+function showAuth(){$("auth").classList.remove("hidden");$("app").classList.add("hidden")}
+function showApp(){$("auth").classList.add("hidden");$("app").classList.remove("hidden");$("userEmail").textContent=session.user.email||"";goHome()}
 
-function openMovement(tipo,item=null){
-  formMode.value="movimento";editId.value=item?.id||"";modalTitle.textContent=item?"Editar lançamento":tipo==="entrada"?"Nova entrada":"Novo gasto";
-  mDescricao.value=item?.descricao||"";mValor.value=item?.valor||"";mData.value=item?.data||today();mData.dataset.tipo=tipo;dateLabel.firstChild.textContent="Data";modal.classList.remove("hidden")
-}
-function openBill(item=null){
-  formMode.value="conta";editId.value=item?.id||"";modalTitle.textContent=item?"Editar conta":"Adicionar conta";
-  mDescricao.value=item?.descricao||"";mValor.value=item?.valor||"";mData.value=item?.vencimento||today();dateLabel.firstChild.textContent="Vencimento";modal.classList.remove("hidden")
-}
-function closeM(){modal.classList.add("hidden");modalForm.reset();editId.value=""}
-closeModal.onclick=closeM;cancelModal.onclick=closeM;modal.onclick=e=>{if(e.target===modal)closeM()}
-
-modalForm.onsubmit=e=>{
-  e.preventDefault();const mode=formMode.value,editing=editId.value;
-  if(mode==="movimento"){
-    if(editing){const x=state.lancamentos.find(x=>x.id===editing);if(x){x.descricao=mDescricao.value.trim();x.valor=+mValor.value;x.data=mData.value}}
-    else state.lancamentos.unshift({id:id(),conta:currentAccount,tipo:mData.dataset.tipo,descricao:mDescricao.value.trim(),valor:+mValor.value,data:mData.value});
-  }else{
-    if(editing){const x=state.pagamentos.find(x=>x.id===editing);if(x){x.descricao=mDescricao.value.trim();x.valor=+mValor.value;x.vencimento=mData.value}}
-    else state.pagamentos.unshift({id:id(),conta:currentAccount,tipo:"pagar",descricao:mDescricao.value.trim(),valor:+mValor.value,vencimento:mData.value,status:"pendente"});
-  }
-  closeM();save()
+async function loadAll(){
+ const [m,c,o]=await Promise.all([
+  sb.from("movimentacoes").select("*").order("data",{ascending:false}).order("created_at",{ascending:false}),
+  sb.from("contas").select("*").order("vencimento"),
+  sb.from("orcamentos").select("*").order("created_at",{ascending:false})
+ ]);
+ if(m.error||c.error||o.error){alert((m.error||c.error||o.error).message);return}
+ state={mov:m.data||[],contas:c.data||[],orc:o.data||[]};render();
 }
 
-function delMovement(i){if(confirm("Excluir este lançamento?")){state.lancamentos=state.lancamentos.filter(x=>x.id!==i);save()}}
-function delBill(i){if(confirm("Excluir esta conta?")){state.pagamentos=state.pagamentos.filter(x=>x.id!==i);save()}}
-function payBill(i){
-  const p=state.pagamentos.find(x=>x.id===i);if(!p||p.status!=="pendente")return;
-  p.status="pago";p.pagoEm=today();
-  state.lancamentos.unshift({id:id(),conta:p.conta,tipo:"saida",descricao:p.descricao,valor:p.valor,data:today(),origemConta:p.id});
-  save()
-}
-function editBill(i){const p=state.pagamentos.find(x=>x.id===i);if(p)openBill(p)}
-function editMovement(i){const x=state.lancamentos.find(x=>x.id===i);if(x)openMovement(x.tipo,x)}
+document.querySelectorAll("[data-account]").forEach(b=>b.onclick=()=>openArea(b.dataset.account));
+$("homeBtn").onclick=goHome;
+function goHome(){current=null;$("home").classList.add("active");$("area").classList.remove("active");$("homeBtn").classList.add("hidden");$("subtitle").textContent="Escolha uma área";render()}
+function openArea(a){current=a;$("home").classList.remove("active");$("area").classList.add("active");$("homeBtn").classList.remove("hidden");$("accountName").textContent=a==="PF"?"Pessoa Física":"CNPJ";$("subtitle").textContent=$("accountName").textContent;$("orcWrap").classList.toggle("hidden",a!=="CNPJ");render()}
 
-function balance(a){return state.lancamentos.filter(x=>x.conta===a).reduce((s,x)=>s+(x.tipo==="entrada"?x.valor:-x.valor),0)}
-function renderHome(){homeSaldoPF.textContent=money(balance("PF"));homeSaldoCNPJ.textContent=money(balance("CNPJ"))}
-function renderAccount(){
-  if(!currentAccount)return;const b=balance(currentAccount);accountBalance.textContent=money(b);accountBalance.className=b>0?"positive":b<0?"negative":"neutral";balanceStatus.textContent=b>0?"POSITIVO":b<0?"NEGATIVO":"ZERADO";balanceStatus.className=b>0?"positive":b<0?"negative":"neutral";
-  const moves=state.lancamentos.filter(x=>x.conta===currentAccount).slice(0,30);
-  dailyList.innerHTML=moves.length?moves.map(x=>`<div class="list-item"><div><strong>${esc(x.descricao)}</strong><div class="meta">${dateBR(x.data)} · ${x.tipo==="entrada"?"Entrada":"Gasto"}</div></div><div style="text-align:right"><strong class="${x.tipo==="entrada"?"positive":"negative"}">${x.tipo==="entrada"?"+":"-"} ${money(x.valor)}</strong><div class="actions"><button class="small" onclick="editMovement('${x.id}')">Editar</button><button class="danger" onclick="delMovement('${x.id}')">Excluir</button></div></div></div>`).join(""):`<div class="empty">Nenhum lançamento ainda.</div>`;
-  renderBills();renderBudgets()
-}
-function renderBills(){
-  const bills=state.pagamentos.filter(x=>x.conta===currentAccount&&x.tipo==="pagar"),h=today();
-  const late=bills.filter(x=>x.status==="pendente"&&x.vencimento<h),pending=bills.filter(x=>x.status==="pendente"&&x.vencimento>=h),paid=bills.filter(x=>x.status==="pago");
-  totalAtrasadas.textContent=money(late.reduce((s,x)=>s+x.valor,0));totalAPagar.textContent=money(pending.reduce((s,x)=>s+x.valor,0));totalPagas.textContent=money(paid.reduce((s,x)=>s+x.valor,0));
-  listAtrasadas.innerHTML=billHTML(late,true);listAPagar.innerHTML=billHTML(pending,true);listPagas.innerHTML=billHTML(paid,false)
-}
-function billHTML(arr,open){
-  if(!arr.length)return`<div class="empty">Nenhuma conta.</div>`;
-  return arr.map(x=>`<div class="list-item"><div><strong>${esc(x.descricao)}</strong><div class="meta">${open?"Vence":"Venceu"} ${dateBR(x.vencimento)}</div></div><div style="text-align:right"><strong>${money(x.valor)}</strong><div class="actions">${open?`<button class="small" onclick="payBill('${x.id}')">Marcar paga</button><button class="small" onclick="editBill('${x.id}')">Editar</button>`:""}<button class="danger" onclick="delBill('${x.id}')">Excluir</button></div></div></div>`).join("")
+$("btnEntrada").onclick=()=>openMov("entrada");$("btnGasto").onclick=()=>openMov("saida");$("btnConta").onclick=()=>openConta();
+function openMov(tipo,x=null){$("mode").value="mov";$("editId").value=x?.id||"";$("modalTitle").textContent=x?"Editar lançamento":tipo==="entrada"?"Nova entrada":"Novo gasto";$("descricao").value=x?.descricao||"";$("valor").value=x?.valor||"";$("data").value=x?.data||hoje();$("data").dataset.tipo=tipo;$("dateLabel").childNodes[0].nodeValue="Data ";$("modal").classList.remove("hidden")}
+function openConta(x=null){$("mode").value="conta";$("editId").value=x?.id||"";$("modalTitle").textContent=x?"Editar conta":"Adicionar conta";$("descricao").value=x?.descricao||"";$("valor").value=x?.valor||"";$("data").value=x?.vencimento||hoje();$("dateLabel").childNodes[0].nodeValue="Vencimento ";$("modal").classList.remove("hidden")}
+$("closeModal").onclick=()=>$("modal").classList.add("hidden");
+$("modalForm").onsubmit=async e=>{e.preventDefault();const editing=$("editId").value;
+ if($("mode").value==="mov"){
+  const p={user_id:uid(),conta:current,tipo:$("data").dataset.tipo,descricao:$("descricao").value.trim(),valor:+$("valor").value,data:$("data").value,origem:"manual"};
+  const q=editing?sb.from("movimentacoes").update(p).eq("id",editing):sb.from("movimentacoes").insert(p);const {error}=await q;if(error)return alert(error.message)
+ }else{
+  const p={user_id:uid(),conta:current,descricao:$("descricao").value.trim(),valor:+$("valor").value,vencimento:$("data").value};
+  if(!editing)p.status="pendente";const q=editing?sb.from("contas").update(p).eq("id",editing):sb.from("contas").insert(p);const {error}=await q;if(error)return alert(error.message)
+ }
+ $("modal").classList.add("hidden");await loadAll()
+};
+
+async function delMov(id){if(confirm("Excluir lançamento?")){const {error}=await sb.from("movimentacoes").delete().eq("id",id);if(error)alert(error.message);else loadAll()}}
+async function delConta(id){if(confirm("Excluir conta?")){const {error}=await sb.from("contas").delete().eq("id",id);if(error)alert(error.message);else loadAll()}}
+function editMov(id){const x=state.mov.find(x=>x.id===id);if(x)openMov(x.tipo,x)}
+function editConta(id){const x=state.contas.find(x=>x.id===id);if(x)openConta(x)}
+async function pagarConta(id){const x=state.contas.find(x=>x.id===id);if(!x)return;
+ let {error}=await sb.from("contas").update({status:"pago",pago_em:hoje()}).eq("id",id);if(error)return alert(error.message);
+ ({error}=await sb.from("movimentacoes").insert({user_id:uid(),conta:x.conta,tipo:"saida",descricao:x.descricao,valor:x.valor,data:hoje(),origem:"conta_paga"}));if(error)return alert(error.message);await loadAll()
 }
 
-newBudgetBtn.onclick=()=>{budgetFormWrap.classList.remove("hidden");oData.value=today();if(!budgetItems.children.length)addBudgetItem();window.scrollTo({top:budgetFormWrap.offsetTop-20,behavior:"smooth"})}
-cancelBudget.onclick=()=>{budgetFormWrap.classList.add("hidden");budgetForm.reset();budgetItems.innerHTML="";pendingImages=[];imagePreview.innerHTML=""}
-addItemBtn.onclick=()=>addBudgetItem();
-function addBudgetItem(){
-  const f=itemTemplate.content.cloneNode(true),r=f.querySelector(".budget-item");r.querySelectorAll("input").forEach(x=>x.oninput=calcBudget);r.querySelector(".remove-item").onclick=()=>{r.remove();calcBudget()};budgetItems.appendChild(f);calcBudget()
+function saldo(a){return state.mov.filter(x=>x.conta===a).reduce((s,x)=>s+(x.tipo==="entrada"?+x.valor:x.tipo==="saida"?-x.valor:0),0)}
+function render(){
+ $("saldoPF").textContent=brl(saldo("PF"));$("saldoCNPJ").textContent=brl(saldo("CNPJ"));if(!current)return;
+ const s=saldo(current);$("saldoAtual").textContent=brl(s);$("saldoAtual").className=s>0?"positive":s<0?"negative":"";$("statusSaldo").textContent=s>0?"POSITIVO":s<0?"NEGATIVO":"ZERADO";
+ $("movList").innerHTML=listMov(state.mov.filter(x=>x.conta===current));
+ const h=hoje(),cs=state.contas.filter(x=>x.conta===current),late=cs.filter(x=>x.status==="pendente"&&x.vencimento<h),pay=cs.filter(x=>x.status==="pendente"&&x.vencimento>=h),paid=cs.filter(x=>x.status==="pago");
+ $("tAtrasadas").textContent=brl(sum(late));$("tPagar").textContent=brl(sum(pay));$("tPagas").textContent=brl(sum(paid));
+ $("atrasadas").innerHTML=listConta(late,true);$("pagar").innerHTML=listConta(pay,true);$("pagas").innerHTML=listConta(paid,false);if(current==="CNPJ")renderOrc()
 }
-function items(){return[...document.querySelectorAll(".budget-item")].map(r=>({descricao:r.querySelector(".iDesc").value.trim(),qtd:+r.querySelector(".iQtd").value||0,valor:+r.querySelector(".iValor").value||0}))}
-function calcBudget(){const t=items().reduce((s,x)=>s+x.qtd*x.valor,0);oTotal.textContent=money(t);return t}
-oImagens.onchange=async e=>{pendingImages=[];for(const f of [...e.target.files].slice(0,6))pendingImages.push(await compress(f));imagePreview.innerHTML=pendingImages.map(x=>`<img src="${x}">`).join("")}
-function compress(file){return new Promise((res,rej)=>{const im=new Image(),rd=new FileReader();rd.onload=()=>im.src=rd.result;rd.onerror=rej;im.onload=()=>{let w=im.width,h=im.height,s=Math.min(1,1100/Math.max(w,h));w*=s;h*=s;const c=document.createElement("canvas");c.width=Math.round(w);c.height=Math.round(h);c.getContext("2d").drawImage(im,0,0,c.width,c.height);res(c.toDataURL("image/jpeg",.75))};rd.readAsDataURL(file)})}
-budgetForm.onsubmit=e=>{
-  e.preventDefault();const its=items();if(!its.length||its.some(x=>!x.descricao||x.qtd<=0)){alert("Revise os itens.");return}
-  state.orcamentos.unshift({id:id(),numero:String(state.orcamentos.length+1).padStart(3,"0"),cliente:oCliente.value.trim(),whatsapp:oWhatsApp.value.replace(/\D/g,""),data:oData.value,descricao:oDescricao.value.trim(),itens:its,imagens:[...pendingImages],observacoes:oObs.value.trim(),total:calcBudget()});
-  save();budgetFormWrap.classList.add("hidden");budgetForm.reset();budgetItems.innerHTML="";pendingImages=[];imagePreview.innerHTML=""
-}
-function renderBudgets(){
-  if(currentAccount!=="CNPJ")return;
-  budgetList.innerHTML=state.orcamentos.length?state.orcamentos.map(o=>`<div class="list-item"><div><strong>Orçamento ${o.numero} · ${esc(o.cliente)}</strong><div class="meta">${dateBR(o.data)}</div></div><div style="text-align:right"><strong>${money(o.total)}</strong><div class="actions"><button class="small" onclick="printBudget('${o.id}')">PDF</button><button class="small" onclick="whats('${o.id}')">WhatsApp</button><button class="danger" onclick="delBudget('${o.id}')">Excluir</button></div></div></div>`).join(""):`<div class="empty">Nenhum orçamento salvo.</div>`
-}
-function delBudget(i){if(confirm("Excluir orçamento?")){state.orcamentos=state.orcamentos.filter(x=>x.id!==i);save()}}
-function whats(i){const o=state.orcamentos.find(x=>x.id===i);if(!o)return;const text=`Olá, ${o.cliente}. Segue o orçamento nº ${o.numero}, no valor total de ${money(o.total)}.`;window.open(o.whatsapp?`https://wa.me/${o.whatsapp}?text=${encodeURIComponent(text)}`:`https://wa.me/?text=${encodeURIComponent(text)}`,"_blank")}
-function printBudget(i){const o=state.orcamentos.find(x=>x.id===i);if(!o)return;printArea.innerHTML=`<div class="print-doc"><h1>ORÇAMENTO Nº ${o.numero}</h1><p>Data: ${dateBR(o.data)}</p><h2>${esc(o.cliente)}</h2>${o.descricao?`<p>${esc(o.descricao)}</p>`:""}<table><thead><tr><th>Descrição</th><th>Qtd.</th><th>Valor</th><th>Total</th></tr></thead><tbody>${o.itens.map(x=>`<tr><td>${esc(x.descricao)}</td><td>${x.qtd}</td><td>${money(x.valor)}</td><td>${money(x.qtd*x.valor)}</td></tr>`).join("")}</tbody></table><div class="grand-total">Total: ${money(o.total)}</div>${o.imagens?.length?`<div class="print-images">${o.imagens.map(x=>`<img src="${x}">`).join("")}</div>`:""}${o.observacoes?`<h3>Observações</h3><p>${esc(o.observacoes)}</p>`:""}</div>`;window.print()}
+const sum=a=>a.reduce((s,x)=>s+Number(x.valor),0);
+function listMov(a){return a.length?a.slice(0,50).map(x=>`<div class="item"><div><b>${esc(x.descricao)}</b><div class="meta">${dataBR(x.data)} · ${x.tipo==="entrada"?"Entrada":"Gasto"}</div></div><div><b class="${x.tipo==="entrada"?"positive":"negative"}">${x.tipo==="entrada"?"+":"-"} ${brl(x.valor)}</b><div class="actions"><button onclick="editMov('${x.id}')">Editar</button><button class="danger" onclick="delMov('${x.id}')">Excluir</button></div></div></div>`).join(""):`<p class="meta">Nenhum lançamento.</p>`}
+function listConta(a,open){return a.length?a.map(x=>`<div class="item"><div><b>${esc(x.descricao)}</b><div class="meta">Vence ${dataBR(x.vencimento)}</div></div><div><b>${brl(x.valor)}</b><div class="actions">${open?`<button onclick="pagarConta('${x.id}')">Marcar paga</button><button onclick="editConta('${x.id}')">Editar</button>`:""}<button class="danger" onclick="delConta('${x.id}')">Excluir</button></div></div></div>`).join(""):`<p class="meta">Nenhuma conta.</p>`}
 
-function renderAll(){renderHome();renderAccount()}
-renderAll();
+$("btnOrc").onclick=()=>{$("orcFormWrap").classList.remove("hidden");$("orcData").value=hoje();if(!$("orcItens").children.length)addOrcItem()};
+$("addItem").onclick=addOrcItem;
+function addOrcItem(){const d=document.createElement("div");d.className="item";d.innerHTML=`<input class="iDesc" placeholder="Item/serviço" required><input class="iQtd" type="number" value="1" min="1" required><input class="iVal" type="number" step="0.01" min="0" placeholder="Valor" required>`;d.querySelectorAll("input").forEach(i=>i.oninput=calcOrc);$("orcItens").appendChild(d);calcOrc()}
+function orcItems(){return[...$("orcItens").children].map(r=>({descricao:r.querySelector(".iDesc").value.trim(),quantidade:+r.querySelector(".iQtd").value||0,valor_unitario:+r.querySelector(".iVal").value||0}))}
+function calcOrc(){const t=orcItems().reduce((s,x)=>s+x.quantidade*x.valor_unitario,0);$("orcTotal").textContent=brl(t);return t}
+$("orcForm").onsubmit=async e=>{e.preventDefault();const its=orcItems(),total=calcOrc();
+ const {data:o,error}=await sb.from("orcamentos").insert({user_id:uid(),cliente:$("orcCliente").value.trim(),whatsapp:$("orcWhatsapp").value,data:$("orcData").value,descricao:$("orcDesc").value,total,subtotal_pecas:total,subtotal_mao_obra:0,status:"orcamento"}).select().single();if(error)return alert(error.message);
+ const rows=its.map(x=>({user_id:uid(),orcamento_id:o.id,tipo:"peca",...x}));const r=await sb.from("orcamento_itens").insert(rows);if(r.error)return alert(r.error.message);
+ $("orcForm").reset();$("orcItens").innerHTML="";$("orcFormWrap").classList.add("hidden");await loadAll()
+}
+function renderOrc(){$("orcList").innerHTML=state.orc.length?state.orc.map(o=>`<div class="item"><div><b>Orçamento ${o.numero} · ${esc(o.cliente)}</b><div class="meta">${dataBR(o.data)} · ${esc(o.status)}</div></div><b>${brl(o.total)}</b></div>`).join(""):`<p class="meta">Nenhum orçamento.</p>`}
+
+window.delMov=delMov;window.delConta=delConta;window.editMov=editMov;window.editConta=editConta;window.pagarConta=pagarConta;
+start();
