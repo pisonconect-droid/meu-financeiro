@@ -1,36 +1,22 @@
-# Meu Financeiro V4 — Supabase
+# Meu Financeiro V5 — Fechamento
 
-Primeira versão online sincronizada.
+Versão final do escopo atual.
 
-## Inclui
-- Login e criação de conta.
-- Sessão persistente.
-- Dados sincronizados pelo Supabase.
-- Pessoa Física e CNPJ.
-- Entradas, gastos e saldo.
-- Contas: atrasadas, a pagar e pagas.
-- Orçamentos básicos gravados no Supabase.
+## Novidades
+- Calendário financeiro com filtros Tudo / Pessoa Física / CNPJ.
+- Contas e Orçamentos em acordeão.
+- Transferência PF ↔ CNPJ.
+- Orçamentos separados em Peças e M.O.
+- Subtotais e total calculados automaticamente.
+- Fluxo Orçamento → Aprovado → Pago.
+- Somente o status Pago gera entrada automática no saldo CNPJ.
+- Proteção no Supabase para evitar pagamento duplicado.
 
-## Configuração
-Antes de publicar, edite `config.js`:
+## Infraestrutura
+- GitHub Pages
+- Supabase Auth
+- Supabase Database
+- RLS por usuário
+- Sincronização entre PC e celular
 
-```js
-const SUPABASE_URL = "SUA_PROJECT_URL";
-const SUPABASE_PUBLISHABLE_KEY = "SUA_PUBLISHABLE_KEY";
-```
-
-Use somente a **Publishable key**.
-
-Nunca coloque no GitHub:
-- Secret key
-- service_role
-- senha do banco
-
-## Arquivos
-- index.html
-- styles.css
-- app.js
-- config.js
-- README.md
-
-As próximas etapas adicionam Peças + M.O., status Aprovado/Pago, transferências, calendário e acordeões.
+Não publicar Secret key, service_role ou senha do banco.
