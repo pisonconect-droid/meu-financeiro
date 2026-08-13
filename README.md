@@ -1,3 +1,16 @@
+# Meu Financeiro V7.1.1 — Ajuste Mobile
+
+Esta atualização é exclusivamente visual/responsiva.
+
+- Cards de orçamento passam para uma coluna no celular.
+- Valores e custos ficam empilhados e legíveis.
+- Botões quebram de linha sem sair da tela.
+- Textos longos respeitam a largura do aparelho.
+- Cabeçalho fica mais compacto.
+- Fotos e custos internos respeitam 100% da largura.
+- Desktop e regras financeiras permanecem preservados.
+- Não requer alteração no Supabase.
+
 # Meu Financeiro V7.1 — Ajustes de uso real
 
 ## Corrigido
