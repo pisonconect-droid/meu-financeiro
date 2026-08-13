@@ -1,33 +1,44 @@
-# Meu Financeiro V7.1.1 — Ajuste Mobile
+# Meu Financeiro — V6 Correção Final
 
-Esta atualização é exclusivamente visual/responsiva.
+Pacote congelado de correções e melhorias.
 
-- Cards de orçamento passam para uma coluna no celular.
-- Valores e custos ficam empilhados e legíveis.
-- Botões quebram de linha sem sair da tela.
-- Textos longos respeitam a largura do aparelho.
-- Cabeçalho fica mais compacto.
-- Fotos e custos internos respeitam 100% da largura.
-- Desktop e regras financeiras permanecem preservados.
-- Não requer alteração no Supabase.
+## Correções
+- M.O. cobrada não é descontada como custo.
+- Custos reais: somente Peça/Item + Custos internos do serviço.
+- Orçamento pago pode ser recalculado para corrigir lançamentos antigos.
+- Exclusão de transferência remove as duas pontas.
+- Navegação preserva a tela atual após atualização de dados/sessão.
 
-# Meu Financeiro V7.1 — Ajustes de uso real
+## Navegação
+- Home: Pessoa Física | CNPJ | Orçamentos.
+- Calendário acessado de dentro de PF ou CNPJ.
+- Orçamentos em página própria, vinculada financeiramente ao CNPJ.
+- CNPJ mantém um resumo dos orçamentos.
 
-## Corrigido
-- Filtros do Dia a dia agora realmente filtram os lançamentos por categoria.
-- A categoria aparece junto ao lançamento.
+## Edição de orçamento
+- Rascunho e Enviado podem ser editados antes da aprovação.
+- Editar reabre cliente, equipamento, descrição, itens e custos internos.
+- Aprovado/Pago permanecem bloqueados para preservar o histórico financeiro.
 
-## Orçamento aprovado
-- Orçamento Aprovado/Em andamento pode ser editado.
-- Ao salvar alterações em peças/custos de um orçamento aprovado, o financeiro CNPJ é ressincronizado sem duplicar os custos.
-- Orçamento Pago continua bloqueado para preservar o histórico.
+## Experiência
+- Visual premium e acordeões destacados.
+- Olhinho de privacidade.
+- Resumo financeiro mensal.
+- Status: Rascunho → Enviado → Aprovado → Pago.
+- Confirmações nas operações críticas.
 
-## Fotos
-- Fotos separadas em **Antes** e **Depois**.
-- É possível acrescentar fotos ao editar um orçamento aprovado.
-- Fotos já salvas aparecem identificadas no formulário.
+## Ordem de instalação
+1. Execute `supabase_v6_correcao_final.sql` no SQL Editor.
+2. Em Data API → Exposed functions, exponha `recalcular_orcamento_pago`.
+3. Suba `index.html`, `app.js`, `styles.css`, `config.js` e `README.md` no GitHub.
+4. Aguarde o GitHub Pages e faça Ctrl+F5.
 
-## Instalação
-1. Execute `supabase_v7_1_ajustes.sql` no SQL Editor.
-2. Não é necessário expor função nova: `aprovar_orcamento` já está exposta.
-3. Depois substitua no GitHub os 5 arquivos: index.html, app.js, styles.css, config.js e README.md.
+## Teste financeiro de referência
+Saldo anterior: - R$ 1.500,00
+Resultado líquido do serviço: + R$ 2.000,00
+Saldo esperado: + R$ 500,00
+
+
+## Correção de cache/navegação
+- app.js e styles.css carregados com versão para evitar cache antigo no GitHub Pages.
+- Acesso a Orçamentos usa acionamento global estável como proteção adicional.
