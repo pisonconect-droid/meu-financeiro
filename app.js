@@ -1,6 +1,9 @@
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 let session=null,current=null,authMode="login";
-let state={mov:[],contas:[],orc:[],orcItens:[],orcCustos:[],fixas:[],profile:null};
+let state={mov:[],contas:[],orc:[],orcItens:[],orcCustos:[],orcFotos:[],fixas:[],profile:null};
+let editingOrcId=null;
+let movCategoryFilter="TODOS";
+let pendingPhotos=[];
 let calDate=new Date(),selectedDate=null,calFilter="TODOS";
 let navState=JSON.parse(sessionStorage.getItem("mf_nav")||'{"view":"home","account":null}');
 let calendarReturnAccount=null;
@@ -99,18 +102,19 @@ function restoreNavigation(){
 }
 
 async function loadAll(){
-  const [m,c,o,oi,oc,f,p]=await Promise.all([
+  const [m,c,o,oi,oc,of,f,p]=await Promise.all([
     sb.from("movimentacoes").select("*").order("data",{ascending:false}).order("created_at",{ascending:false}),
     sb.from("contas").select("*").order("vencimento"),
     sb.from("orcamentos").select("*").order("created_at",{ascending:false}),
     sb.from("orcamento_itens").select("*"),
     sb.from("orcamento_custos").select("*"),
+    sb.from("orcamento_fotos").select("*").order("created_at",{ascending:true}),
     sb.from("contas_fixas").select("*").order("descricao"),
     sb.from("profiles").select("*").eq("id",uid()).maybeSingle()
   ]);
-  const er=m.error||c.error||o.error||oi.error||oc.error||f.error||p.error;
+  const er=m.error||c.error||o.error||oi.error||oc.error||of.error||f.error||p.error;
   if(er){alert(er.message);return}
-  state={mov:m.data||[],contas:c.data||[],orc:o.data||[],orcItens:oi.data||[],orcCustos:oc.data||[],fixas:f.data||[],profile:p.data||null};
+  state={mov:m.data||[],contas:c.data||[],orc:o.data||[],orcItens:oi.data||[],orcCustos:oc.data||[],orcFotos:of.data||[],fixas:f.data||[],profile:p.data||null};
   render();renderCalendar();renderFixas();renderBudgetSummary();
 }
 
@@ -162,6 +166,8 @@ function openMov(tipo,x=null,forcedDate=null,forcedAccount=null){
   $("modalTitle").textContent=x?"Editar lançamento":tipo==="entrada"?"Nova entrada":"Novo gasto";
   $("descricao").value=x?.descricao||"";$("valor").value=x?.valor||"";
   $("data").value=x?.data||forcedDate||hoje();$("data").dataset.tipo=tipo;
+  $("categoryWrap").classList.toggle("hidden",tipo==="entrada");
+  $("categoria").value=x?.categoria||(tipo==="entrada"?"Receita":"Despesas operacionais");
   $("dateLabel").childNodes[0].nodeValue="Data ";
   $("modal").classList.remove("hidden");
 }
@@ -180,7 +186,8 @@ $("modalForm").onsubmit=async e=>{
   e.preventDefault();
   const editing=$("editId").value;
   if($("mode").value==="mov"){
-    const p={user_id:uid(),conta:current,tipo:$("data").dataset.tipo,descricao:$("descricao").value.trim(),valor:+$("valor").value,data:$("data").value,origem:"manual"};
+    const tipoMov=$("data").dataset.tipo;
+    const p={user_id:uid(),conta:current,tipo:tipoMov,descricao:$("descricao").value.trim(),valor:+$("valor").value,data:$("data").value,origem:"manual",categoria:tipoMov==="entrada"?"Receita":$("categoria").value};
     const q=editing?sb.from("movimentacoes").update(p).eq("id",editing):sb.from("movimentacoes").insert(p);
     const {error}=await q;if(error)return alert(error.message);
   }else{
@@ -324,29 +331,40 @@ function renderFixas(){
 
 // ORÇAMENTOS
 $("btnOrc").onclick=()=>{
+  resetOrc(false);
   $("orcFormWrap").classList.remove("hidden");
   $("orcData").value=hoje();
   $("orcPrestador").value=state.profile?.prestador_nome||state.profile?.nome||"";
-  if(!$("orcItens").children.length)addOrcItem();
+  addOrcItem();
+  $("orcFormWrap").scrollIntoView({behavior:"smooth",block:"start"});
 };
 $("cancelOrc").onclick=()=>resetOrc();
-$("addItem").onclick=addOrcItem;
-$("addCostBtn").onclick=addCost;
+$("addItem").onclick=()=>addOrcItem();
+$("addCostBtn").onclick=()=>addCost();
 
-function resetOrc(){
+function resetOrc(hide=true){
+  editingOrcId=null;
+  pendingPhotos=[];
   $("orcForm").reset();
   $("orcItens").innerHTML="";
   $("orcCustos").innerHTML="";
-  $("orcFormWrap").classList.add("hidden");
+  if(hide)$("orcFormWrap").classList.add("hidden");
   calcOrc();
 }
-function addOrcItem(){
+function addOrcItem(data=null){
   const f=$("budgetItemTemplate").content.cloneNode(true),r=f.querySelector(".budget-item-row");
-  const tipo=r.querySelector(".iTipo"),custo=r.querySelector(".iCusto");
+  const tipo=r.querySelector(".iTipo"),desc=r.querySelector(".iDesc"),qtd=r.querySelector(".iQtd"),val=r.querySelector(".iVal"),custo=r.querySelector(".iCusto");
+  if(data){
+    tipo.value=data.tipo||"peca";
+    desc.value=data.descricao||"";
+    qtd.value=data.quantidade??1;
+    val.value=data.valor_unitario??0;
+    custo.value=data.custo_unitario??0;
+  }
   const syncTipo=()=>{
     const mao=tipo.value==="mao_obra";
     custo.disabled=mao;
-    custo.value=mao?"0":custo.value;
+    if(mao)custo.value="0";
     custo.placeholder=mao?"M.O. não é custo":"Custo real";
     calcOrc();
   };
@@ -356,12 +374,42 @@ function addOrcItem(){
   $("orcItens").appendChild(f);
   syncTipo();
 }
-function addCost(){
+function addCost(data=null){
   const f=$("costTemplate").content.cloneNode(true),r=f.querySelector(".cost-row");
+  if(data){
+    r.querySelector(".cDesc").value=data.descricao||"";
+    r.querySelector(".cCat").value=data.categoria||"Custos do serviço";
+    r.querySelector(".cVal").value=data.valor??0;
+  }
   r.querySelectorAll("input").forEach(i=>i.oninput=calcOrc);
   r.querySelector(".remove-cost").onclick=()=>{r.remove();calcOrc()};
   $("orcCustos").appendChild(f);
   calcOrc();
+}
+function editOrc(id){
+  const o=state.orc.find(x=>x.id===id);
+  if(!o)return;
+  if(!["rascunho","orcamento","enviado"].includes(o.status)){
+    alert("Este orçamento não pode mais ser editado.");
+    return;
+  }
+  editingOrcId=id;
+  $("orcForm").reset();
+  $("orcItens").innerHTML="";
+  $("orcCustos").innerHTML="";
+  $("orcPrestador").value=o.prestador||state.profile?.prestador_nome||state.profile?.nome||"";
+  $("orcCliente").value=o.cliente||"";
+  $("orcWhatsapp").value=o.whatsapp||"";
+  $("orcEquipamento").value=o.equipamento_modelo||"";
+  $("orcData").value=o.data||hoje();
+  $("orcDesc").value=o.descricao||"";
+  const its=state.orcItens.filter(x=>x.orcamento_id===id);
+  const custos=state.orcCustos.filter(x=>x.orcamento_id===id);
+  if(its.length)its.forEach(addOrcItem); else addOrcItem();
+  custos.forEach(addCost);
+  $("orcFormWrap").classList.remove("hidden");
+  calcOrc();
+  $("orcFormWrap").scrollIntoView({behavior:"smooth",block:"start"});
 }
 function orcItems(){
   return[...document.querySelectorAll(".budget-item-row")].map(r=>({
@@ -375,9 +423,46 @@ function orcItems(){
 function orcCosts(){
   return[...document.querySelectorAll(".cost-row")].map(r=>({
     descricao:r.querySelector(".cDesc").value.trim(),
+    categoria:r.querySelector(".cCat").value,
     valor:+r.querySelector(".cVal").value||0
   }));
 }
+
+$("orcFotos").onchange=e=>{
+  pendingPhotos=[...e.target.files];
+  renderPendingPhotos();
+};
+function renderPendingPhotos(){
+  $("photoPreview").innerHTML=pendingPhotos.map((f,i)=>`<div class="photo-thumb pending"><span>${esc(f.name)}</span><button type="button" onclick="removePendingPhoto(${i})">×</button></div>`).join("");
+}
+function removePendingPhoto(i){pendingPhotos.splice(i,1);renderPendingPhotos()}
+async function uploadBudgetPhotos(orcamentoId){
+  for(const file of pendingPhotos){
+    const ext=(file.name.split(".").pop()||"jpg").replace(/[^a-zA-Z0-9]/g,"");
+    const path=`${uid()}/${orcamentoId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const up=await sb.storage.from("orcamento-fotos").upload(path,file,{upsert:false,contentType:file.type||"image/jpeg"});
+    if(up.error)throw up.error;
+    const ins=await sb.from("orcamento_fotos").insert({user_id:uid(),orcamento_id:orcamentoId,storage_path:path,nome_arquivo:file.name});
+    if(ins.error)throw ins.error;
+  }
+  pendingPhotos=[];
+  $("orcFotos").value="";
+  renderPendingPhotos();
+}
+async function signedPhotoUrl(path){
+  const {data,error}=await sb.storage.from("orcamento-fotos").createSignedUrl(path,3600);
+  return error?null:data.signedUrl;
+}
+async function openBudgetPhotos(id){
+  const fotos=state.orcFotos.filter(f=>f.orcamento_id===id);
+  if(!fotos.length)return alert("Este orçamento ainda não possui fotos.");
+  const urls=(await Promise.all(fotos.map(async f=>({f,url:await signedPhotoUrl(f.storage_path)})))).filter(x=>x.url);
+  const w=window.open("","_blank");
+  if(!w)return alert("Permita pop-ups para visualizar as fotos.");
+  w.document.write(`<title>Fotos do orçamento</title><style>body{font-family:Arial;padding:20px;background:#f4f4f5}img{max-width:100%;max-height:75vh;display:block;margin:12px auto;border-radius:10px}.box{background:white;padding:12px;margin:12px 0;border-radius:12px}</style><h2>Fotos do orçamento</h2>${urls.map(x=>`<div class="box"><b>${esc(x.f.nome_arquivo||"Foto")}</b><img src="${x.url}"></div>`).join("")}`);
+  w.document.close();
+}
+
 function calcOrc(){
   const its=orcItems(),custos=orcCosts();
   const pecas=its.filter(x=>x.tipo==="peca").reduce((s,x)=>s+x.quantidade*x.valor_unitario,0);
@@ -399,20 +484,55 @@ $("orcForm").onsubmit=async e=>{
   if(!its.length)return alert("Adicione pelo menos um item.");
   const prestador=$("orcPrestador").value.trim();
   if(prestador)await sb.from("profiles").update({prestador_nome:prestador}).eq("id",uid());
-  const {data:o,error}=await sb.from("orcamentos").insert({
-    user_id:uid(),prestador,cliente:$("orcCliente").value.trim(),whatsapp:$("orcWhatsapp").value,
-    equipamento_modelo:$("orcEquipamento").value.trim(),data:$("orcData").value,descricao:$("orcDesc").value,
-    total:t.total,subtotal_pecas:t.pecas,subtotal_mao_obra:t.mo,custo_itens:t.custoItens,custo_servico:t.custoServico,resultado:t.resultado,status:"rascunho"
-  }).select().single();
-  if(error)return alert(error.message);
-  const r=await sb.from("orcamento_itens").insert(its.map(x=>({user_id:uid(),orcamento_id:o.id,...x})));
+
+  const payload={
+    prestador,
+    cliente:$("orcCliente").value.trim(),
+    whatsapp:$("orcWhatsapp").value,
+    equipamento_modelo:$("orcEquipamento").value.trim(),
+    data:$("orcData").value,
+    descricao:$("orcDesc").value,
+    total:t.total,
+    subtotal_pecas:t.pecas,
+    subtotal_mao_obra:t.mo,
+    custo_itens:t.custoItens,
+    custo_servico:t.custoServico,
+    resultado:t.resultado
+  };
+
+  let orcamentoId=editingOrcId;
+  if(editingOrcId){
+    const atual=state.orc.find(x=>x.id===editingOrcId);
+    if(!atual||!["rascunho","orcamento","enviado"].includes(atual.status)){
+      return alert("Este orçamento não pode mais ser editado.");
+    }
+    const {error}=await sb.from("orcamentos").update(payload).eq("id",editingOrcId).eq("user_id",uid());
+    if(error)return alert(error.message);
+
+    let r=await sb.from("orcamento_itens").delete().eq("orcamento_id",editingOrcId).eq("user_id",uid());
+    if(r.error)return alert(r.error.message);
+    r=await sb.from("orcamento_custos").delete().eq("orcamento_id",editingOrcId).eq("user_id",uid());
+    if(r.error)return alert(r.error.message);
+  }else{
+    const {data:o,error}=await sb.from("orcamentos").insert({
+      user_id:uid(),...payload,status:"rascunho"
+    }).select().single();
+    if(error)return alert(error.message);
+    orcamentoId=o.id;
+  }
+
+  const r=await sb.from("orcamento_itens").insert(its.map(x=>({user_id:uid(),orcamento_id:orcamentoId,...x})));
   if(r.error)return alert(r.error.message);
   if(custos.length){
-    const rc=await sb.from("orcamento_custos").insert(custos.map(x=>({user_id:uid(),orcamento_id:o.id,...x})));
+    const rc=await sb.from("orcamento_custos").insert(custos.map(x=>({user_id:uid(),orcamento_id:orcamentoId,...x})));
     if(rc.error)return alert(rc.error.message);
   }
+  try{if(pendingPhotos.length)await uploadBudgetPhotos(orcamentoId)}catch(err){return alert("Fotos: "+(err.message||err))}
+
+  const wasEditing=Boolean(editingOrcId);
   resetOrc();
   await loadAll();
+  if(wasEditing)alert("Orçamento atualizado com sucesso.");
 };
 async function enviarOrc(id){
   if(!confirm("Marcar este orçamento como enviado ao cliente?"))return;
@@ -420,10 +540,35 @@ async function enviarOrc(id){
   if(error)alert(error.message);else loadAll();
 }
 async function aprovarOrc(id){
-  if(!confirm("Confirmar que o cliente aprovou este orçamento?"))return;
-  const {error}=await sb.from("orcamentos").update({status:"aprovado"}).eq("id",id).in("status",["rascunho","enviado"]);
-  if(error)alert(error.message);else loadAll();
+  if(!confirm("Confirmar aprovação? Os custos reais já cadastrados entrarão agora como gastos do CNPJ."))return;
+  const {error}=await sb.rpc("aprovar_orcamento",{p_orcamento_id:id,p_data:hoje()});
+  if(error)alert("Aprovação: "+error.message);else loadAll();
 }
+
+function openApprovedCost(id){
+  $("budgetCostOrcId").value=id;
+  $("budgetCostDesc").value="";
+  $("budgetCostCategory").value="Custos do serviço";
+  $("budgetCostValue").value="";
+  $("budgetCostDate").value=hoje();
+  $("budgetCostModal").classList.remove("hidden");
+}
+$("closeBudgetCost").onclick=()=>$("budgetCostModal").classList.add("hidden");
+$("budgetCostForm").onsubmit=async e=>{
+  e.preventDefault();
+  const id=$("budgetCostOrcId").value;
+  const {error}=await sb.rpc("registrar_custo_orcamento",{
+    p_orcamento_id:id,
+    p_descricao:$("budgetCostDesc").value.trim(),
+    p_categoria:$("budgetCostCategory").value,
+    p_valor:+$("budgetCostValue").value,
+    p_data:$("budgetCostDate").value
+  });
+  if(error)return alert("Custo: "+error.message);
+  $("budgetCostModal").classList.add("hidden");
+  await loadAll();
+};
+
 async function recalcularPago(id){
   if(!confirm("Recalcular este orçamento pago usando a regra correta, sem descontar a M.O.?"))return;
   const {data,error}=await sb.rpc("recalcular_orcamento_pago",{p_orcamento_id:id});
@@ -432,7 +577,7 @@ async function recalcularPago(id){
   await loadAll();
 }
 async function pagarOrc(id){
-  if(!confirm("Confirmar pagamento? O saldo CNPJ ficará com o valor recebido menos os custos reais cadastrados."))return;
+  if(!confirm("Confirmar pagamento? Será registrada somente a receita recebida; os custos já foram lançados durante o serviço."))return;
   const {error}=await sb.rpc("marcar_orcamento_pago",{p_orcamento_id:id,p_data:hoje()});
   if(error)alert("Pagamento: "+error.message);else loadAll();
 }
@@ -448,6 +593,7 @@ function renderOrc(){
   $("orcList").innerHTML=state.orc.length?state.orc.map(o=>{
     const its=state.orcItens.filter(x=>x.orcamento_id===o.id);
     const custos=state.orcCustos.filter(x=>x.orcamento_id===o.id);
+    const fotos=state.orcFotos.filter(x=>x.orcamento_id===o.id);
     const custoItens=its.filter(x=>x.tipo==="peca").reduce((s,x)=>s+Number(x.quantidade)*Number(x.custo_unitario||0),0);
     const custoServico=custos.reduce((s,x)=>s+Number(x.valor),0);
     const resultado=Number(o.total)-custoItens-custoServico;
@@ -455,8 +601,8 @@ function renderOrc(){
       <div class="meta"><b>Prestador:</b> ${esc(o.prestador||"-")}</div>
       <div class="budget-split"><span>Total cobrado <b class="money-inline">${brl(o.total)}</b></span><span>Custo itens <b class="money-inline">${brl(custoItens)}</b></span><span>Custos serviço <b class="money-inline">${brl(custoServico)}</b></span><span>Resultado ${o.status==="pago"?"real":"previsto"} <b class="money-inline">${brl(o.status==="pago"?o.resultado:resultado)}</b></span></div>
       ${its.map(i=>`<div class="meta">${i.tipo==="peca"?"Item":"M.O."}: ${esc(i.descricao)} · ${i.quantidade} × ${moneySpan(i.valor_unitario)}${Number(i.custo_unitario||0)>0?` · custo ${moneySpan(Number(i.custo_unitario)*Number(i.quantidade))}`:""}</div>`).join("")}
-      ${custos.length?`<div class="internal-box"><b>Custos internos</b>${custos.map(c=>`<div class="meta">${esc(c.descricao)} · ${moneySpan(c.valor)}</div>`).join("")}</div>`:""}
-      <div class="actions">${(o.status==="rascunho"||o.status==="orcamento")?`<button onclick="enviarOrc('${o.id}')">Marcar enviado</button><button class="warning" onclick="aprovarOrc('${o.id}')">Aprovar</button>`:""}${o.status==="enviado"?`<button class="warning" onclick="aprovarOrc('${o.id}')">Aprovar</button>`:""}${o.status==="aprovado"?`<button class="success" onclick="pagarOrc('${o.id}')">Marcar pago</button>`:""}${o.status==="pago"?`<button class="warning" onclick="recalcularPago('${o.id}')">Recalcular</button>`:`<button class="danger" onclick="delOrc('${o.id}')">Excluir</button>`}</div>
+      ${custos.length?`<div class="internal-box"><b>Custos internos</b>${custos.map(c=>`<div class="meta">${esc(c.descricao)} · ${esc(c.categoria||"Custos do serviço")} · ${moneySpan(c.valor)}</div>`).join("")}</div>`:""}${fotos.length?`<button type="button" class="small" onclick="openBudgetPhotos(\'${o.id}\')">📷 Fotos (${fotos.length})</button>`:""}
+      <div class="actions">${["rascunho","orcamento","enviado"].includes(o.status)?`<button onclick="editOrc('${o.id}')">Editar</button>`:""}${(o.status==="rascunho"||o.status==="orcamento")?`<button onclick="enviarOrc('${o.id}')">Marcar enviado</button><button class="warning" onclick="aprovarOrc('${o.id}')">Aprovar</button>`:""}${o.status==="enviado"?`<button class="warning" onclick="aprovarOrc('${o.id}')">Aprovar</button>`:""}${o.status==="aprovado"?`<button onclick="openApprovedCost(\'${o.id}\')">+ Registrar custo</button><button class="success" onclick="pagarOrc(\'${o.id}\')">Marcar pago</button>`:""}${o.status==="pago"?`<button class="warning" onclick="recalcularPago('${o.id}')">Recalcular</button>`:`<button class="danger" onclick="delOrc('${o.id}')">Excluir</button>`}</div>
     </div></details>`;
   }).join(""):`<p class="meta">Nenhum orçamento.</p>`;
 }
@@ -525,5 +671,5 @@ document.querySelectorAll("[data-cal-action]").forEach(b=>b.onclick=()=>{
 });
 
 window.delMov=delMov;window.delConta=delConta;window.editMov=editMov;window.editConta=editConta;window.pagarConta=pagarConta;
-window.editFixed=editFixed;window.delFixed=delFixed;window.enviarOrc=enviarOrc;window.aprovarOrc=aprovarOrc;window.pagarOrc=pagarOrc;window.recalcularPago=recalcularPago;window.delOrc=delOrc;
+window.removePendingPhoto=removePendingPhoto;window.openBudgetPhotos=openBudgetPhotos;window.openApprovedCost=openApprovedCost;window.editFixed=editFixed;window.delFixed=delFixed;window.editOrc=editOrc;window.enviarOrc=enviarOrc;window.aprovarOrc=aprovarOrc;window.pagarOrc=pagarOrc;window.recalcularPago=recalcularPago;window.delOrc=delOrc;
 start();
