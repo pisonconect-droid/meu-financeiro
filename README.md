@@ -1,22 +1,19 @@
-# Meu Financeiro V5 — Fechamento
+# Meu Financeiro V6 — Fechamento da etapa
 
-Versão final do escopo atual.
+## Inclui
+- Correção da exclusão de transferências PF ↔ CNPJ.
+- Modo privacidade para ocultar/exibir valores.
+- Calendário clicável para criar entrada, gasto ou conta a pagar.
+- Contas fixas/recorrentes com geração mensal.
+- Prestador e Equipamento/Modelo no orçamento.
+- Valor cobrado separado do custo real do item.
+- Custos internos do serviço.
+- Resultado previsto e resultado real.
 
-## Novidades
-- Calendário financeiro com filtros Tudo / Pessoa Física / CNPJ.
-- Contas e Orçamentos em acordeão.
-- Transferência PF ↔ CNPJ.
-- Orçamentos separados em Peças e M.O.
-- Subtotais e total calculados automaticamente.
-- Fluxo Orçamento → Aprovado → Pago.
-- Somente o status Pago gera entrada automática no saldo CNPJ.
-- Proteção no Supabase para evitar pagamento duplicado.
+## Regra financeira
+Resultado = Total recebido - Custo real dos itens - Custos internos do serviço
+
+A mão de obra cobrada não é descontada.
 
 ## Infraestrutura
-- GitHub Pages
-- Supabase Auth
-- Supabase Database
-- RLS por usuário
-- Sincronização entre PC e celular
-
-Não publicar Secret key, service_role ou senha do banco.
+GitHub Pages + Supabase Auth + Database + RLS.
