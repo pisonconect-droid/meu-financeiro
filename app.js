@@ -248,6 +248,21 @@ $("transferForm").onsubmit=async e=>{
 function saldo(a){return state.mov.filter(x=>x.conta===a).reduce((s,x)=>s+(x.tipo==="entrada"?+x.valor:x.tipo==="saida"?-x.valor:0),0)}
 const sum=a=>a.reduce((s,x)=>s+Number(x.valor),0);
 
+
+function inferCategory(x){
+  if(x.categoria)return x.categoria;
+  if(x.origem==="transferencia")return"Transferência";
+  if(x.origem==="orcamento_pago"||x.tipo==="entrada")return"Receita";
+  if(x.origem==="orcamento_custo_item")return"Peças / materiais";
+  if(x.origem==="orcamento_custo_servico")return"Custos do serviço";
+  return"Despesas operacionais";
+}
+document.querySelectorAll("[data-mov-cat]").forEach(b=>b.onclick=()=>{
+  movCategoryFilter=b.dataset.movCat;
+  document.querySelectorAll("[data-mov-cat]").forEach(x=>x.classList.toggle("active",x===b));
+  render();
+});
+
 function render(){
   $("saldoPF").textContent=brl(saldo("PF"));
   $("saldoCNPJ").textContent=brl(saldo("CNPJ"));
@@ -268,7 +283,11 @@ function render(){
   $("saldoAtual").textContent=brl(s);
   $("saldoAtual").className="money-value "+(s>0?"positive":s<0?"negative":"");
   $("statusSaldo").textContent=s>0?"POSITIVO":s<0?"NEGATIVO":"ZERADO";
-  $("movList").innerHTML=listMov(state.mov.filter(x=>x.conta===current));
+  const movimentosConta=state.mov.filter(x=>x.conta===current);
+  const movimentosFiltrados=movCategoryFilter==="TODOS"
+    ? movimentosConta
+    : movimentosConta.filter(x=>inferCategory(x)===movCategoryFilter);
+  $("movList").innerHTML=listMov(movimentosFiltrados);
   const h=hoje(),cs=state.contas.filter(x=>x.conta===current);
   const late=cs.filter(x=>x.status==="pendente"&&x.vencimento<h);
   const pay=cs.filter(x=>x.status==="pendente"&&x.vencimento>=h);
@@ -282,7 +301,7 @@ function render(){
   if(current==="CNPJ")renderOrc();
 }
 function listMov(a){
-  return a.length?a.slice(0,60).map(x=>`<div class="item"><div><b>${esc(x.descricao)}</b><div class="meta">${dataBR(x.data)} · ${x.tipo==="entrada"?"Entrada":"Gasto"}${x.origem==="transferencia"?" · Transferência":""}</div></div><div><b class="money-inline ${x.tipo==="entrada"?"positive":"negative"}">${x.tipo==="entrada"?"+":"-"} ${brl(x.valor)}</b><div class="actions">${x.origem!=="transferencia"&&x.origem!=="orcamento_pago"&&!String(x.origem||"").startsWith("orcamento_custo")?`<button onclick="editMov('${x.id}')">Editar</button>`:""}${x.origem==="orcamento_pago"||String(x.origem||"").startsWith("orcamento_custo")?"":`<button class="danger" onclick="delMov('${x.id}')">Excluir</button>`}</div></div></div>`).join(""):`<p class="meta">Nenhum lançamento.</p>`;
+  return a.length?a.slice(0,60).map(x=>`<div class="item"><div><b>${esc(x.descricao)}</b><div class="meta">${dataBR(x.data)} · ${x.tipo==="entrada"?"Entrada":"Gasto"} · ${esc(inferCategory(x))}</div></div><div><b class="money-inline ${x.tipo==="entrada"?"positive":"negative"}">${x.tipo==="entrada"?"+":"-"} ${brl(x.valor)}</b><div class="actions">${x.origem!=="transferencia"&&x.origem!=="orcamento_pago"&&!String(x.origem||"").startsWith("orcamento_custo")?`<button onclick="editMov('${x.id}')">Editar</button>`:""}${x.origem==="orcamento_pago"||String(x.origem||"").startsWith("orcamento_custo")?"":`<button class="danger" onclick="delMov('${x.id}')">Excluir</button>`}</div></div></div>`).join(""):`<p class="meta">Nenhum lançamento.</p>`;
 }
 function listConta(a,open){
   return a.length?a.map(x=>`<div class="item"><div><b>${esc(x.descricao)}</b><div class="meta">Vence ${dataBR(x.vencimento)}</div></div><div><b class="money-inline">${brl(x.valor)}</b><div class="actions">${open?`<button onclick="pagarConta('${x.id}')">Marcar paga</button><button onclick="editConta('${x.id}')">Editar</button>`:""}<button class="danger" onclick="delConta('${x.id}')">Excluir</button></div></div></div>`).join(""):`<p class="meta">Nenhuma conta.</p>`;
@@ -333,6 +352,7 @@ function renderFixas(){
 $("btnOrc").onclick=()=>{
   resetOrc(false);
   $("orcFormWrap").classList.remove("hidden");
+  $("existingPhotos").innerHTML="";
   $("orcData").value=hoje();
   $("orcPrestador").value=state.profile?.prestador_nome||state.profile?.nome||"";
   addOrcItem();
@@ -389,7 +409,7 @@ function addCost(data=null){
 function editOrc(id){
   const o=state.orc.find(x=>x.id===id);
   if(!o)return;
-  if(!["rascunho","orcamento","enviado"].includes(o.status)){
+  if(!["rascunho","orcamento","enviado","aprovado"].includes(o.status)){
     alert("Este orçamento não pode mais ser editado.");
     return;
   }
@@ -407,6 +427,7 @@ function editOrc(id){
   const custos=state.orcCustos.filter(x=>x.orcamento_id===id);
   if(its.length)its.forEach(addOrcItem); else addOrcItem();
   custos.forEach(addCost);
+  renderExistingPhotos(id);
   $("orcFormWrap").classList.remove("hidden");
   calcOrc();
   $("orcFormWrap").scrollIntoView({behavior:"smooth",block:"start"});
@@ -428,25 +449,41 @@ function orcCosts(){
   }));
 }
 
-$("orcFotos").onchange=e=>{
-  pendingPhotos=[...e.target.files];
+
+function addPendingPhotos(files,tipo){
+  [...files].forEach(file=>pendingPhotos.push({file,tipo}));
   renderPendingPhotos();
-};
+}
+$("orcFotosAntes").onchange=e=>{addPendingPhotos(e.target.files,"antes");e.target.value=""};
+$("orcFotosDepois").onchange=e=>{addPendingPhotos(e.target.files,"depois");e.target.value=""};
+
 function renderPendingPhotos(){
-  $("photoPreview").innerHTML=pendingPhotos.map((f,i)=>`<div class="photo-thumb pending"><span>${esc(f.name)}</span><button type="button" onclick="removePendingPhoto(${i})">×</button></div>`).join("");
+  $("photoPreview").innerHTML=pendingPhotos.map((p,i)=>`<div class="photo-thumb pending"><div><span class="photo-tag ${p.tipo}">${p.tipo==="antes"?"ANTES":"DEPOIS"}</span><span>${esc(p.file.name)}</span></div><button type="button" onclick="removePendingPhoto(${i})">×</button></div>`).join("");
 }
 function removePendingPhoto(i){pendingPhotos.splice(i,1);renderPendingPhotos()}
+
+function renderExistingPhotos(orcamentoId){
+  if(!orcamentoId){$("existingPhotos").innerHTML="";return}
+  const fotos=state.orcFotos.filter(f=>f.orcamento_id===orcamentoId);
+  $("existingPhotos").innerHTML=fotos.length
+    ? `<div class="meta photo-existing-title">Fotos já salvas (${fotos.length})</div>`+
+      fotos.map(f=>`<span class="photo-chip ${f.tipo||"antes"}">${(f.tipo||"antes")==="depois"?"Depois":"Antes"} · ${esc(f.nome_arquivo||"foto")}</span>`).join("")
+    : `<div class="meta">Nenhuma foto salva ainda.</div>`;
+}
+
 async function uploadBudgetPhotos(orcamentoId){
-  for(const file of pendingPhotos){
+  for(const p of pendingPhotos){
+    const file=p.file;
     const ext=(file.name.split(".").pop()||"jpg").replace(/[^a-zA-Z0-9]/g,"");
     const path=`${uid()}/${orcamentoId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
     const up=await sb.storage.from("orcamento-fotos").upload(path,file,{upsert:false,contentType:file.type||"image/jpeg"});
     if(up.error)throw up.error;
-    const ins=await sb.from("orcamento_fotos").insert({user_id:uid(),orcamento_id:orcamentoId,storage_path:path,nome_arquivo:file.name});
+    const ins=await sb.from("orcamento_fotos").insert({
+      user_id:uid(),orcamento_id:orcamentoId,storage_path:path,nome_arquivo:file.name,tipo:p.tipo
+    });
     if(ins.error)throw ins.error;
   }
   pendingPhotos=[];
-  $("orcFotos").value="";
   renderPendingPhotos();
 }
 async function signedPhotoUrl(path){
@@ -459,7 +496,7 @@ async function openBudgetPhotos(id){
   const urls=(await Promise.all(fotos.map(async f=>({f,url:await signedPhotoUrl(f.storage_path)})))).filter(x=>x.url);
   const w=window.open("","_blank");
   if(!w)return alert("Permita pop-ups para visualizar as fotos.");
-  w.document.write(`<title>Fotos do orçamento</title><style>body{font-family:Arial;padding:20px;background:#f4f4f5}img{max-width:100%;max-height:75vh;display:block;margin:12px auto;border-radius:10px}.box{background:white;padding:12px;margin:12px 0;border-radius:12px}</style><h2>Fotos do orçamento</h2>${urls.map(x=>`<div class="box"><b>${esc(x.f.nome_arquivo||"Foto")}</b><img src="${x.url}"></div>`).join("")}`);
+  w.document.write(`<title>Fotos do orçamento</title><style>body{font-family:Arial;padding:20px;background:#f4f4f5}img{max-width:100%;max-height:75vh;display:block;margin:12px auto;border-radius:10px}.box{background:white;padding:12px;margin:12px 0;border-radius:12px}.tag{font-weight:700;font-size:12px;padding:5px 8px;border-radius:999px;background:#e5e7eb}</style><h2>Fotos do orçamento</h2>${urls.map(x=>`<div class="box"><span class="tag">${(x.f.tipo||"antes")==="depois"?"DEPOIS":"ANTES"}</span><b> ${esc(x.f.nome_arquivo||"Foto")}</b><img src="${x.url}"></div>`).join("")}`);
   w.document.close();
 }
 
@@ -481,6 +518,7 @@ function calcOrc(){
 $("orcForm").onsubmit=async e=>{
   e.preventDefault();
   const its=orcItems(),custos=orcCosts(),t=calcOrc();
+  let statusOriginal=null;
   if(!its.length)return alert("Adicione pelo menos um item.");
   const prestador=$("orcPrestador").value.trim();
   if(prestador)await sb.from("profiles").update({prestador_nome:prestador}).eq("id",uid());
@@ -503,7 +541,9 @@ $("orcForm").onsubmit=async e=>{
   let orcamentoId=editingOrcId;
   if(editingOrcId){
     const atual=state.orc.find(x=>x.id===editingOrcId);
-    if(!atual||!["rascunho","orcamento","enviado"].includes(atual.status)){
+    const statusAntes=atual?.status;
+    statusOriginal=statusAntes;
+    if(!atual||!["rascunho","orcamento","enviado","aprovado"].includes(atual.status)){
       return alert("Este orçamento não pode mais ser editado.");
     }
     const {error}=await sb.from("orcamentos").update(payload).eq("id",editingOrcId).eq("user_id",uid());
@@ -528,6 +568,11 @@ $("orcForm").onsubmit=async e=>{
     if(rc.error)return alert(rc.error.message);
   }
   try{if(pendingPhotos.length)await uploadBudgetPhotos(orcamentoId)}catch(err){return alert("Fotos: "+(err.message||err))}
+
+  if(statusOriginal==="aprovado"){
+    const sync=await sb.rpc("aprovar_orcamento",{p_orcamento_id:orcamentoId,p_data:hoje()});
+    if(sync.error)return alert("Sincronização dos custos: "+sync.error.message);
+  }
 
   const wasEditing=Boolean(editingOrcId);
   resetOrc();
@@ -602,7 +647,7 @@ function renderOrc(){
       <div class="budget-split"><span>Total cobrado <b class="money-inline">${brl(o.total)}</b></span><span>Custo itens <b class="money-inline">${brl(custoItens)}</b></span><span>Custos serviço <b class="money-inline">${brl(custoServico)}</b></span><span>Resultado ${o.status==="pago"?"real":"previsto"} <b class="money-inline">${brl(o.status==="pago"?o.resultado:resultado)}</b></span></div>
       ${its.map(i=>`<div class="meta">${i.tipo==="peca"?"Item":"M.O."}: ${esc(i.descricao)} · ${i.quantidade} × ${moneySpan(i.valor_unitario)}${Number(i.custo_unitario||0)>0?` · custo ${moneySpan(Number(i.custo_unitario)*Number(i.quantidade))}`:""}</div>`).join("")}
       ${custos.length?`<div class="internal-box"><b>Custos internos</b>${custos.map(c=>`<div class="meta">${esc(c.descricao)} · ${esc(c.categoria||"Custos do serviço")} · ${moneySpan(c.valor)}</div>`).join("")}</div>`:""}${fotos.length?`<button type="button" class="small" onclick="openBudgetPhotos(\'${o.id}\')">📷 Fotos (${fotos.length})</button>`:""}
-      <div class="actions">${["rascunho","orcamento","enviado"].includes(o.status)?`<button onclick="editOrc('${o.id}')">Editar</button>`:""}${(o.status==="rascunho"||o.status==="orcamento")?`<button onclick="enviarOrc('${o.id}')">Marcar enviado</button><button class="warning" onclick="aprovarOrc('${o.id}')">Aprovar</button>`:""}${o.status==="enviado"?`<button class="warning" onclick="aprovarOrc('${o.id}')">Aprovar</button>`:""}${o.status==="aprovado"?`<button onclick="openApprovedCost(\'${o.id}\')">+ Registrar custo</button><button class="success" onclick="pagarOrc(\'${o.id}\')">Marcar pago</button>`:""}${o.status==="pago"?`<button class="warning" onclick="recalcularPago('${o.id}')">Recalcular</button>`:`<button class="danger" onclick="delOrc('${o.id}')">Excluir</button>`}</div>
+      <div class="actions">${["rascunho","orcamento","enviado","aprovado"].includes(o.status)?`<button onclick="editOrc('${o.id}')">Editar</button>`:""}${(o.status==="rascunho"||o.status==="orcamento")?`<button onclick="enviarOrc('${o.id}')">Marcar enviado</button><button class="warning" onclick="aprovarOrc('${o.id}')">Aprovar</button>`:""}${o.status==="enviado"?`<button class="warning" onclick="aprovarOrc('${o.id}')">Aprovar</button>`:""}${o.status==="aprovado"?`<button onclick="openApprovedCost(\'${o.id}\')">+ Registrar custo</button><button class="success" onclick="pagarOrc(\'${o.id}\')">Marcar pago</button>`:""}${o.status==="pago"?`<button class="warning" onclick="recalcularPago('${o.id}')">Recalcular</button>`:`<button class="danger" onclick="delOrc('${o.id}')">Excluir</button>`}</div>
     </div></details>`;
   }).join(""):`<p class="meta">Nenhum orçamento.</p>`;
 }
