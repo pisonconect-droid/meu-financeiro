@@ -10,29 +10,54 @@
 <body>
 <section id="auth" class="auth"><div class="card auth-card"><h1>Meu Financeiro</h1><p>Acesse seus dados no computador e no celular.</p><div class="tabs"><button id="tabLogin" class="active" type="button">Entrar</button><button id="tabSignup" type="button">Criar conta</button></div><form id="authForm"><label id="nomeWrap" class="hidden">Nome<input id="nome"></label><label>E-mail<input id="email" type="email" required></label><label>Senha<input id="senha" type="password" minlength="6" required></label><button id="authSubmit" class="primary">Entrar</button><p id="authMsg" class="msg"></p></form></div></section>
 <div id="app" class="hidden">
-<header><button id="homeBtn" class="ghost hidden" type="button">← Início</button><div><h1>Meu Financeiro</h1><small id="subtitle">Escolha uma área</small></div><div class="user"><button id="privacyBtn" class="ghost privacy-btn" type="button" title="Ocultar/exibir valores">👁</button><span id="userEmail"></span><button id="logout" class="ghost" type="button">Sair</button></div></header>
+<header><button id="homeBtn" class="ghost hidden" type="button">← Início</button><div><h1>Meu Financeiro</h1><small id="subtitle">Escolha uma área</small></div><div class="user"><button id="privacyBtn" class="ghost privacy-btn" type="button" title="Ocultar/exibir valores">👁 Valores</button><span id="userEmail"></span><button id="logout" class="ghost" type="button">Sair</button></div></header>
 <main>
 <section id="home" class="view active"><div class="accounts">
 <button data-account="PF" class="account" type="button"><b>Pessoa Física</b><strong class="money-value" id="saldoPF">R$ 0,00</strong><small>Entradas, gastos e contas</small></button>
 <button data-account="CNPJ" class="account" type="button"><b>CNPJ</b><strong class="money-value" id="saldoCNPJ">R$ 0,00</strong><small>Financeiro e orçamentos</small></button>
-<button id="openCalendar" class="account" type="button"><b>Calendário</b><strong id="calendarToday">Hoje</strong><small>Vencimentos e movimentações</small></button>
+<button id="openBudgets" class="account account-budget" type="button"><b>Orçamentos</b><strong id="homeBudgetCount">0 ativos</strong><small>Criar, acompanhar e fechar serviços</small></button>
 </div></section>
 
 <section id="area" class="view">
 <div class="card saldo"><h2 id="accountName"></h2><small>Saldo atual</small><strong class="money-value" id="saldoAtual">R$ 0,00</strong><b id="statusSaldo">ZERADO</b></div>
-<div class="quick three"><button id="btnEntrada" class="primary" type="button">+ Entrada</button><button id="btnGasto" type="button">+ Gasto</button><button id="btnTransfer" type="button">Transferir</button></div>
+<div class="month-summary">
+  <div class="summary-card"><span id="summaryLabel1">Entradas do mês</span><strong class="money-value" id="summaryValue1">R$ 0,00</strong></div>
+  <div class="summary-card"><span id="summaryLabel2">Gastos do mês</span><strong class="money-value" id="summaryValue2">R$ 0,00</strong></div>
+  <div class="summary-card"><span id="summaryLabel3">Resultado do mês</span><strong class="money-value" id="summaryValue3">R$ 0,00</strong></div>
+</div>
+<div class="quick four"><button id="btnEntrada" class="primary" type="button">+ Entrada</button><button id="btnGasto" type="button">+ Gasto</button><button id="btnTransfer" type="button">Transferir</button><button id="btnCalendar" type="button">Calendário</button></div>
 
-<details class="card accordion" open><summary><span>Dia a dia</span><small>Entradas e gastos rápidos</small></summary><div class="accordion-body"><div id="movList"></div></div></details>
+<details class="card accordion acc-daily" open><summary><span>Dia a dia</span><small>Entradas e gastos rápidos</small></summary><div class="accordion-body"><div id="movList"></div></div></details>
 
-<details class="card accordion" open><summary><span>Contas</span><small>Água, luz, internet, empréstimos e outras</small></summary><div class="accordion-body"><div class="section-action"><button id="btnConta" class="primary small" type="button">+ Adicionar conta</button></div><div class="cols">
+<details class="card accordion acc-bills" open><summary><span>Contas</span><small>Água, luz, internet, empréstimos e outras</small></summary><div class="accordion-body"><div class="section-action"><button id="btnConta" class="primary small" type="button">+ Adicionar conta</button></div><div class="cols">
 <details class="bill-group overdue" open><summary>Atrasadas <span class="money-value" id="tAtrasadas">R$ 0,00</span></summary><div id="atrasadas"></div></details>
 <details class="bill-group pending" open><summary>A pagar <span class="money-value" id="tPagar">R$ 0,00</span></summary><div id="pagar"></div></details>
 <details class="bill-group paid"><summary>Pagas <span class="money-value" id="tPagas">R$ 0,00</span></summary><div id="pagas"></div></details>
 </div></div></details>
 
-<details class="card accordion" open><summary><span>Contas fixas</span><small>Aluguel, água, luz, internet e outras</small></summary><div class="accordion-body"><div class="section-action gap"><button id="generateFixedBtn" class="small" type="button">Gerar mês atual</button><button id="addFixedBtn" class="primary small" type="button">+ Conta fixa</button></div><div id="fixedList"></div></div></details>
+<details class="card accordion acc-fixed" open><summary><span>Contas fixas</span><small>Aluguel, água, luz, internet e outras</small></summary><div class="accordion-body"><div class="section-action gap"><button id="generateFixedBtn" class="small" type="button">Gerar mês atual</button><button id="addFixedBtn" class="primary small" type="button">+ Conta fixa</button></div><div id="fixedList"></div></div></details>
 
-<details id="orcWrap" class="card accordion hidden" open><summary><span>Orçamentos</span><small>Cliente vê valor comercial; custos ficam internos</small></summary><div class="accordion-body"><div class="section-action"><button id="btnOrc" class="primary small" type="button">+ Criar orçamento</button></div>
+
+<details id="orcSummaryWrap" class="card accordion acc-budget hidden" open>
+  <summary><span>Orçamentos</span><small>Resumo vinculado ao CNPJ</small></summary>
+  <div class="accordion-body">
+    <div id="orcSummary"></div>
+    <div class="section-action"><button id="openBudgetsFromCNPJ" class="primary small" type="button">Abrir Orçamentos</button></div>
+  </div>
+</details>
+
+</section>
+
+
+<section id="budgetView" class="view">
+  <div class="budget-hero card">
+    <div><small>Módulo CNPJ</small><h2>Orçamentos</h2><p>Valor comercial para o cliente, custos e resultado somente para você.</p></div>
+    <div class="budget-kpis">
+      <span>Em aberto <strong id="budgetOpenCount">0</strong></span>
+      <span>Pagos no mês <strong id="budgetPaidMonth">0</strong></span>
+    </div>
+  </div>
+  <details id="orcWrap" class="card accordion acc-budget" open><summary><span>Gestão de Orçamentos</span><small>Vinculado ao financeiro CNPJ</small></summary><div class="accordion-body"><div class="section-action"><button id="btnOrc" class="primary small" type="button">+ Criar orçamento</button></div>
 <div id="orcFormWrap" class="hidden"><form id="orcForm"><div class="form-grid">
 <label>Prestador<input id="orcPrestador" placeholder="Seu nome"></label><label>Cliente<input id="orcCliente" required></label>
 <label>WhatsApp<input id="orcWhatsapp" inputmode="tel"></label><label>Equipamento / Modelo<input id="orcEquipamento" placeholder="Ex.: cilindro, máquina, modelo"></label>
