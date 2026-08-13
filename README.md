@@ -15,6 +15,11 @@ Pacote congelado de correções e melhorias.
 - Orçamentos em página própria, vinculada financeiramente ao CNPJ.
 - CNPJ mantém um resumo dos orçamentos.
 
+## Edição de orçamento
+- Rascunho e Enviado podem ser editados antes da aprovação.
+- Editar reabre cliente, equipamento, descrição, itens e custos internos.
+- Aprovado/Pago permanecem bloqueados para preservar o histórico financeiro.
+
 ## Experiência
 - Visual premium e acordeões destacados.
 - Olhinho de privacidade.
