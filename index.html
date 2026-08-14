@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111827">
 <title>Meu Financeiro</title>
-<link rel="stylesheet" href="styles.css?v=7.2.4">
+<link rel="stylesheet" href="styles.css?v=7.2.5">
 </head>
 <body>
 <section id="auth" class="auth"><div class="card auth-card"><h1>Meu Financeiro</h1><p>Acesse seus dados no computador e no celular.</p><div class="tabs"><button id="tabLogin" class="active" type="button">Entrar</button><button id="tabSignup" type="button">Criar conta</button></div><form id="authForm"><label id="nomeWrap" class="hidden">Nome<input id="nome"></label><label>E-mail<input id="email" type="email" required></label><label>Senha<input id="senha" type="password" minlength="6" required></label><button id="authSubmit" class="primary">Entrar</button><p id="authMsg" class="msg"></p></form></div></section>
@@ -106,7 +106,29 @@
 <div id="orcFormWrap" class="hidden"><form id="orcForm"><div class="form-grid">
 <label>Prestador<input id="orcPrestador" placeholder="Seu nome"></label><label>Cliente<input id="orcCliente" required></label>
 <label>WhatsApp<input id="orcWhatsapp" inputmode="tel"></label><label>Equipamento / Modelo<input id="orcEquipamento" placeholder="Ex.: cilindro, máquina, modelo"></label>
-<label>Data<input id="orcData" type="date" required></label><label>Descrição<textarea id="orcDesc"></textarea></label>
+<label>Data<input id="orcData" type="date" required></label>
+<label>Forma de pagamento
+<select id="orcFormaPagamento">
+  <option value="PIX">PIX</option>
+  <option value="Dinheiro">Dinheiro</option>
+  <option value="Transferência">Transferência</option>
+  <option value="Cartão">Cartão</option>
+  <option value="Boleto">Boleto</option>
+  <option value="Outro">Outro</option>
+</select>
+</label>
+<label>Condição de pagamento
+<select id="orcCondicaoPagamento">
+  <option value="À vista">À vista</option>
+  <option value="Na aprovação">Na aprovação</option>
+  <option value="Na conclusão do serviço">Na conclusão do serviço</option>
+  <option value="Entrada + saldo na conclusão">Entrada + saldo na conclusão</option>
+  <option value="Parcelado">Parcelado</option>
+  <option value="Personalizado">Personalizado</option>
+</select>
+</label>
+<label id="orcCondicaoDetalheWrap" class="hidden">Detalhes da condição<input id="orcCondicaoDetalhe" placeholder="Ex.: 50% na aprovação e 50% na conclusão"></label>
+<label>Descrição<textarea id="orcDesc"></textarea></label>
 </div>
 <div class="head item-head"><div><h3>Itens comerciais</h3><small>Valor cobrado aparece para o cliente. Custo real fica interno.</small></div><button type="button" id="addItem" class="small">+ Item</button></div>
 <div id="orcItens"></div>
@@ -131,6 +153,26 @@
 
 <div id="modal" class="modal hidden"><div class="card modal-card"><div class="head"><h2 id="modalTitle"></h2><button id="closeModal" type="button">×</button></div><form id="modalForm"><input id="editId" type="hidden"><input id="mode" type="hidden"><label>Descrição<input id="descricao" required></label><label>Valor (R$)<input id="valor" type="number" step="0.01" min="0" required></label>
 <label id="categoryWrap">Categoria<select id="categoria"></select></label><label id="dateLabel">Data<input id="data" type="date" required></label><button class="primary">Salvar</button></form></div></div>
+
+<div id="paymentModal" class="modal hidden"><div class="card modal-card">
+<div class="head"><h2>Concluir / Marcar pago</h2><button id="closePaymentModal" type="button">×</button></div>
+<form id="paymentForm">
+  <input id="paymentOrcId" type="hidden">
+  <label>Data de conclusão / entrega<input id="paymentConclusionDate" type="date" required></label>
+  <label>Data do pagamento<input id="paymentDate" type="date" required></label>
+  <label>Forma de pagamento efetiva
+    <select id="paymentMethod">
+      <option value="PIX">PIX</option>
+      <option value="Dinheiro">Dinheiro</option>
+      <option value="Transferência">Transferência</option>
+      <option value="Cartão">Cartão</option>
+      <option value="Boleto">Boleto</option>
+      <option value="Outro">Outro</option>
+    </select>
+  </label>
+  <button class="primary">Confirmar pagamento e conclusão</button>
+</form>
+</div></div>
 
 <div id="categoriesModal" class="modal hidden"><div class="card modal-card">
 <div class="head"><h2 id="categoriesTitle">Categorias</h2><button id="closeCategories" type="button">×</button></div>
@@ -165,5 +207,5 @@
 <input class="cVal" type="number" step="0.01" min="0" placeholder="Valor" required>
 <button class="danger remove-cost" type="button">×</button></div></template>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script><script src="config.js"></script><script src="app.js?v=7.2.4"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script><script src="config.js"></script><script src="app.js?v=7.2.5"></script>
 </body></html>

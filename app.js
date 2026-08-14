@@ -505,6 +505,10 @@ function renderFixas(){
   $("fixedList").innerHTML=a.length?a.map(x=>`<div class="fixed-item"><div><b>${esc(x.descricao)}</b><div class="meta">${accountName(x.conta)} · vence dia ${x.dia_vencimento}</div></div><div><b class="money-inline">${brl(x.valor)}</b><div class="actions"><button onclick="editFixed('${x.id}')">Editar</button><button class="danger" onclick="delFixed('${x.id}')">Excluir</button></div></div></div>`).join(""):`<p class="meta">Nenhuma conta fixa cadastrada.</p>`;
 }
 
+
+$("orcCondicaoPagamento").onchange=()=>{
+  $("orcCondicaoDetalheWrap").classList.toggle("hidden",$("orcCondicaoPagamento").value!=="Personalizado");
+};
 // ORÇAMENTOS
 $("btnOrc").onclick=()=>{
   resetOrc(false);
@@ -512,6 +516,10 @@ $("btnOrc").onclick=()=>{
   $("saveOrcBtn").textContent="Salvar orçamento";
   $("existingPhotos").innerHTML="";
   $("orcData").value=hoje();
+  $("orcFormaPagamento").value="PIX";
+  $("orcCondicaoPagamento").value="À vista";
+  $("orcCondicaoDetalhe").value="";
+  $("orcCondicaoDetalheWrap").classList.add("hidden");
   $("orcPrestador").value=state.profile?.prestador_nome||state.profile?.nome||"";
   addOrcItem();
   $("orcFormWrap").scrollIntoView({behavior:"smooth",block:"start"});
@@ -591,6 +599,10 @@ function editOrc(id){
   $("orcWhatsapp").value=o.whatsapp||"";
   $("orcEquipamento").value=o.equipamento_modelo||"";
   $("orcData").value=o.data||hoje();
+  $("orcFormaPagamento").value=o.forma_pagamento||"PIX";
+  $("orcCondicaoPagamento").value=o.condicao_pagamento||"À vista";
+  $("orcCondicaoDetalhe").value=o.condicao_pagamento_detalhe||"";
+  $("orcCondicaoDetalheWrap").classList.toggle("hidden",$("orcCondicaoPagamento").value!=="Personalizado");
   $("orcDesc").value=o.descricao||"";
   const its=state.orcItens.filter(x=>x.orcamento_id===id);
   const custos=state.orcCustos.filter(x=>x.orcamento_id===id);
@@ -702,6 +714,9 @@ $("orcForm").onsubmit=async e=>{
     equipamento_modelo:$("orcEquipamento").value.trim(),
     data:$("orcData").value,
     descricao:$("orcDesc").value,
+    forma_pagamento:$("orcFormaPagamento").value,
+    condicao_pagamento:$("orcCondicaoPagamento").value,
+    condicao_pagamento_detalhe:$("orcCondicaoDetalhe").value.trim(),
     total:t.total,
     subtotal_pecas:t.pecas,
     subtotal_mao_obra:t.mo,
@@ -812,19 +827,41 @@ function garantiaInfo(o){
   const ativa=ate>=hoje();
   return {inicio:String(inicio).slice(0,10),ate,ativa,meses:Number(o.garantia_meses||3)};
 }
-async function pagarOrc(id){
-  const conclusao=prompt("Data de conclusão/entrega do serviço (AAAA-MM-DD):",hoje());
-  if(conclusao===null)return;
-  if(!/^\d{4}-\d{2}-\d{2}$/.test(conclusao))return alert("Informe a data no formato AAAA-MM-DD.");
-  if(!confirm("Confirmar pagamento e conclusão? A garantia de 3 meses começará na data de conclusão/entrega."))return;
-  const {error}=await sb.rpc("marcar_orcamento_pago",{p_orcamento_id:id,p_data:hoje()});
-  if(error)return alert("Pagamento: "+error.message);
-  const garantiaAte=addMonthsISO(conclusao,3);
-  const up=await sb.from("orcamentos").update({concluido_em:conclusao,garantia_meses:3,garantia_ate:garantiaAte}).eq("id",id).eq("user_id",uid());
-  if(up.error)return alert("Pagamento registrado, mas houve erro ao registrar a garantia: "+up.error.message);
-  alert(`Serviço concluído. Garantia de 3 meses válida até ${dataBR(garantiaAte)}.`);
-  loadAll();
+function pagarOrc(id){
+  const o=state.orc.find(x=>x.id===id);if(!o)return;
+  $("paymentOrcId").value=id;
+  $("paymentConclusionDate").value=hoje();
+  $("paymentDate").value=hoje();
+  $("paymentMethod").value=o.forma_pagamento||"PIX";
+  $("paymentModal").classList.remove("hidden");
 }
+$("closePaymentModal").onclick=()=>$("paymentModal").classList.add("hidden");
+$("paymentForm").onsubmit=async e=>{
+  e.preventDefault();
+  const id=$("paymentOrcId").value;
+  const conclusao=$("paymentConclusionDate").value;
+  const pagamento=$("paymentDate").value;
+  const forma=$("paymentMethod").value;
+  if(!id||!conclusao||!pagamento)return;
+  if(!confirm("Confirmar pagamento e conclusão? A garantia de 3 meses começará na data de conclusão/entrega."))return;
+
+  const {error}=await sb.rpc("marcar_orcamento_pago",{p_orcamento_id:id,p_data:pagamento});
+  if(error)return alert("Pagamento: "+error.message);
+
+  const garantiaAte=addMonthsISO(conclusao,3);
+  const up=await sb.from("orcamentos").update({
+    concluido_em:conclusao,
+    garantia_meses:3,
+    garantia_ate:garantiaAte,
+    forma_pagamento_efetiva:forma
+  }).eq("id",id).eq("user_id",uid());
+
+  if(up.error)return alert("Pagamento registrado, mas houve erro ao registrar os dados finais: "+up.error.message);
+
+  $("paymentModal").classList.add("hidden");
+  alert(`Serviço concluído. Garantia de 3 meses válida até ${dataBR(garantiaAte)}.`);
+  await loadAll();
+};
 async function delOrc(id){
   const o=state.orc.find(x=>x.id===id);
   if(!o)return;
@@ -898,6 +935,15 @@ async function gerarPdfCliente(id,btn=null,modo="salvar"){
     doc.setFillColor(245,245,245);doc.roundedRect(margin,y-5,contentW,14,2,2,"F");
     doc.setFont("helvetica","bold");doc.setFontSize(13);
     doc.text(`TOTAL: ${brl(o.total)}`,pageW-margin,y+4,{align:"right"});y+=16;
+
+    ensure(22);
+    line(`Forma de pagamento: ${o.forma_pagamento||"Não informada"}`,9,true);
+    const condicao=o.condicao_pagamento||"Não informada";
+    const detalhe=o.condicao_pagamento_detalhe?` — ${o.condicao_pagamento_detalhe}`:"";
+    line(`Condição de pagamento: ${condicao}${detalhe}`,9);
+    if(o.status==="pago"&&o.forma_pagamento_efetiva){
+      line(`Forma de pagamento realizada: ${o.forma_pagamento_efetiva}`,9);
+    }
 
     const drawPhotoGrid=async(grupo,label)=>{
       const gf=fotos.filter(f=>(f.tipo||"antes")===grupo);
@@ -1011,6 +1057,7 @@ function budgetCard(o){
   const isDraft=["rascunho","orcamento"].includes(o.status);
   return `<details class="item budget-record"><summary><div><b>Orçamento ${o.numero} · ${esc(o.cliente)}</b><div class="meta">${dataBR(o.data)}${o.equipamento_modelo?` · ${esc(o.equipamento_modelo)}`:""}</div><span class="status-pill ${o.status}">${({orcamento:"Rascunho",rascunho:"Rascunho",enviado:"Enviado",aprovado:"Aprovado",pago:"Pago"}[o.status]||o.status)}</span>${gi?`<span class="warranty-pill ${gi.ativa?"active":"ended"}">${gi.ativa?"Garantia ativa":"Garantia encerrada"} · ${dataBR(gi.ate)}</span>`:""}</div><b class="money-inline">${brl(o.total)}</b></summary><div class="budget-detail">
     <div class="meta"><b>Prestador:</b> ${esc(o.prestador||"-")}</div>
+    <div class="meta"><b>Pagamento:</b> ${esc(o.forma_pagamento||"Não informado")} · ${esc(o.condicao_pagamento||"Não informada")}${o.condicao_pagamento_detalhe?` · ${esc(o.condicao_pagamento_detalhe)}`:""}${o.forma_pagamento_efetiva?` · recebido via ${esc(o.forma_pagamento_efetiva)}`:""}</div>
     <div class="budget-split"><span>Total cobrado <b class="money-inline">${brl(o.total)}</b></span><span>Gastos <b class="money-inline">${brl(custoItens+custoServico)}</b></span><span>Resultado ${o.status==="pago"?"real":"previsto"} <b class="money-inline">${brl(o.status==="pago"?o.resultado:resultado)}</b></span></div>
     <div class="photo-counts"><span>Antes (${antes})</span><span>Depois (${depois})</span></div>
     ${its.map(i=>`<div class="meta">${i.tipo==="peca"?"Item":"M.O."}: ${esc(i.descricao)} · ${i.quantidade} × ${moneySpan(i.valor_unitario)}${Number(i.custo_unitario||0)>0?` · custo ${moneySpan(Number(i.custo_unitario)*Number(i.quantidade))}`:""}</div>`).join("")}
@@ -1021,11 +1068,20 @@ function budgetCard(o){
 }
 function renderOrc(){
   const groups=[
-    {title:"Rascunhos",items:state.orc.filter(o=>["rascunho","orcamento","enviado"].includes(o.status))},
-    {title:"Aprovados / Em andamento",items:state.orc.filter(o=>o.status==="aprovado")},
-    {title:"Pagos",items:state.orc.filter(o=>o.status==="pago")}
+    {key:"draft",title:"Rascunhos",open:false,items:state.orc.filter(o=>["rascunho","orcamento","enviado"].includes(o.status))},
+    {key:"approved",title:"Aprovados / Em andamento",open:true,items:state.orc.filter(o=>o.status==="aprovado")},
+    {key:"paid",title:"Pagos",open:false,items:state.orc.filter(o=>o.status==="pago")}
   ];
-  $("orcList").innerHTML=`<div class="budget-board">${groups.map(g=>`<section class="budget-column"><div class="budget-column-head"><h3>${g.title}</h3><span>${g.items.length}</span></div>${g.items.length?g.items.map(budgetCard).join(""):`<p class="meta empty-column">Nenhum orçamento.</p>`}</section>`).join("")}</div>`;
+  $("orcList").innerHTML=`<div class="budget-accordions">${groups.map(g=>`
+    <details class="budget-group" ${g.open?"open":""}>
+      <summary class="budget-group-summary">
+        <span>${g.title}</span>
+        <span class="budget-group-count">${g.items.length}</span>
+      </summary>
+      <div class="budget-group-body">
+        ${g.items.length?g.items.map(budgetCard).join(""):`<p class="meta empty-column">Nenhum orçamento.</p>`}
+      </div>
+    </details>`).join("")}</div>`;
 }
 
 function renderBudgetSummary(){

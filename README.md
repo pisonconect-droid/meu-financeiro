@@ -1,19 +1,25 @@
-# Meu Financeiro V7.2.4 — Última MEP do dia
+# Meu Financeiro V7.2.5 — Pagamento + Acordeões
 
-- Orçamentos organizados em três grupos: Rascunhos, Aprovados/Em andamento e Pagos.
-- Somente Rascunhos podem ser excluídos.
-- Pagos permanecem como histórico.
-- Fotos mostram contagem Antes / Depois.
-- Conclusão do serviço registra data e inicia garantia padrão de 3 meses.
-- Pagos mostram garantia ativa/encerrada e data final.
-- PDF inclui a garantia e mantém o rodapé aprovado.
-- Compartilhamento do PDF preservado.
-- Mobile empilha as três colunas verticalmente.
+## Novidades
+- Forma de pagamento no orçamento.
+- Condição de pagamento no orçamento.
+- Campo personalizado quando necessário.
+- PDF mostra forma e condição combinadas.
+- Ao concluir/marcar pago, registra a forma efetivamente utilizada.
+- Garantia de 3 meses continua iniciando na data de conclusão/entrega.
+- Grupos de orçamento viraram acordeões:
+  - Rascunhos: fechado por padrão.
+  - Aprovados / Em andamento: aberto por padrão.
+  - Pagos: fechado por padrão.
+- Fotos, PDF compacto, compartilhar e mobile preservados.
 
 ## Supabase
-Execute `supabase_v7_2_4_garantia.sql` uma vez.
+Execute `supabase_v7_2_5_pagamento.sql` uma vez.
 
 ## GitHub
-Depois substitua: index.html, app.js, styles.css, config.js e README.md.
-
-Observação: o Orçamento 1 duplicado dos testes antigos deve ser tratado separadamente como limpeza excepcional; esta versão não apaga automaticamente históricos pagos.
+Depois substitua:
+- index.html
+- app.js
+- styles.css
+- config.js
+- README.md
