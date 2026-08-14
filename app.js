@@ -133,7 +133,8 @@ function goHome(save=true){
   if(save)saveNav("home",null);render();renderBudgetSummary();
 }
 function openArea(a,save=true){
-  current=a;movCategoryFilter="TODOS";calendarReturnAccount=null;setView("area");
+  current=a;movCategoryFilter="TODOS";
+  if(a==="ORC"&&$("orcFormWrap"))$("orcFormWrap").classList.add("hidden");calendarReturnAccount=null;setView("area");
   $("homeBtn").classList.remove("hidden");
   $("accountName").textContent=accountName(a);
   $("subtitle").textContent=accountName(a);
@@ -817,7 +818,7 @@ async function imageUrlToData(url){
   });
 }
 function pdfSafe(v){return String(v??"").replace(/[^\x20-\x7EÀ-ÿ]/g," ")}
-async function gerarPdfCliente(id,btn=null){
+async function gerarPdfCliente(id,btn=null,modo="salvar"){
   const o=state.orc.find(x=>x.id===id);if(!o)return;
   const its=state.orcItens.filter(x=>x.orcamento_id===id);
   const fotos=state.orcFotos.filter(x=>x.orcamento_id===id);
@@ -921,13 +922,16 @@ async function gerarPdfCliente(id,btn=null){
 
     ensure(20);y+=4;
     doc.setDrawColor(190);doc.line(margin,y,pageW-margin,y);y+=6;
-    line("Documento comercial. Custos internos e resultado financeiro não fazem parte deste documento.",8);
+    line("Documento referente ao orçamento e ao registro dos serviços descritos acima.",8);
 
     addPageNumber();
 
     const filename=`orcamento-${o.numero}-${(o.cliente||"cliente").replace(/[^a-zA-Z0-9À-ÿ]+/g,"-")}.pdf`;
+    if(modo==="blob"){
+      if(btn){btn.disabled=false;btn.textContent=originalText;}
+      return {blob:doc.output("blob"),filename};
+    }
     doc.save(filename);
-
     if(btn){
       btn.textContent="PDF gerado";
       setTimeout(()=>{btn.disabled=false;btn.textContent=originalText},1800);
@@ -938,6 +942,29 @@ async function gerarPdfCliente(id,btn=null){
     if(btn){btn.disabled=false;btn.textContent=originalText;}
   }
 }
+async function compartilharPdfCliente(id,btn=null){
+  const original=btn?.textContent||"Compartilhar";
+  if(btn){btn.disabled=true;btn.textContent="Preparando...";}
+  try{
+    const pack=await gerarPdfCliente(id,null,"blob");
+    if(!pack)throw new Error("Não foi possível preparar o PDF.");
+    const file=new File([pack.blob],pack.filename,{type:"application/pdf"});
+    if(navigator.share&&(!navigator.canShare||navigator.canShare({files:[file]}))){
+      await navigator.share({title:"Orçamento / Relatório de Serviço",text:"Segue o orçamento / relatório de serviço.",files:[file]});
+      if(btn){btn.textContent="Compartilhado";setTimeout(()=>{btn.disabled=false;btn.textContent=original},1500);}
+      return;
+    }
+    const url=URL.createObjectURL(pack.blob),a=document.createElement("a");
+    a.href=url;a.download=pack.filename;document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1500);
+    alert("O compartilhamento direto não está disponível neste navegador. O PDF foi baixado para você compartilhar.");
+  }catch(err){
+    if(err?.name!=="AbortError")alert("Não foi possível compartilhar: "+(err.message||err));
+  }finally{
+    if(btn&&btn.textContent!=="Compartilhado"){btn.disabled=false;btn.textContent=original;}
+  }
+}
+
 function renderOrc(){
   $("orcList").innerHTML=state.orc.length?state.orc.map(o=>{
     const its=state.orcItens.filter(x=>x.orcamento_id===o.id);
@@ -951,7 +978,7 @@ function renderOrc(){
       <div class="budget-split"><span>Total cobrado <b class="money-inline">${brl(o.total)}</b></span><span>Custo itens <b class="money-inline">${brl(custoItens)}</b></span><span>Custos serviço <b class="money-inline">${brl(custoServico)}</b></span><span>Resultado ${o.status==="pago"?"real":"previsto"} <b class="money-inline">${brl(o.status==="pago"?o.resultado:resultado)}</b></span></div>
       ${its.map(i=>`<div class="meta">${i.tipo==="peca"?"Item":"M.O."}: ${esc(i.descricao)} · ${i.quantidade} × ${moneySpan(i.valor_unitario)}${Number(i.custo_unitario||0)>0?` · custo ${moneySpan(Number(i.custo_unitario)*Number(i.quantidade))}`:""}</div>`).join("")}
       ${custos.length?`<div class="internal-box"><b>Custos internos</b>${custos.map(c=>`<div class="meta">${esc(c.descricao)} · ${esc(c.categoria||"Custos do serviço")} · ${moneySpan(c.valor)}</div>`).join("")}</div>`:""}${fotos.length?`<button type="button" class="small" onclick="openBudgetPhotos(\'${o.id}\')">📷 Fotos (${fotos.length})</button>`:""}
-      <div class="actions"><button onclick="gerarPdfCliente('${o.id}',this)">Gerar PDF</button>${["rascunho","orcamento","enviado","aprovado"].includes(o.status)?`<button onclick="editOrc('${o.id}')">Editar</button>`:""}${(o.status==="rascunho"||o.status==="orcamento")?`<button onclick="enviarOrc('${o.id}')">Marcar enviado</button><button class="warning" onclick="aprovarOrc('${o.id}')">Aprovar</button>`:""}${o.status==="enviado"?`<button class="warning" onclick="aprovarOrc('${o.id}')">Aprovar</button>`:""}${o.status==="aprovado"?`<button onclick="openApprovedCost(\'${o.id}\')">+ Registrar custo</button><button class="success" onclick="pagarOrc(\'${o.id}\')">Marcar pago</button>`:""}${o.status==="pago"?`<button class="warning" onclick="recalcularPago('${o.id}')">Recalcular</button>`:`<button class="danger" onclick="delOrc('${o.id}')">Excluir</button>`}</div>
+      <div class="actions"><button onclick="gerarPdfCliente('${o.id}',this)">Gerar PDF</button><button onclick="compartilharPdfCliente('${o.id}',this)">Compartilhar</button>${["rascunho","orcamento","enviado","aprovado"].includes(o.status)?`<button onclick="editOrc('${o.id}')">Editar</button>`:""}${(o.status==="rascunho"||o.status==="orcamento")?`<button onclick="enviarOrc('${o.id}')">Marcar enviado</button><button class="warning" onclick="aprovarOrc('${o.id}')">Aprovar</button>`:""}${o.status==="enviado"?`<button class="warning" onclick="aprovarOrc('${o.id}')">Aprovar</button>`:""}${o.status==="aprovado"?`<button onclick="openApprovedCost(\'${o.id}\')">+ Registrar custo</button><button class="success" onclick="pagarOrc(\'${o.id}\')">Marcar pago</button>`:""}${o.status==="pago"?`<button class="warning" onclick="recalcularPago('${o.id}')">Recalcular</button>`:`<button class="danger" onclick="delOrc('${o.id}')">Excluir</button>`}</div>
     </div></details>`;
   }).join(""):`<p class="meta">Nenhum orçamento.</p>`;
 }
@@ -1020,5 +1047,5 @@ document.querySelectorAll("[data-cal-action]").forEach(b=>b.onclick=()=>{
 });
 
 window.delMov=delMov;window.delConta=delConta;window.editMov=editMov;window.editConta=editConta;window.pagarConta=pagarConta;
-window.editCategory=editCategory;window.deleteCategory=deleteCategory;window.gerarPdfCliente=gerarPdfCliente;window.removePendingPhoto=removePendingPhoto;window.openBudgetPhotos=openBudgetPhotos;window.openApprovedCost=openApprovedCost;window.editFixed=editFixed;window.delFixed=delFixed;window.editOrc=editOrc;window.enviarOrc=enviarOrc;window.aprovarOrc=aprovarOrc;window.pagarOrc=pagarOrc;window.recalcularPago=recalcularPago;window.delOrc=delOrc;
+window.editCategory=editCategory;window.deleteCategory=deleteCategory;window.gerarPdfCliente=gerarPdfCliente;window.compartilharPdfCliente=compartilharPdfCliente;window.removePendingPhoto=removePendingPhoto;window.openBudgetPhotos=openBudgetPhotos;window.openApprovedCost=openApprovedCost;window.editFixed=editFixed;window.delFixed=delFixed;window.editOrc=editOrc;window.enviarOrc=enviarOrc;window.aprovarOrc=aprovarOrc;window.pagarOrc=pagarOrc;window.recalcularPago=recalcularPago;window.delOrc=delOrc;
 start();

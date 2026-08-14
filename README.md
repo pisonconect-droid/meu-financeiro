@@ -1,19 +1,12 @@
-# Meu Financeiro V7.2.2 — PDF Compacto e Feedback
+# Meu Financeiro V7.2.3 — Fechamento da MEP
 
-## Correções
-- Botão Salvar mostra “Salvando...” e confirmação visual de sucesso.
-- Botão Gerar PDF mostra “Gerando PDF...” e “PDF gerado”.
-- Fotos do PDF ficam em galeria compacta com 2 por linha.
-- Fotos Antes e Depois permanecem separadas.
-- Imagens preservam proporção e não são cortadas.
-- PDF ganha paginação.
-- Custos internos e resultado continuam fora do PDF.
+- Ao abrir Orçamentos, o formulário de edição permanece fechado.
+- Toque/clique no orçamento para visualizar os detalhes.
+- Editar abre o formulário somente por ação explícita.
+- Compartilhar PDF usa o menu nativo do celular quando suportado.
+- Se o navegador não permitir compartilhar o arquivo, o PDF é baixado.
+- Rodapé: “Documento referente ao orçamento e ao registro dos serviços descritos acima.”
+- PDF compacto Antes/Depois e paginação preservados.
 - Não requer alteração no Supabase.
 
-## Atualização
-Substitua no GitHub:
-- index.html
-- app.js
-- styles.css
-- config.js
-- README.md
+Substituir no GitHub: index.html, app.js, styles.css, config.js e README.md.
