@@ -519,6 +519,15 @@ $("cancelOrc").onclick=()=>resetOrc();
 $("addItem").onclick=()=>addOrcItem();
 $("addCostBtn").onclick=()=>addCost();
 
+
+function showBudgetFeedback(msg,type="ok"){
+  const el=$("orcSaveMsg");
+  if(!el)return;
+  el.textContent=msg;
+  el.className=`save-feedback ${type}`;
+  clearTimeout(showBudgetFeedback._t);
+  showBudgetFeedback._t=setTimeout(()=>el.classList.add("hidden"),2600);
+}
 function resetOrc(hide=true){
   editingOrcId=null;
   if($("saveOrcBtn"))$("saveOrcBtn").textContent="Salvar orçamento";
@@ -676,6 +685,9 @@ function calcOrc(){
 }
 $("orcForm").onsubmit=async e=>{
   e.preventDefault();
+  $("saveOrcBtn").disabled=true;
+  $("saveOrcBtn").textContent="Salvando...";
+  showBudgetFeedback("Salvando orçamento...","info");
   const its=orcItems(),custos=orcCosts(),t=calcOrc();
   let statusOriginal=null;
   if(!its.length)return alert("Adicione pelo menos um item.");
@@ -734,9 +746,12 @@ $("orcForm").onsubmit=async e=>{
   }
 
   const wasEditing=Boolean(editingOrcId);
-  resetOrc();
+  $("saveOrcBtn").disabled=false;
+  $("saveOrcBtn").textContent=wasEditing?"Salvar alterações":"Salvar orçamento";
+  showBudgetFeedback(wasEditing?"Orçamento atualizado com sucesso.":"Orçamento salvo com sucesso.","ok");
+  resetOrc(false);
   await loadAll();
-  if(wasEditing)alert("Orçamento atualizado com sucesso.");
+  $("orcFormWrap").classList.add("hidden");
 };
 async function enviarOrc(id){
   if(!confirm("Marcar este orçamento como enviado ao cliente?"))return;
@@ -802,75 +817,127 @@ async function imageUrlToData(url){
   });
 }
 function pdfSafe(v){return String(v??"").replace(/[^\x20-\x7EÀ-ÿ]/g," ")}
-async function gerarPdfCliente(id){
+async function gerarPdfCliente(id,btn=null){
   const o=state.orc.find(x=>x.id===id);if(!o)return;
   const its=state.orcItens.filter(x=>x.orcamento_id===id);
   const fotos=state.orcFotos.filter(x=>x.orcamento_id===id);
   const {jsPDF}=window.jspdf||{};
   if(!jsPDF)return alert("Gerador de PDF não carregou. Atualize a página e tente novamente.");
 
-  const doc=new jsPDF({unit:"mm",format:"a4"});
-  const pageW=210,margin=16,contentW=pageW-margin*2;
-  let y=18;
-  const line=(txt,size=10,bold=false)=>{
-    doc.setFont("helvetica",bold?"bold":"normal");doc.setFontSize(size);
-    const lines=doc.splitTextToSize(pdfSafe(txt),contentW);
-    doc.text(lines,margin,y);y+=lines.length*(size*0.42)+2;
-  };
-  const ensure=(needed=20)=>{if(y+needed>282){doc.addPage();y=18}};
+  const originalText=btn?.textContent||"Gerar PDF";
+  if(btn){btn.disabled=true;btn.textContent="Gerando PDF...";}
 
-  doc.setFont("helvetica","bold");doc.setFontSize(18);
-  doc.text("ORÇAMENTO / RELATÓRIO DE SERVIÇO",margin,y);y+=9;
-  doc.setDrawColor(180);doc.line(margin,y,pageW-margin,y);y+=7;
+  try{
+    const doc=new jsPDF({unit:"mm",format:"a4"});
+    const pageW=210,pageH=297,margin=16,contentW=pageW-margin*2;
+    let y=18;
 
-  line(`Prestador: ${o.prestador||state.profile?.prestador_nome||state.profile?.nome||"-"}`,10,true);
-  line(`Orçamento Nº ${o.numero}   Data: ${dataBR(o.data)}`);
-  line(`Cliente: ${o.cliente||"-"}`,11,true);
-  if(o.whatsapp)line(`WhatsApp: ${o.whatsapp}`);
-  if(o.equipamento_modelo)line(`Equipamento / Modelo: ${o.equipamento_modelo}`);
-  if(o.descricao){y+=2;line("Descrição do serviço",11,true);line(o.descricao);}
+    const addPageNumber=()=>{
+      const n=doc.getNumberOfPages();
+      for(let i=1;i<=n;i++){
+        doc.setPage(i);
+        doc.setFont("helvetica","normal");
+        doc.setFontSize(8);
+        doc.setTextColor(120);
+        doc.text(`Página ${i} de ${n}`,pageW-margin,pageH-8,{align:"right"});
+        doc.setTextColor(0);
+      }
+    };
+    const ensure=(needed=20)=>{if(y+needed>275){doc.addPage();y=18}};
+    const line=(txt,size=10,bold=false)=>{
+      doc.setFont("helvetica",bold?"bold":"normal");doc.setFontSize(size);
+      const lines=doc.splitTextToSize(pdfSafe(txt),contentW);
+      doc.text(lines,margin,y);y+=lines.length*(size*0.42)+2;
+    };
 
-  ensure(25);y+=3;line("ITENS COMERCIAIS",12,true);
-  its.forEach(i=>{
-    ensure(10);
-    const tipo=i.tipo==="mao_obra"?"M.O.":"Item";
-    line(`${tipo}: ${i.descricao} — ${i.quantidade} x ${brl(i.valor_unitario)} = ${brl(Number(i.quantidade)*Number(i.valor_unitario))}`,9);
-  });
-  ensure(18);y+=4;
-  doc.setFillColor(245,245,245);doc.roundedRect(margin,y-5,contentW,14,2,2,"F");
-  doc.setFont("helvetica","bold");doc.setFontSize(13);
-  doc.text(`TOTAL: ${brl(o.total)}`,pageW-margin,y+4,{align:"right"});y+=16;
+    doc.setFont("helvetica","bold");doc.setFontSize(18);
+    doc.text("ORÇAMENTO / RELATÓRIO DE SERVIÇO",margin,y);y+=9;
+    doc.setDrawColor(180);doc.line(margin,y,pageW-margin,y);y+=7;
 
-  if(fotos.length){
-    ensure(24);line("REGISTRO FOTOGRÁFICO",12,true);
-    for(const grupo of ["antes","depois"]){
+    line(`Prestador: ${o.prestador||state.profile?.prestador_nome||state.profile?.nome||"-"}`,10,true);
+    line(`Orçamento Nº ${o.numero}   Data: ${dataBR(o.data)}`);
+    line(`Cliente: ${o.cliente||"-"}`,11,true);
+    if(o.whatsapp)line(`WhatsApp: ${o.whatsapp}`);
+    if(o.equipamento_modelo)line(`Equipamento / Modelo: ${o.equipamento_modelo}`);
+    if(o.descricao){y+=2;line("Descrição do serviço",11,true);line(o.descricao);}
+
+    ensure(25);y+=3;line("ITENS COMERCIAIS",12,true);
+    its.forEach(i=>{
+      ensure(10);
+      const tipo=i.tipo==="mao_obra"?"M.O.":"Item";
+      line(`${tipo}: ${i.descricao} — ${i.quantidade} x ${brl(i.valor_unitario)} = ${brl(Number(i.quantidade)*Number(i.valor_unitario))}`,9);
+    });
+
+    ensure(18);y+=4;
+    doc.setFillColor(245,245,245);doc.roundedRect(margin,y-5,contentW,14,2,2,"F");
+    doc.setFont("helvetica","bold");doc.setFontSize(13);
+    doc.text(`TOTAL: ${brl(o.total)}`,pageW-margin,y+4,{align:"right"});y+=16;
+
+    const drawPhotoGrid=async(grupo,label)=>{
       const gf=fotos.filter(f=>(f.tipo||"antes")===grupo);
-      if(!gf.length)continue;
-      ensure(18);line(grupo==="antes"?"ANTES":"DEPOIS",11,true);
+      if(!gf.length)return;
+
+      ensure(15);
+      line(label,11,true);
+
+      const gap=5;
+      const cellW=(contentW-gap)/2;
+      const cellH=52;
+      let col=0;
+
       for(const f of gf){
+        if(col===0)ensure(cellH+8);
+
         const url=await signedPhotoUrl(f.storage_path);if(!url)continue;
         try{
           const data=await imageUrlToData(url);
-          ensure(72);
           const props=doc.getImageProperties(data);
-          const maxW=contentW,maxH=65;
-          const scale=Math.min(maxW/props.width,maxH/props.height);
+          const scale=Math.min(cellW/props.width,cellH/props.height);
           const w=props.width*scale,h=props.height*scale;
-          doc.addImage(data,props.fileType||"JPEG",margin,y,w,h);
-          y+=h+5;
+          const x=margin+col*(cellW+gap)+(cellW-w)/2;
+          const yy=y+(cellH-h)/2;
+
+          doc.setDrawColor(220);
+          doc.roundedRect(margin+col*(cellW+gap),y,cellW,cellH,1.5,1.5);
+          doc.addImage(data,props.fileType||"JPEG",x,yy,w,h);
+
+          col++;
+          if(col===2){
+            col=0;
+            y+=cellH+6;
+          }
         }catch(e){console.warn("Foto PDF",e)}
       }
+      if(col!==0)y+=cellH+6;
+      y+=2;
+    };
+
+    if(fotos.length){
+      ensure(20);
+      line("REGISTRO FOTOGRÁFICO",12,true);
+      await drawPhotoGrid("antes","ANTES");
+      await drawPhotoGrid("depois","DEPOIS");
     }
+
+    ensure(20);y+=4;
+    doc.setDrawColor(190);doc.line(margin,y,pageW-margin,y);y+=6;
+    line("Documento comercial. Custos internos e resultado financeiro não fazem parte deste documento.",8);
+
+    addPageNumber();
+
+    const filename=`orcamento-${o.numero}-${(o.cliente||"cliente").replace(/[^a-zA-Z0-9À-ÿ]+/g,"-")}.pdf`;
+    doc.save(filename);
+
+    if(btn){
+      btn.textContent="PDF gerado";
+      setTimeout(()=>{btn.disabled=false;btn.textContent=originalText},1800);
+    }
+  }catch(err){
+    console.error(err);
+    alert("Erro ao gerar PDF: "+(err.message||err));
+    if(btn){btn.disabled=false;btn.textContent=originalText;}
   }
-
-  ensure(20);y+=4;
-  doc.setDrawColor(190);doc.line(margin,y,pageW-margin,y);y+=6;
-  line("Documento comercial. Custos internos e resultado financeiro não fazem parte deste documento.",8);
-
-  const filename=`orcamento-${o.numero}-${(o.cliente||"cliente").replace(/[^a-zA-Z0-9À-ÿ]+/g,"-")}.pdf`;
-  doc.save(filename);
 }
-
 function renderOrc(){
   $("orcList").innerHTML=state.orc.length?state.orc.map(o=>{
     const its=state.orcItens.filter(x=>x.orcamento_id===o.id);
@@ -884,7 +951,7 @@ function renderOrc(){
       <div class="budget-split"><span>Total cobrado <b class="money-inline">${brl(o.total)}</b></span><span>Custo itens <b class="money-inline">${brl(custoItens)}</b></span><span>Custos serviço <b class="money-inline">${brl(custoServico)}</b></span><span>Resultado ${o.status==="pago"?"real":"previsto"} <b class="money-inline">${brl(o.status==="pago"?o.resultado:resultado)}</b></span></div>
       ${its.map(i=>`<div class="meta">${i.tipo==="peca"?"Item":"M.O."}: ${esc(i.descricao)} · ${i.quantidade} × ${moneySpan(i.valor_unitario)}${Number(i.custo_unitario||0)>0?` · custo ${moneySpan(Number(i.custo_unitario)*Number(i.quantidade))}`:""}</div>`).join("")}
       ${custos.length?`<div class="internal-box"><b>Custos internos</b>${custos.map(c=>`<div class="meta">${esc(c.descricao)} · ${esc(c.categoria||"Custos do serviço")} · ${moneySpan(c.valor)}</div>`).join("")}</div>`:""}${fotos.length?`<button type="button" class="small" onclick="openBudgetPhotos(\'${o.id}\')">📷 Fotos (${fotos.length})</button>`:""}
-      <div class="actions"><button onclick="gerarPdfCliente('${o.id}')">Gerar PDF</button>${["rascunho","orcamento","enviado","aprovado"].includes(o.status)?`<button onclick="editOrc('${o.id}')">Editar</button>`:""}${(o.status==="rascunho"||o.status==="orcamento")?`<button onclick="enviarOrc('${o.id}')">Marcar enviado</button><button class="warning" onclick="aprovarOrc('${o.id}')">Aprovar</button>`:""}${o.status==="enviado"?`<button class="warning" onclick="aprovarOrc('${o.id}')">Aprovar</button>`:""}${o.status==="aprovado"?`<button onclick="openApprovedCost(\'${o.id}\')">+ Registrar custo</button><button class="success" onclick="pagarOrc(\'${o.id}\')">Marcar pago</button>`:""}${o.status==="pago"?`<button class="warning" onclick="recalcularPago('${o.id}')">Recalcular</button>`:`<button class="danger" onclick="delOrc('${o.id}')">Excluir</button>`}</div>
+      <div class="actions"><button onclick="gerarPdfCliente('${o.id}',this)">Gerar PDF</button>${["rascunho","orcamento","enviado","aprovado"].includes(o.status)?`<button onclick="editOrc('${o.id}')">Editar</button>`:""}${(o.status==="rascunho"||o.status==="orcamento")?`<button onclick="enviarOrc('${o.id}')">Marcar enviado</button><button class="warning" onclick="aprovarOrc('${o.id}')">Aprovar</button>`:""}${o.status==="enviado"?`<button class="warning" onclick="aprovarOrc('${o.id}')">Aprovar</button>`:""}${o.status==="aprovado"?`<button onclick="openApprovedCost(\'${o.id}\')">+ Registrar custo</button><button class="success" onclick="pagarOrc(\'${o.id}\')">Marcar pago</button>`:""}${o.status==="pago"?`<button class="warning" onclick="recalcularPago('${o.id}')">Recalcular</button>`:`<button class="danger" onclick="delOrc('${o.id}')">Excluir</button>`}</div>
     </div></details>`;
   }).join(""):`<p class="meta">Nenhum orçamento.</p>`;
 }
