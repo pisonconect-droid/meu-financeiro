@@ -796,16 +796,41 @@ async function recalcularPago(id){
   alert("Orçamento corrigido. Resultado líquido: "+brl(data));
   await loadAll();
 }
+
+function addMonthsISO(dateStr,months){
+  const [y,m,d]=String(dateStr).split("-").map(Number);
+  const base=new Date(y,m-1,d);
+  const targetMonth=base.getMonth()+Number(months||3);
+  base.setMonth(targetMonth);
+  if(base.getMonth()!==((targetMonth%12)+12)%12)base.setDate(0);
+  return iso(base);
+}
+function garantiaInfo(o){
+  const inicio=o.concluido_em||o.pago_em||null;
+  const ate=o.garantia_ate||(inicio?addMonthsISO(String(inicio).slice(0,10),Number(o.garantia_meses||3)):null);
+  if(!ate)return null;
+  const ativa=ate>=hoje();
+  return {inicio:String(inicio).slice(0,10),ate,ativa,meses:Number(o.garantia_meses||3)};
+}
 async function pagarOrc(id){
-  if(!confirm("Confirmar pagamento? Será registrada somente a receita recebida; os custos já foram lançados durante o serviço."))return;
+  const conclusao=prompt("Data de conclusão/entrega do serviço (AAAA-MM-DD):",hoje());
+  if(conclusao===null)return;
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(conclusao))return alert("Informe a data no formato AAAA-MM-DD.");
+  if(!confirm("Confirmar pagamento e conclusão? A garantia de 3 meses começará na data de conclusão/entrega."))return;
   const {error}=await sb.rpc("marcar_orcamento_pago",{p_orcamento_id:id,p_data:hoje()});
-  if(error)alert("Pagamento: "+error.message);else loadAll();
+  if(error)return alert("Pagamento: "+error.message);
+  const garantiaAte=addMonthsISO(conclusao,3);
+  const up=await sb.from("orcamentos").update({concluido_em:conclusao,garantia_meses:3,garantia_ate:garantiaAte}).eq("id",id).eq("user_id",uid());
+  if(up.error)return alert("Pagamento registrado, mas houve erro ao registrar a garantia: "+up.error.message);
+  alert(`Serviço concluído. Garantia de 3 meses válida até ${dataBR(garantiaAte)}.`);
+  loadAll();
 }
 async function delOrc(id){
   const o=state.orc.find(x=>x.id===id);
-  if(o?.status==="pago")return alert("Orçamento pago não pode ser excluído.");
-  if(confirm("Excluir orçamento?")){
-    const {error}=await sb.from("orcamentos").delete().eq("id",id);
+  if(!o)return;
+  if(!["rascunho","orcamento"].includes(o.status))return alert("Somente orçamentos em rascunho podem ser excluídos.");
+  if(confirm("Excluir este rascunho?")){
+    const {error}=await sb.from("orcamentos").delete().eq("id",id).eq("user_id",uid());
     if(error)alert(error.message);else loadAll();
   }
 }
@@ -920,6 +945,14 @@ async function gerarPdfCliente(id,btn=null,modo="salvar"){
       await drawPhotoGrid("depois","DEPOIS");
     }
 
+    const gi=garantiaInfo(o);
+    if(gi){
+      ensure(18);y+=3;
+      line(`Garantia do serviço: ${gi.meses} meses — válida até ${dataBR(gi.ate)}.`,9,true);
+    }else{
+      ensure(18);y+=3;
+      line("Garantia do serviço: 3 meses a partir da data de conclusão/entrega.",9,true);
+    }
     ensure(20);y+=4;
     doc.setDrawColor(190);doc.line(margin,y,pageW-margin,y);y+=6;
     line("Documento referente ao orçamento e ao registro dos serviços descritos acima.",8);
@@ -965,24 +998,35 @@ async function compartilharPdfCliente(id,btn=null){
   }
 }
 
-function renderOrc(){
-  $("orcList").innerHTML=state.orc.length?state.orc.map(o=>{
-    const its=state.orcItens.filter(x=>x.orcamento_id===o.id);
-    const custos=state.orcCustos.filter(x=>x.orcamento_id===o.id);
-    const fotos=state.orcFotos.filter(x=>x.orcamento_id===o.id);
-    const custoItens=its.filter(x=>x.tipo==="peca").reduce((s,x)=>s+Number(x.quantidade)*Number(x.custo_unitario||0),0);
-    const custoServico=custos.reduce((s,x)=>s+Number(x.valor),0);
-    const resultado=Number(o.total)-custoItens-custoServico;
-    return `<details class="item budget-record"><summary><div><b>Orçamento ${o.numero} · ${esc(o.cliente)}</b><div class="meta">${dataBR(o.data)}${o.equipamento_modelo?` · ${esc(o.equipamento_modelo)}`:""}</div><span class="status-pill ${o.status}">${({orcamento:"Rascunho",rascunho:"Rascunho",enviado:"Enviado",aprovado:"Aprovado",pago:"Pago"}[o.status]||o.status)}</span></div><b class="money-inline">${brl(o.total)}</b></summary><div class="budget-detail">
-      <div class="meta"><b>Prestador:</b> ${esc(o.prestador||"-")}</div>
-      <div class="budget-split"><span>Total cobrado <b class="money-inline">${brl(o.total)}</b></span><span>Custo itens <b class="money-inline">${brl(custoItens)}</b></span><span>Custos serviço <b class="money-inline">${brl(custoServico)}</b></span><span>Resultado ${o.status==="pago"?"real":"previsto"} <b class="money-inline">${brl(o.status==="pago"?o.resultado:resultado)}</b></span></div>
-      ${its.map(i=>`<div class="meta">${i.tipo==="peca"?"Item":"M.O."}: ${esc(i.descricao)} · ${i.quantidade} × ${moneySpan(i.valor_unitario)}${Number(i.custo_unitario||0)>0?` · custo ${moneySpan(Number(i.custo_unitario)*Number(i.quantidade))}`:""}</div>`).join("")}
-      ${custos.length?`<div class="internal-box"><b>Custos internos</b>${custos.map(c=>`<div class="meta">${esc(c.descricao)} · ${esc(c.categoria||"Custos do serviço")} · ${moneySpan(c.valor)}</div>`).join("")}</div>`:""}${fotos.length?`<button type="button" class="small" onclick="openBudgetPhotos(\'${o.id}\')">📷 Fotos (${fotos.length})</button>`:""}
-      <div class="actions"><button onclick="gerarPdfCliente('${o.id}',this)">Gerar PDF</button><button onclick="compartilharPdfCliente('${o.id}',this)">Compartilhar</button>${["rascunho","orcamento","enviado","aprovado"].includes(o.status)?`<button onclick="editOrc('${o.id}')">Editar</button>`:""}${(o.status==="rascunho"||o.status==="orcamento")?`<button onclick="enviarOrc('${o.id}')">Marcar enviado</button><button class="warning" onclick="aprovarOrc('${o.id}')">Aprovar</button>`:""}${o.status==="enviado"?`<button class="warning" onclick="aprovarOrc('${o.id}')">Aprovar</button>`:""}${o.status==="aprovado"?`<button onclick="openApprovedCost(\'${o.id}\')">+ Registrar custo</button><button class="success" onclick="pagarOrc(\'${o.id}\')">Marcar pago</button>`:""}${o.status==="pago"?`<button class="warning" onclick="recalcularPago('${o.id}')">Recalcular</button>`:`<button class="danger" onclick="delOrc('${o.id}')">Excluir</button>`}</div>
-    </div></details>`;
-  }).join(""):`<p class="meta">Nenhum orçamento.</p>`;
+function budgetCard(o){
+  const its=state.orcItens.filter(x=>x.orcamento_id===o.id);
+  const custos=state.orcCustos.filter(x=>x.orcamento_id===o.id);
+  const fotos=state.orcFotos.filter(x=>x.orcamento_id===o.id);
+  const antes=fotos.filter(f=>(f.tipo||"antes")==="antes").length;
+  const depois=fotos.filter(f=>f.tipo==="depois").length;
+  const custoItens=its.filter(x=>x.tipo==="peca").reduce((s,x)=>s+Number(x.quantidade)*Number(x.custo_unitario||0),0);
+  const custoServico=custos.reduce((s,x)=>s+Number(x.valor),0);
+  const resultado=Number(o.total)-custoItens-custoServico;
+  const gi=garantiaInfo(o);
+  const isDraft=["rascunho","orcamento"].includes(o.status);
+  return `<details class="item budget-record"><summary><div><b>Orçamento ${o.numero} · ${esc(o.cliente)}</b><div class="meta">${dataBR(o.data)}${o.equipamento_modelo?` · ${esc(o.equipamento_modelo)}`:""}</div><span class="status-pill ${o.status}">${({orcamento:"Rascunho",rascunho:"Rascunho",enviado:"Enviado",aprovado:"Aprovado",pago:"Pago"}[o.status]||o.status)}</span>${gi?`<span class="warranty-pill ${gi.ativa?"active":"ended"}">${gi.ativa?"Garantia ativa":"Garantia encerrada"} · ${dataBR(gi.ate)}</span>`:""}</div><b class="money-inline">${brl(o.total)}</b></summary><div class="budget-detail">
+    <div class="meta"><b>Prestador:</b> ${esc(o.prestador||"-")}</div>
+    <div class="budget-split"><span>Total cobrado <b class="money-inline">${brl(o.total)}</b></span><span>Gastos <b class="money-inline">${brl(custoItens+custoServico)}</b></span><span>Resultado ${o.status==="pago"?"real":"previsto"} <b class="money-inline">${brl(o.status==="pago"?o.resultado:resultado)}</b></span></div>
+    <div class="photo-counts"><span>Antes (${antes})</span><span>Depois (${depois})</span></div>
+    ${its.map(i=>`<div class="meta">${i.tipo==="peca"?"Item":"M.O."}: ${esc(i.descricao)} · ${i.quantidade} × ${moneySpan(i.valor_unitario)}${Number(i.custo_unitario||0)>0?` · custo ${moneySpan(Number(i.custo_unitario)*Number(i.quantidade))}`:""}</div>`).join("")}
+    ${custos.length?`<div class="internal-box"><b>Custos internos</b>${custos.map(c=>`<div class="meta">${esc(c.descricao)} · ${esc(c.categoria||"Custos do serviço")} · ${moneySpan(c.valor)}</div>`).join("")}</div>`:""}
+    ${fotos.length?`<button type="button" class="small" onclick="openBudgetPhotos('${o.id}')">Fotos (${fotos.length})</button>`:""}
+    <div class="actions"><button onclick="gerarPdfCliente('${o.id}',this)">Gerar PDF</button><button onclick="compartilharPdfCliente('${o.id}',this)">Compartilhar</button>${o.status!=="pago"?`<button onclick="editOrc('${o.id}')">Editar</button>`:""}${isDraft?`<button onclick="enviarOrc('${o.id}')">Marcar enviado</button><button class="warning" onclick="aprovarOrc('${o.id}')">Aprovar</button><button class="danger" onclick="delOrc('${o.id}')">Excluir</button>`:""}${o.status==="enviado"?`<button class="warning" onclick="aprovarOrc('${o.id}')">Aprovar</button>`:""}${o.status==="aprovado"?`<button onclick="openApprovedCost('${o.id}')">+ Registrar custo</button><button class="success" onclick="pagarOrc('${o.id}')">Concluir / Marcar pago</button>`:""}${o.status==="pago"?`<button class="warning" onclick="recalcularPago('${o.id}')">Recalcular</button>`:""}</div>
+  </div></details>`;
 }
-
+function renderOrc(){
+  const groups=[
+    {title:"Rascunhos",items:state.orc.filter(o=>["rascunho","orcamento","enviado"].includes(o.status))},
+    {title:"Aprovados / Em andamento",items:state.orc.filter(o=>o.status==="aprovado")},
+    {title:"Pagos",items:state.orc.filter(o=>o.status==="pago")}
+  ];
+  $("orcList").innerHTML=`<div class="budget-board">${groups.map(g=>`<section class="budget-column"><div class="budget-column-head"><h3>${g.title}</h3><span>${g.items.length}</span></div>${g.items.length?g.items.map(budgetCard).join(""):`<p class="meta empty-column">Nenhum orçamento.</p>`}</section>`).join("")}</div>`;
+}
 
 function renderBudgetSummary(){
   const mes=hoje().slice(0,7);

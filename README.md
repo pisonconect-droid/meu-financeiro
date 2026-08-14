@@ -1,12 +1,19 @@
-# Meu Financeiro V7.2.3 — Fechamento da MEP
+# Meu Financeiro V7.2.4 — Última MEP do dia
 
-- Ao abrir Orçamentos, o formulário de edição permanece fechado.
-- Toque/clique no orçamento para visualizar os detalhes.
-- Editar abre o formulário somente por ação explícita.
-- Compartilhar PDF usa o menu nativo do celular quando suportado.
-- Se o navegador não permitir compartilhar o arquivo, o PDF é baixado.
-- Rodapé: “Documento referente ao orçamento e ao registro dos serviços descritos acima.”
-- PDF compacto Antes/Depois e paginação preservados.
-- Não requer alteração no Supabase.
+- Orçamentos organizados em três grupos: Rascunhos, Aprovados/Em andamento e Pagos.
+- Somente Rascunhos podem ser excluídos.
+- Pagos permanecem como histórico.
+- Fotos mostram contagem Antes / Depois.
+- Conclusão do serviço registra data e inicia garantia padrão de 3 meses.
+- Pagos mostram garantia ativa/encerrada e data final.
+- PDF inclui a garantia e mantém o rodapé aprovado.
+- Compartilhamento do PDF preservado.
+- Mobile empilha as três colunas verticalmente.
 
-Substituir no GitHub: index.html, app.js, styles.css, config.js e README.md.
+## Supabase
+Execute `supabase_v7_2_4_garantia.sql` uma vez.
+
+## GitHub
+Depois substitua: index.html, app.js, styles.css, config.js e README.md.
+
+Observação: o Orçamento 1 duplicado dos testes antigos deve ser tratado separadamente como limpeza excepcional; esta versão não apaga automaticamente históricos pagos.
