@@ -171,6 +171,7 @@ function openMov(tipo,x=null,forcedDate=null,forcedAccount=null){
   $("descricao").value=x?.descricao||"";$("valor").value=x?.valor||"";
   $("data").value=x?.data||forcedDate||hoje();$("data").dataset.tipo=tipo;
   $("categoryWrap").classList.toggle("hidden",tipo==="entrada");
+  $("priorityWrap").classList.add("hidden");
   fillCategorySelect($("categoria"),current,x?.categoria||(tipo==="entrada"?"Receita":""));
   $("dateLabel").childNodes[0].nodeValue="Data ";
   $("modal").classList.remove("hidden");
@@ -178,7 +179,10 @@ function openMov(tipo,x=null,forcedDate=null,forcedAccount=null){
 function openConta(x=null,forcedDate=null,forcedAccount=null){
   if(forcedAccount)current=forcedAccount;
   $("mode").value="conta";$("editId").value=x?.id||"";
-  $("modalTitle").textContent=x?"Editar conta":"Adicionar conta";
+  $("modalTitle").textContent=x?"Editar conta a pagar":"Adicionar conta a pagar";
+  $("categoryWrap").classList.add("hidden");
+  $("priorityWrap").classList.remove("hidden");
+  $("prioridade").value=x?.prioridade||"prioritaria";
   $("descricao").value=x?.descricao||"";$("valor").value=x?.valor||"";
   $("data").value=x?.vencimento||forcedDate||hoje();
   $("dateLabel").childNodes[0].nodeValue="Vencimento ";
@@ -195,7 +199,7 @@ $("modalForm").onsubmit=async e=>{
     const q=editing?sb.from("movimentacoes").update(p).eq("id",editing):sb.from("movimentacoes").insert(p);
     const {error}=await q;if(error)return alert(error.message);
   }else{
-    const p={user_id:uid(),conta:current,descricao:$("descricao").value.trim(),valor:+$("valor").value,vencimento:$("data").value};
+    const p={user_id:uid(),conta:current,descricao:$("descricao").value.trim(),valor:+$("valor").value,vencimento:$("data").value,prioridade:$("prioridade").value};
     if(!editing)p.status="pendente";
     const q=editing?sb.from("contas").update(p).eq("id",editing):sb.from("contas").insert(p);
     const {error}=await q;if(error)return alert(error.message);
@@ -281,15 +285,25 @@ function fillCategorySelect(select,conta,value=""){
 function renderCategoryUI(){
   if(!current)return;
   const names=categoryNames(current);
-  const filters=["TODOS",...names];
-  $("categoryFilters").innerHTML=filters.map(n=>`<button type="button" data-mov-cat="${esc(n)}" class="${movCategoryFilter===n?"active":""}">${n==="TODOS"?"Tudo":esc(n)}</button>`).join("");
+  $("categoryFilters").innerHTML=names.map(n=>`<button type="button" data-mov-cat="${esc(n)}" class="${movCategoryFilter===n?"active":""}">${esc(n)}</button>`).join("");
   $("categoryFilters").querySelectorAll("[data-mov-cat]").forEach(b=>b.onclick=()=>{
     movCategoryFilter=b.dataset.movCat;
+    $("allMovBtn").classList.remove("active");
     renderCategoryUI();render();
   });
+  $("allMovBtn").classList.toggle("active",movCategoryFilter==="TODOS");
   fillCategorySelect($("categoria"),current,$("categoria")?.value);
   fillCategorySelect($("budgetCostCategory"),"CNPJ",$("budgetCostCategory")?.value);
 }
+$("allMovBtn").onclick=()=>{
+  movCategoryFilter="TODOS";
+  renderCategoryUI();render();
+};
+$("toggleCategoryFiltersBtn").onclick=()=>{
+  $("categoryFilterDrawer").classList.toggle("hidden");
+};
+$("openCategoriesManageBtn").onclick=()=>openCategories();
+$("openSummaryBtn").onclick=()=>openFinancialSummary();
 
 function inferCategory(x){
   if(x.categoria)return x.categoria;
@@ -300,7 +314,6 @@ function inferCategory(x){
   return x.conta==="PF"?"Outros":"Despesas administrativas";
 }
 
-$("manageCategoriesBtn").onclick=()=>openCategories();
 $("closeCategories").onclick=()=>$("categoriesModal").classList.add("hidden");
 function openCategories(){
   $("categoriesTitle").textContent=`Categorias · ${accountName(current)}`;
@@ -436,27 +449,49 @@ function render(){
     ? movimentosConta
     : movimentosConta.filter(x=>inferCategory(x)===movCategoryFilter);
   $("movList").innerHTML=listMov(movimentosFiltrados);
-  const h=hoje(),cs=state.contas.filter(x=>x.conta===current);
-  const late=cs.filter(x=>x.status==="pendente"&&x.vencimento<h);
-  const pay=cs.filter(x=>x.status==="pendente"&&x.vencimento>=h);
-  const paid=cs.filter(x=>x.status==="pago");
-  $("tAtrasadas").textContent=brl(sum(late));
-  $("tPagar").textContent=brl(sum(pay));
-  $("tPagas").textContent=brl(sum(paid));
-  $("atrasadas").innerHTML=listConta(late,true);
-  $("pagar").innerHTML=listConta(pay,true);
-  $("pagas").innerHTML=listConta(paid,false);
+  const cs=state.contas.filter(x=>x.conta===current&&x.status==="pendente");
+  const urgent=cs.filter(x=>(x.prioridade||"prioritaria")==="urgente");
+  const priority=cs.filter(x=>(x.prioridade||"prioritaria")==="prioritaria");
+  const wait=cs.filter(x=>x.prioridade==="pode_esperar");
+  $("tAtrasadas").textContent=brl(sum(urgent));
+  $("tPagar").textContent=brl(sum(priority));
+  $("tPagas").textContent=brl(sum(wait));
+  $("atrasadas").innerHTML=listConta(urgent,true);
+  $("pagar").innerHTML=listConta(priority,true);
+  $("pagas").innerHTML=listConta(wait,true);
   if(current==="CNPJ")renderOrc();
 }
+function actionMenu(items){
+  const valid=items.filter(Boolean);
+  if(!valid.length)return"";
+  return `<details class="row-action-menu"><summary title="Ações">⋮</summary><div class="row-action-popover">${valid.join("")}</div></details>`;
+}
 function listMov(a){
-  return a.length?a.slice(0,60).map(x=>`<div class="item"><div><b>${esc(x.descricao)}</b><div class="meta">${dataBR(x.data)} · ${x.tipo==="entrada"?"Entrada":"Gasto"} · ${esc(inferCategory(x))}</div></div><div><b class="money-inline ${x.tipo==="entrada"?"positive":"negative"}">${x.tipo==="entrada"?"+":"-"} ${brl(x.valor)}</b><div class="actions">${x.origem!=="transferencia"&&x.origem!=="orcamento_pago"&&!String(x.origem||"").startsWith("orcamento_custo")?`<button onclick="editMov('${x.id}')">Editar</button>`:""}${x.origem==="orcamento_pago"||String(x.origem||"").startsWith("orcamento_custo")?"":`<button class="danger" onclick="delMov('${x.id}')">Excluir</button>`}</div></div></div>`).join(""):`<p class="meta">Nenhum lançamento.</p>`;
+  return a.length?a.slice(0,60).map(x=>{
+    const canEdit=x.origem!=="transferencia"&&x.origem!=="orcamento_pago"&&!String(x.origem||"").startsWith("orcamento_custo");
+    return `<div class="item movement-item"><div><b>${esc(x.descricao)}</b><div class="meta">${dataBR(x.data)} · ${x.tipo==="entrada"?"Entrada":"Gasto"} · ${esc(inferCategory(x))}</div></div><div class="item-value-actions"><b class="money-inline ${x.tipo==="entrada"?"positive":"negative"}">${x.tipo==="entrada"?"+":"-"} ${brl(x.valor)}</b>${actionMenu([canEdit?`<button onclick="editMov('${x.id}')">Editar</button>`:""])}</div></div>`;
+  }).join(""):`<p class="meta">Nenhum lançamento.</p>`;
+}
+function dueText(x){
+  const today=new Date(hoje()+"T12:00:00"),due=new Date(x.vencimento+"T12:00:00");
+  const days=Math.round((due-today)/86400000);
+  if(days<0)return `<span class="due overdue-text">Vencida há ${Math.abs(days)} dia${Math.abs(days)===1?"":"s"}</span>`;
+  if(days===0)return `<span class="due urgent-text">Vence hoje</span>`;
+  if(days===1)return `<span class="due urgent-text">Vence amanhã</span>`;
+  return `<span class="due">Vence em ${days} dias</span>`;
 }
 function listConta(a,open){
-  return a.length?a.map(x=>`<div class="item"><div><b>${esc(x.descricao)}</b><div class="meta">Vence ${dataBR(x.vencimento)}</div></div><div><b class="money-inline">${brl(x.valor)}</b><div class="actions">${open?`<button onclick="pagarConta('${x.id}')">Marcar paga</button><button onclick="editConta('${x.id}')">Editar</button>`:""}<button class="danger" onclick="delConta('${x.id}')">Excluir</button></div></div></div>`).join(""):`<p class="meta">Nenhuma conta.</p>`;
+  return a.length?a.map(x=>`<div class="item bill-item"><div><b>${esc(x.descricao)}</b><div class="meta">${dueText(x)} · ${priorityLabel(x)}</div></div><div class="item-value-actions"><b class="money-inline">${brl(x.valor)}</b>${actionMenu([
+    open?`<button onclick="pagarConta('${x.id}')">Marcar paga</button>`:"",
+    open?`<button onclick="editConta('${x.id}')">Editar</button>`:"",
+    open?`<button onclick="delConta('${x.id}')">Remover conta</button>`:""
+  ])}</div></div>`).join(""):`<p class="meta">Nenhuma conta.</p>`;
 }
 
 // CONTAS FIXAS
-$("addFixedBtn").onclick=()=>openFixed();
+
+$("fixedActionsBtn").onclick=()=>$("fixedActionsMenu").classList.toggle("hidden");
+$("addFixedBtn").onclick=()=>{$("fixedActionsMenu").classList.add("hidden");openFixed()};
 $("closeFixed").onclick=()=>$("fixedModal").classList.add("hidden");
 function openFixed(x=null){
   $("fixedId").value=x?.id||"";
@@ -484,6 +519,7 @@ async function delFixed(id){
 }
 function editFixed(id){const x=state.fixas.find(x=>x.id===id);if(x)openFixed(x)}
 $("generateFixedBtn").onclick=async()=>{
+  $("fixedActionsMenu").classList.add("hidden");
   const competencia=new Date();competencia.setDate(1);
   const {data,error}=await sb.rpc("gerar_contas_fixas_mes",{p_competencia:iso(competencia)});
   if(error)return alert("Contas fixas: "+error.message);
@@ -493,7 +529,10 @@ $("generateFixedBtn").onclick=async()=>{
 function renderFixas(){
   if(!$("fixedList"))return;
   const a=current?state.fixas.filter(x=>x.conta===current):state.fixas;
-  $("fixedList").innerHTML=a.length?a.map(x=>`<div class="fixed-item"><div><b>${esc(x.descricao)}</b><div class="meta">${accountName(x.conta)} · vence dia ${x.dia_vencimento}</div></div><div><b class="money-inline">${brl(x.valor)}</b><div class="actions"><button onclick="editFixed('${x.id}')">Editar</button><button class="danger" onclick="delFixed('${x.id}')">Excluir</button></div></div></div>`).join(""):`<p class="meta">Nenhuma conta fixa cadastrada.</p>`;
+  $("fixedList").innerHTML=a.length?a.map(x=>`<div class="fixed-item"><div><b>${esc(x.descricao)}</b><div class="meta">${accountName(x.conta)} · vence dia ${x.dia_vencimento}</div></div><div class="item-value-actions"><b class="money-inline">${brl(x.valor)}</b>${actionMenu([
+    `<button onclick="editFixed('${x.id}')">Editar</button>`,
+    `<button onclick="delFixed('${x.id}')">Remover conta fixa</button>`
+  ])}</div></div>`).join(""):`<p class="meta">Nenhuma conta fixa cadastrada.</p>`;
 }
 
 
@@ -1132,7 +1171,7 @@ if($("moduleSettingsForm"))$("moduleSettingsForm").onsubmit=async e=>{
 function monthKey(v){return String(v||"").slice(0,7)}
 function financialRows(){
   const area=current==="CNPJ"?"CNPJ":"PF";
-  return (state.mov||[]).filter(m=>m.area===area);
+  return (state.mov||[]).filter(m=>m.conta===area);
 }
 function openFinancialSummary(){
   $("financialSummaryModal").classList.remove("hidden");
