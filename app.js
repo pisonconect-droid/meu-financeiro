@@ -204,17 +204,7 @@ $("modalForm").onsubmit=async e=>{
 };
 
 async function delMov(id){
-  const x=state.mov.find(v=>v.id===id);if(!x)return;
-  if(x.origem==="transferencia"&&x.transferencia_id){
-    if(!confirm("Excluir esta transferência inteira? Os dois saldos serão revertidos."))return;
-    const {error}=await sb.rpc("excluir_transferencia",{p_transferencia_id:x.transferencia_id});
-    if(error)return alert("Exclusão da transferência: "+error.message);
-    return loadAll();
-  }
-  if(confirm("Excluir lançamento?")){
-    const {error}=await sb.from("movimentacoes").delete().eq("id",id);
-    if(error)alert(error.message);else loadAll();
-  }
+  alert("Lançamentos confirmados fazem parte do histórico e não podem ser excluídos. Use Editar para corrigir informações.");
 }
 async function delConta(id){
   if(confirm("Excluir conta?")){
@@ -861,6 +851,7 @@ $("paymentForm").onsubmit=async e=>{
   $("paymentModal").classList.add("hidden");
   alert(`Serviço concluído. Garantia de 3 meses válida até ${dataBR(garantiaAte)}.`);
   await loadAll();
+  await loadModulePrefs();
 };
 async function delOrc(id){
   const o=state.orc.find(x=>x.id===id);
@@ -1097,6 +1088,79 @@ function renderBudgetSummary(){
   }
 }
 
+
+// V8 — MÓDULOS, HISTÓRICO, RESUMO E GRÁFICOS
+let modulePrefs={pf:true,cnpj:true,orc:true};
+let monthlyChartInstance=null,categoryChartInstance=null;
+
+async function loadModulePrefs(){
+  try{
+    const {data,error}=await sb.from("user_module_preferences").select("*").eq("user_id",uid()).maybeSingle();
+    if(!error&&data){
+      modulePrefs={pf:data.pf_enabled!==false,cnpj:data.cnpj_enabled===true,orc:data.orcamentos_enabled===true};
+    }
+  }catch(e){console.warn("Módulos",e)}
+  applyModulePrefs();
+}
+function applyModulePrefs(){
+  const map=[["PF",modulePrefs.pf],["CNPJ",modulePrefs.cnpj],["ORC",modulePrefs.orc&&modulePrefs.cnpj]];
+  map.forEach(([area,on])=>{
+    document.querySelectorAll(`[data-area="${area}"],[data-open="${area}"]`).forEach(el=>el.classList.toggle("module-hidden",!on));
+  });
+}
+function openModuleSettings(){
+  $("modPF").checked=modulePrefs.pf;
+  $("modCNPJ").checked=modulePrefs.cnpj;
+  $("modORC").checked=modulePrefs.orc;
+  $("moduleSettingsModal").classList.remove("hidden");
+}
+if($("moduleSettingsBtn"))$("moduleSettingsBtn").onclick=openModuleSettings;
+if($("closeModuleSettings"))$("closeModuleSettings").onclick=()=>$("moduleSettingsModal").classList.add("hidden");
+if($("modCNPJ"))$("modCNPJ").onchange=()=>{if(!$("modCNPJ").checked)$("modORC").checked=false};
+if($("modORC"))$("modORC").onchange=()=>{if($("modORC").checked)$("modCNPJ").checked=true};
+if($("moduleSettingsForm"))$("moduleSettingsForm").onsubmit=async e=>{
+  e.preventDefault();
+  const payload={user_id:uid(),pf_enabled:$("modPF").checked,cnpj_enabled:$("modCNPJ").checked,orcamentos_enabled:$("modORC").checked};
+  const {error}=await sb.from("user_module_preferences").upsert(payload,{onConflict:"user_id"});
+  if(error)return alert("Módulos: "+error.message);
+  modulePrefs={pf:payload.pf_enabled,cnpj:payload.cnpj_enabled,orc:payload.orcamentos_enabled};
+  applyModulePrefs();$("moduleSettingsModal").classList.add("hidden");
+};
+
+function monthKey(v){return String(v||"").slice(0,7)}
+function financialRows(){
+  const area=current==="CNPJ"?"CNPJ":"PF";
+  return (state.mov||[]).filter(m=>m.area===area);
+}
+function openFinancialSummary(){
+  $("financialSummaryModal").classList.remove("hidden");
+  renderFinancialCharts();
+}
+if($("closeFinancialSummary"))$("closeFinancialSummary").onclick=()=>$("financialSummaryModal").classList.add("hidden");
+
+function renderFinancialCharts(){
+  if(!window.Chart)return;
+  const rows=financialRows();
+  const year=new Date().getFullYear();
+  const months=Array.from({length:12},(_,i)=>`${year}-${String(i+1).padStart(2,"0")}`);
+  const labels=["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+  const entradas=months.map(m=>rows.filter(x=>monthKey(x.data)===m&&x.tipo==="entrada").reduce((s,x)=>s+Number(x.valor||0),0));
+  const gastos=months.map(m=>rows.filter(x=>monthKey(x.data)===m&&x.tipo==="saida").reduce((s,x)=>s+Number(x.valor||0),0));
+  const cats={};
+  rows.filter(x=>x.tipo==="saida"&&String(x.data||"").startsWith(String(year))).forEach(x=>cats[x.categoria||"Sem categoria"]=(cats[x.categoria||"Sem categoria"]||0)+Number(x.valor||0));
+
+  if(monthlyChartInstance)monthlyChartInstance.destroy();
+  if(categoryChartInstance)categoryChartInstance.destroy();
+  monthlyChartInstance=new Chart($("monthlyChart"),{type:"bar",data:{labels,datasets:[{label:"Entradas",data:entradas},{label:"Gastos",data:gastos}]},options:{responsive:true,maintainAspectRatio:false}});
+  categoryChartInstance=new Chart($("categoryChart"),{type:"doughnut",data:{labels:Object.keys(cats),datasets:[{data:Object.values(cats)}]},options:{responsive:true,maintainAspectRatio:false}});
+  $("summaryTable").innerHTML=`<div class="budget-split"><span>Entradas no ano <b>${brl(entradas.reduce((a,b)=>a+b,0))}</b></span><span>Gastos no ano <b>${brl(gastos.reduce((a,b)=>a+b,0))}</b></span><span>Resultado <b>${brl(entradas.reduce((a,b)=>a+b,0)-gastos.reduce((a,b)=>a+b,0))}</b></span></div>`;
+}
+
+// Conta a pagar: prioridade visual calculada sem apagar histórico.
+function priorityLabel(c){
+  const p=String(c.prioridade||"prioritaria").toLowerCase();
+  return p==="urgente"?"Urgente":p==="pode_esperar"?"Pode esperar":"Prioritária";
+}
 // CALENDÁRIO
 $("prevMonth").onclick=()=>{calDate=new Date(calDate.getFullYear(),calDate.getMonth()-1,1);renderCalendar()};
 $("nextMonth").onclick=()=>{calDate=new Date(calDate.getFullYear(),calDate.getMonth()+1,1);renderCalendar()};
@@ -1149,3 +1213,4 @@ document.querySelectorAll("[data-cal-action]").forEach(b=>b.onclick=()=>{
 window.delMov=delMov;window.delConta=delConta;window.editMov=editMov;window.editConta=editConta;window.pagarConta=pagarConta;
 window.editCategory=editCategory;window.deleteCategory=deleteCategory;window.gerarPdfCliente=gerarPdfCliente;window.compartilharPdfCliente=compartilharPdfCliente;window.removePendingPhoto=removePendingPhoto;window.openBudgetPhotos=openBudgetPhotos;window.openApprovedCost=openApprovedCost;window.editFixed=editFixed;window.delFixed=delFixed;window.editOrc=editOrc;window.enviarOrc=enviarOrc;window.aprovarOrc=aprovarOrc;window.pagarOrc=pagarOrc;window.recalcularPago=recalcularPago;window.delOrc=delOrc;
 start();
+window.openFinancialSummary=openFinancialSummary;window.openModuleSettings=openModuleSettings;

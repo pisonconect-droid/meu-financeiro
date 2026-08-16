@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111827">
 <title>Meu Financeiro</title>
-<link rel="stylesheet" href="styles.css?v=7.2.5">
+<link rel="stylesheet" href="styles.css?v=8.0.0">
 </head>
 <body>
 <section id="auth" class="auth"><div class="card auth-card"><h1>Meu Financeiro</h1><p>Acesse seus dados no computador e no celular.</p><div class="tabs"><button id="tabLogin" class="active" type="button">Entrar</button><button id="tabSignup" type="button">Criar conta</button></div><form id="authForm"><label id="nomeWrap" class="hidden">Nome<input id="nome"></label><label>E-mail<input id="email" type="email" required></label><label>Senha<input id="senha" type="password" minlength="6" required></label><button id="authSubmit" class="primary">Entrar</button><p id="authMsg" class="msg"></p></form></div></section>
@@ -36,13 +36,13 @@
   <div id="movList"></div>
 </div></details>
 
-<details class="card accordion acc-bills" open><summary><span>Contas</span><small>Água, luz, internet, empréstimos e outras</small></summary><div class="accordion-body"><div class="section-action"><button id="btnConta" class="primary small" type="button">+ Adicionar conta</button></div><div class="cols">
+<details class="card accordion acc-bills" open><summary><span>Contas</span><small>Água, luz, internet, empréstimos e outras</small></summary><div class="accordion-body"><div class="section-action"><button id="btnConta" class="primary small" type="button">+</button></div><div class="cols">
 <details class="bill-group overdue" open><summary>Atrasadas <span class="money-value" id="tAtrasadas">R$ 0,00</span></summary><div id="atrasadas"></div></details>
 <details class="bill-group pending" open><summary>A pagar <span class="money-value" id="tPagar">R$ 0,00</span></summary><div id="pagar"></div></details>
 <details class="bill-group paid"><summary>Pagas <span class="money-value" id="tPagas">R$ 0,00</span></summary><div id="pagas"></div></details>
 </div></div></details>
 
-<details class="card accordion acc-fixed" open><summary><span>Contas fixas</span><small>Aluguel, água, luz, internet e outras</small></summary><div class="accordion-body"><div class="section-action gap"><button id="generateFixedBtn" class="small" type="button">Gerar mês atual</button><button id="addFixedBtn" class="primary small" type="button">+ Conta fixa</button></div><div id="fixedList"></div></div></details>
+<details class="card accordion acc-fixed" open><summary><span>Contas fixas</span><small>Aluguel, água, luz, internet e outras</small></summary><div class="accordion-body"><div class="section-action gap"><button id="generateFixedBtn" class="small" type="button">Gerar mês atual</button><button id="addFixedBtn" class="primary small" type="button">+</button></div><div id="fixedList"></div></div></details>
 
 <details class="card accordion acc-report" open>
   <summary><span>Resumo financeiro</span><small>Visão mensal e anual</small></summary>
@@ -154,6 +154,27 @@
 <div id="modal" class="modal hidden"><div class="card modal-card"><div class="head"><h2 id="modalTitle"></h2><button id="closeModal" type="button">×</button></div><form id="modalForm"><input id="editId" type="hidden"><input id="mode" type="hidden"><label>Descrição<input id="descricao" required></label><label>Valor (R$)<input id="valor" type="number" step="0.01" min="0" required></label>
 <label id="categoryWrap">Categoria<select id="categoria"></select></label><label id="dateLabel">Data<input id="data" type="date" required></label><button class="primary">Salvar</button></form></div></div>
 
+
+<div id="financialSummaryModal" class="modal hidden"><div class="card modal-card wide-modal">
+<div class="head"><h2>Resumo financeiro</h2><button id="closeFinancialSummary" type="button">×</button></div>
+<div class="chart-grid">
+  <div class="chart-card"><h3>Entradas × Gastos por mês</h3><canvas id="monthlyChart"></canvas></div>
+  <div class="chart-card"><h3>Gastos por categoria</h3><canvas id="categoryChart"></canvas></div>
+</div>
+<div id="summaryTable"></div>
+</div></div>
+
+<div id="moduleSettingsModal" class="modal hidden"><div class="card modal-card">
+<div class="head"><h2>Módulos da conta</h2><button id="closeModuleSettings" type="button">×</button></div>
+<p class="meta">Escolha o que deseja usar. Orçamentos dependem do CNPJ.</p>
+<form id="moduleSettingsForm">
+<label class="check-row"><input id="modPF" type="checkbox"> Pessoa Física</label>
+<label class="check-row"><input id="modCNPJ" type="checkbox"> CNPJ</label>
+<label class="check-row"><input id="modORC" type="checkbox"> Orçamentos</label>
+<button class="primary">Salvar módulos</button>
+</form>
+</div></div>
+
 <div id="paymentModal" class="modal hidden"><div class="card modal-card">
 <div class="head"><h2>Concluir / Marcar pago</h2><button id="closePaymentModal" type="button">×</button></div>
 <form id="paymentForm">
@@ -207,5 +228,6 @@
 <input class="cVal" type="number" step="0.01" min="0" placeholder="Valor" required>
 <button class="danger remove-cost" type="button">×</button></div></template>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script><script src="config.js"></script><script src="app.js?v=7.2.5"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script><script src="config.js"></script><script src="app.js?v=8.0.0"></script>
 </body></html>

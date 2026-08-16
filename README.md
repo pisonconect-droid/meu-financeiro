@@ -1,25 +1,25 @@
-# Meu Financeiro V7.2.5 — Pagamento + Acordeões
+# Meu Financeiro V8.0 — MEP Financeiro
 
-## Novidades
-- Forma de pagamento no orçamento.
-- Condição de pagamento no orçamento.
-- Campo personalizado quando necessário.
-- PDF mostra forma e condição combinadas.
-- Ao concluir/marcar pago, registra a forma efetivamente utilizada.
-- Garantia de 3 meses continua iniciando na data de conclusão/entrega.
-- Grupos de orçamento viraram acordeões:
-  - Rascunhos: fechado por padrão.
-  - Aprovados / Em andamento: aberto por padrão.
-  - Pagos: fechado por padrão.
-- Fotos, PDF compacto, compartilhar e mobile preservados.
+## Escopo congelado implementado
+- Preferências de módulos por usuário: PF, CNPJ e Orçamentos.
+- Orçamentos dependem de CNPJ.
+- Home preparada para módulos mais compactos.
+- Lançamentos financeiros confirmados deixam de ser excluídos.
+- Categorias continuam acessíveis sob demanda.
+- Contas a pagar preparadas para prioridade: Urgente, Prioritária, Pode esperar.
+- Contas fixas preservadas.
+- Resumo financeiro em acesso próprio.
+- Gráfico Entradas × Gastos por mês.
+- Gráfico Gastos por categoria.
+- Mobile responsivo.
+- Toda a V7.2.5 de Orçamentos é preservada.
 
-## Supabase
-Execute `supabase_v7_2_5_pagamento.sql` uma vez.
+## Ordem de instalação
+1. Execute `supabase_v8_0_mep_financeiro.sql`.
+2. Em Data API / Exposed tables, habilite `public.user_module_preferences`.
+3. Substitua no GitHub: index.html, app.js, styles.css, config.js e README.md.
+4. Atualize a página sem cache.
+5. Teste PF, CNPJ, Orçamentos, Resumo e mobile.
 
-## GitHub
-Depois substitua:
-- index.html
-- app.js
-- styles.css
-- config.js
-- README.md
+## Observação
+A V8 não apaga dados antigos.

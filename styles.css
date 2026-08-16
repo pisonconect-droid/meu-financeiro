@@ -492,3 +492,14 @@ button:disabled{opacity:.65;cursor:wait}
 @media(max-width:700px){
   .budget-group-body{padding:8px}
 }
+
+/* V8.0 — interface modular e análise financeira */
+.module-hidden{display:none!important}
+.summary-icon-btn,#moduleSettingsBtn{min-width:42px}
+.wide-modal{width:min(980px,94vw);max-height:90vh;overflow:auto}
+.chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.chart-card{border:1px solid #e5e7eb;border-radius:14px;padding:12px;min-height:320px}
+.chart-card canvas{width:100%!important;height:260px!important}
+.check-row{display:flex;gap:10px;align-items:center;padding:10px 0}
+.check-row input{width:auto}
+@media(max-width:700px){.chart-grid{grid-template-columns:1fr}.chart-card{min-height:290px}}
