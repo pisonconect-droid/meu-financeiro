@@ -655,3 +655,169 @@ input[inputmode="decimal"]{font-variant-numeric:tabular-nums}
   .budget-item-row .iTotal{grid-column:1/-1}
   .budget-item-row .remove-budget-item{grid-column:1/-1}
 }
+
+/* =========================================================
+   V8.0.6 — CORREÇÃO DE LAYOUT DO ORÇAMENTO
+   ========================================================= */
+
+/* Nunca deixar o formulário ultrapassar a área visível */
+#orcFormWrap,
+#orcForm,
+.budget-detail,
+.budget-item-row,
+.cost-row{
+  max-width:100%;
+  box-sizing:border-box;
+}
+
+#orcForm{
+  overflow:hidden;
+}
+
+/* Colunas mais compactas e flexíveis */
+.budget-item-headings{
+  grid-template-columns:
+    minmax(90px,.75fr)
+    minmax(180px,1.55fr)
+    minmax(70px,.55fr)
+    minmax(110px,.9fr)
+    minmax(110px,.9fr)
+    minmax(115px,.95fr)
+    38px;
+}
+
+.budget-item-row{
+  grid-template-columns:
+    minmax(90px,.75fr)
+    minmax(180px,1.55fr)
+    minmax(70px,.55fr)
+    minmax(110px,.9fr)
+    minmax(110px,.9fr)
+    minmax(115px,.95fr)
+    38px !important;
+  gap:7px!important;
+  width:100%;
+}
+
+.budget-item-row input,
+.budget-item-row select,
+.cost-row input,
+.cost-row select{
+  width:100%;
+  min-width:0;
+  box-sizing:border-box;
+}
+
+.iTotal{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+/* Custos internos também devem respeitar a largura */
+.cost-row{
+  display:grid;
+  grid-template-columns:minmax(180px,1.6fr) minmax(160px,.9fr) minmax(105px,.55fr) 38px;
+  gap:8px;
+  width:100%;
+}
+
+/* Botões de remover sempre dentro do card */
+.remove-budget-item,
+.remove-cost{
+  width:38px!important;
+  min-width:38px!important;
+  max-width:38px!important;
+  padding:0!important;
+}
+
+/* Rodapé de ações do formulário */
+.form-actions{
+  position:sticky;
+  bottom:0;
+  z-index:10;
+  display:flex;
+  justify-content:flex-end;
+  gap:10px;
+  width:100%;
+  padding:12px 0 4px;
+  background:linear-gradient(to bottom,rgba(255,255,255,0),#fff 28%);
+  box-sizing:border-box;
+}
+
+.form-actions button{
+  flex:0 0 auto;
+  min-width:120px;
+}
+
+/* Evitar que totals ou textos longos forcem a largura */
+.budget-totals,
+.budget-totals > div{
+  min-width:0;
+  max-width:100%;
+  box-sizing:border-box;
+}
+.budget-totals strong{
+  overflow-wrap:anywhere;
+}
+
+/* Desktop intermediário: reduzir ainda mais */
+@media(max-width:1150px){
+  .budget-item-headings{
+    grid-template-columns:95px 1.4fr 65px 105px 105px 110px 36px;
+    font-size:.68rem;
+  }
+  .budget-item-row{
+    grid-template-columns:95px 1.4fr 65px 105px 105px 110px 36px !important;
+  }
+}
+
+/* Tablet/mobile: empilhar de forma clara */
+@media(max-width:900px){
+  .budget-item-headings{display:none}
+  .budget-item-row{
+    grid-template-columns:1fr 1fr !important;
+  }
+  .budget-item-row .iDesc{grid-column:1/-1}
+  .budget-item-row .iTotal{
+    grid-column:1/-1;
+    justify-content:flex-end;
+  }
+  .budget-item-row .remove-budget-item{
+    grid-column:1/-1;
+    justify-self:end;
+  }
+
+  .cost-row{
+    grid-template-columns:1fr 1fr;
+  }
+  .cost-row .cDesc{grid-column:1/-1}
+  .cost-row .remove-cost{
+    grid-column:1/-1;
+    justify-self:end;
+  }
+
+  .form-actions{
+    position:static;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+  }
+  .form-actions button{
+    width:100%;
+    min-width:0;
+  }
+}
+
+@media(max-width:520px){
+  .budget-item-row,
+  .cost-row{
+    grid-template-columns:1fr !important;
+  }
+  .budget-item-row > *,
+  .cost-row > *{
+    grid-column:1/-1 !important;
+  }
+  .form-actions{
+    grid-template-columns:1fr;
+  }
+}
