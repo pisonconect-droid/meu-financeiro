@@ -724,13 +724,33 @@ function renderPendingPhotos(){
 }
 function removePendingPhoto(i){pendingPhotos.splice(i,1);renderPendingPhotos()}
 
-function renderExistingPhotos(orcamentoId){
+async function renderExistingPhotos(orcamentoId){
   if(!orcamentoId){$("existingPhotos").innerHTML="";return}
   const fotos=state.orcFotos.filter(f=>f.orcamento_id===orcamentoId);
-  $("existingPhotos").innerHTML=fotos.length
-    ? `<div class="meta photo-existing-title">Fotos já salvas (${fotos.length})</div>`+
-      fotos.map(f=>`<span class="photo-chip ${f.tipo||"antes"}">${(f.tipo||"antes")==="depois"?"Depois":"Antes"} · ${esc(f.nome_arquivo||"foto")}</span>`).join("")
-    : `<div class="meta">Nenhuma foto salva ainda.</div>`;
+  if(!fotos.length){$("existingPhotos").innerHTML='<div class="meta">Nenhuma foto salva ainda.</div>';return}
+  $("existingPhotos").innerHTML=`<div class="meta photo-existing-title">Fotos já salvas (${fotos.length})</div><div class="existing-photo-grid"><div class="preview-loading">Carregando fotos...</div></div>`;
+  const rows=(await Promise.all(fotos.map(async f=>({f,url:await signedPhotoUrl(f.storage_path)}))));
+  const grid=$("existingPhotos").querySelector(".existing-photo-grid");
+  grid.innerHTML=rows.map(({f,url})=>`<div class="existing-photo-card">
+    <div class="existing-photo-image">${url?`<img src="${url}" alt="${(f.tipo||"antes")==="depois"?"Depois":"Antes"}">`:'<div class="photo-unavailable">Foto indisponível</div>'}</div>
+    <div class="existing-photo-info"><span class="photo-tag ${f.tipo||"antes"}">${(f.tipo||"antes")==="depois"?"DEPOIS":"ANTES"}</span><small title="${esc(f.nome_arquivo||"foto")}">${esc(f.nome_arquivo||"foto")}</small></div>
+    <button type="button" class="photo-delete-btn" onclick="deleteSavedPhoto('${f.id}')" title="Remover esta foto" aria-label="Remover esta foto">🗑</button>
+  </div>`).join("");
+}
+async function deleteSavedPhoto(id){
+  const f=state.orcFotos.find(x=>x.id===id);if(!f)return;
+  if(!confirm(`Remover esta foto do orçamento?\\n${f.nome_arquivo||"Foto"}`))return;
+  // primeiro remove o registro; depois tenta limpar o arquivo do Storage
+  let r=await sb.from("orcamento_fotos").delete().eq("id",id).eq("user_id",uid());
+  if(r.error)return alert("Não foi possível remover a foto: "+r.error.message);
+  if(f.storage_path){
+    const s=await sb.storage.from("orcamento-fotos").remove([f.storage_path]);
+    if(s.error)console.warn("Arquivo de foto permaneceu no Storage:",s.error.message);
+  }
+  state.orcFotos=state.orcFotos.filter(x=>x.id!==id);
+  await renderExistingPhotos(f.orcamento_id);
+  renderOrc();
+  alert("Foto removida.");
 }
 
 async function uploadBudgetPhotos(orcamentoId){
@@ -980,12 +1000,17 @@ async function imageUrlToData(url){
 }
 function pdfSafe(v){return String(v??"").replace(/[^\x20-\x7EÀ-ÿ]/g," ")}
 let previewBudgetId=null;
-function buildBudgetClientPreview(o){
+async function buildBudgetClientPreview(o){
   const its=state.orcItens.filter(x=>x.orcamento_id===o.id);
   const fotos=state.orcFotos.filter(x=>x.orcamento_id===o.id);
   const gi=garantiaInfo(o);
   const itemRows=its.map(i=>`<tr><td>${i.tipo==="mao_obra"?"M.O.":"Item"}</td><td>${esc(i.descricao)}</td><td>${i.quantidade}</td><td>${brl(i.valor_unitario)}</td><td>${brl(Number(i.quantidade)*Number(i.valor_unitario))}</td></tr>`).join("");
-  const before=fotos.filter(f=>(f.tipo||"antes")==="antes").length, after=fotos.filter(f=>f.tipo==="depois").length;
+  const photos=(await Promise.all(fotos.map(async f=>({f,url:await signedPhotoUrl(f.storage_path)})))).filter(x=>x.url);
+  const photoHtml=(tipo,label)=>{
+    const group=photos.filter(x=>(x.f.tipo||"antes")===tipo);
+    if(!group.length)return"";
+    return `<section class="preview-photo-group"><h4>${label}</h4><div class="preview-photo-grid">${group.map(x=>`<figure><img src="${x.url}" alt="${label}"><figcaption>${esc(x.f.nome_arquivo||"Foto")}</figcaption></figure>`).join("")}</div></section>`;
+  };
   return `<article class="client-document-preview">
     <header><h1>ORÇAMENTO / RELATÓRIO DE SERVIÇO</h1></header>
     <section class="preview-client-data">
@@ -1000,17 +1025,18 @@ function buildBudgetClientPreview(o){
     <div class="preview-table-wrap"><table><thead><tr><th>Tipo</th><th>Descrição</th><th>Qtd.</th><th>Valor unit.</th><th>Total</th></tr></thead><tbody>${itemRows||`<tr><td colspan="5">Nenhum item.</td></tr>`}</tbody></table></div>
     <div class="preview-grand-total">TOTAL: ${brl(o.total)}</div>
     <section><p><b>Forma de pagamento:</b> ${esc(o.forma_pagamento||"Não informada")}</p><p><b>Condição de pagamento:</b> ${esc(o.condicao_pagamento||"Não informada")}${o.condicao_pagamento_detalhe?` — ${esc(o.condicao_pagamento_detalhe)}`:""}</p></section>
-    ${fotos.length?`<section class="preview-photo-summary"><h3>REGISTRO FOTOGRÁFICO</h3><p>Antes (${before}) · Depois (${after})</p><small>As fotografias serão incluídas no PDF gerado.</small></section>`:""}
+    ${photos.length?`<section class="preview-photo-summary"><h3>REGISTRO FOTOGRÁFICO</h3>${photoHtml("antes","ANTES")}${photoHtml("depois","DEPOIS")}</section>`:""}
     <section class="preview-warranty"><b>Garantia do serviço:</b> ${gi?`${gi.meses} meses — válida até ${dataBR(gi.ate)}.`:"3 meses a partir da data de conclusão/entrega."}</section>
     <footer>Documento referente ao orçamento e ao registro dos serviços descritos acima.</footer>
   </article>`;
 }
-function previewPdfCliente(id){
+async function previewPdfCliente(id){
   const o=state.orc.find(x=>x.id===id);if(!o)return;
   previewBudgetId=id;
   $("pdfPreviewTitle").textContent=`Orçamento ${o.numero} · ${o.cliente||""}`;
-  $("pdfPreviewBody").innerHTML=buildBudgetClientPreview(o);
+  $("pdfPreviewBody").innerHTML='<div class="preview-loading">Carregando pré-visualização e fotos...</div>';
   $("pdfPreviewModal").classList.remove("hidden");
+  $("pdfPreviewBody").innerHTML=await buildBudgetClientPreview(o);
 }
 $("closePdfPreview").onclick=()=>{$("pdfPreviewModal").classList.add("hidden");previewBudgetId=null};
 $("previewEditBtn").onclick=()=>{const id=previewBudgetId;$("pdfPreviewModal").classList.add("hidden");if(id)editOrc(id)};

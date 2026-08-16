@@ -980,3 +980,23 @@ input[inputmode="decimal"]{font-variant-numeric:tabular-nums}
 .preview-actions button{display:inline-flex;align-items:center;justify-content:center;gap:7px}
 .orc-icon-action.preview{color:#2563eb!important;background:#eff6ff!important;border-color:#bfdbfe!important}
 @media(max-width:600px){.pdf-preview-body{padding:8px}.client-document-preview{padding:18px}.preview-actions{display:grid;grid-template-columns:1fr 1fr 1fr}.preview-actions button{min-width:0;padding:10px 6px}.preview-actions span{display:none}}
+
+/* V8.1.2 — fotos reais na prévia e gestão de fotos */
+.preview-loading{padding:28px;text-align:center;color:#64748b;font-weight:700}
+.preview-photo-summary{margin-top:18px}
+.preview-photo-group h4{margin:12px 0 8px;font-size:.82rem}
+.preview-photo-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.preview-photo-grid figure{margin:0;border:1px solid #e5e7eb;border-radius:9px;padding:6px;background:#fff}
+.preview-photo-grid img{display:block;width:100%;height:180px;object-fit:contain;background:#f8fafc;border-radius:6px}
+.preview-photo-grid figcaption{font-size:.68rem;color:#64748b;margin-top:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.existing-photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:10px;margin-top:8px}
+.existing-photo-card{position:relative;border:1px solid #dbe3ee;border-radius:12px;background:#fff;padding:7px;min-width:0}
+.existing-photo-image{height:105px;border-radius:8px;overflow:hidden;background:#f8fafc;display:flex;align-items:center;justify-content:center}
+.existing-photo-image img{width:100%;height:100%;object-fit:cover}
+.photo-unavailable{font-size:.72rem;color:#94a3b8}
+.existing-photo-info{padding:7px 40px 0 0;min-width:0}
+.existing-photo-info small{display:block;margin-top:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#64748b}
+.photo-delete-btn{position:absolute;right:7px;bottom:7px;width:32px!important;height:32px!important;min-width:32px!important;padding:0!important;border-radius:9px!important;border:1px solid #fecaca!important;background:#fff1f2!important;color:#b91c1c!important;display:flex!important;align-items:center;justify-content:center}
+.photo-delete-btn:hover{background:#fee2e2!important}
+@media(max-width:600px){.preview-photo-grid{grid-template-columns:1fr}.preview-photo-grid img{height:auto;max-height:240px}.existing-photo-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
