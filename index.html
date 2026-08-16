@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111827">
 <title>Meu Financeiro</title>
-<link rel="stylesheet" href="styles.css?v=8.0.2">
+<link rel="stylesheet" href="styles.css?v=8.0.3">
 </head>
 <body>
 <section id="auth" class="auth"><div class="card auth-card"><h1>Meu Financeiro</h1><p>Acesse seus dados no computador e no celular.</p><div class="tabs"><button id="tabLogin" class="active" type="button">Entrar</button><button id="tabSignup" type="button">Criar conta</button></div><form id="authForm"><label id="nomeWrap" class="hidden">Nome<input id="nome"></label><label>E-mail<input id="email" type="email" required></label><label>Senha<input id="senha" type="password" minlength="6" required></label><button id="authSubmit" class="primary">Entrar</button><p id="authMsg" class="msg"></p></form></div></section>
@@ -189,7 +189,7 @@
 <section id="calendarView" class="view"><div class="card"><div class="calendar-head"><button id="prevMonth" type="button">‹</button><h2 id="monthTitle"></h2><button id="nextMonth" type="button">›</button></div><div class="calendar-filter"><button data-cal-filter="TODOS" class="active" type="button">Tudo</button><button data-cal-filter="PF" type="button">Pessoa Física</button><button data-cal-filter="CNPJ" type="button">CNPJ</button></div><div class="weekdays"><span>Dom</span><span>Seg</span><span>Ter</span><span>Qua</span><span>Qui</span><span>Sex</span><span>Sáb</span></div><div id="calendarGrid" class="calendar-grid"></div></div><div class="card"><div class="head"><h2 id="selectedDateTitle">Selecione um dia</h2><button id="calendarAddBtn" class="primary small hidden" type="button">+ Lançar neste dia</button></div><div id="calendarEvents"></div></div></section>
 </main></div>
 
-<div id="modal" class="modal hidden"><div class="card modal-card"><div class="head"><h2 id="modalTitle"></h2><button id="closeModal" type="button">×</button></div><form id="modalForm"><input id="editId" type="hidden"><input id="mode" type="hidden"><label>Descrição<input id="descricao" required></label><label>Valor (R$)<input id="valor" type="number" step="0.01" min="0" required></label>
+<div id="modal" class="modal hidden"><div class="card modal-card"><div class="head"><h2 id="modalTitle"></h2><button id="closeModal" type="button">×</button></div><form id="modalForm"><input id="editId" type="hidden"><input id="mode" type="hidden"><label>Descrição<input id="descricao" required></label><label>Valor (R$)<input id="valor" type="text" inputmode="decimal" placeholder="R$ 0,00" required></label>
 <label id="categoryWrap">Categoria<select id="categoria"></select></label>
 <label id="priorityWrap" class="hidden">Prioridade
 <select id="prioridade">
@@ -263,7 +263,26 @@
 
 <div id="transferModal" class="modal hidden"><div class="card modal-card"><div class="head"><h2>Transferir valor</h2><button id="closeTransfer" type="button">×</button></div><form id="transferForm"><p id="transferDirection" class="transfer-direction"></p><label>Descrição<input id="transferDesc" value="Transferência"></label><label>Valor (R$)<input id="transferValue" type="number" min="0.01" step="0.01" required></label><label>Data<input id="transferDate" type="date" required></label><button class="primary">Transferir</button></form></div></div>
 
-<div id="fixedModal" class="modal hidden"><div class="card modal-card"><div class="head"><h2 id="fixedTitle">Nova conta fixa</h2><button id="closeFixed" type="button">×</button></div><form id="fixedForm"><input id="fixedId" type="hidden"><label>Conta<select id="fixedAccount"><option value="PF">Pessoa Física</option><option value="CNPJ">CNPJ</option></select></label><label>Descrição<input id="fixedDesc" placeholder="Ex.: Internet" required></label><label>Valor padrão (R$)<input id="fixedValue" type="number" min="0" step="0.01" required></label><label>Dia do vencimento<input id="fixedDay" type="number" min="1" max="31" required></label><button class="primary">Salvar conta fixa</button></form></div></div>
+<div id="fixedModal" class="modal hidden"><div class="card modal-card"><div class="head"><h2 id="fixedTitle">Nova conta fixa</h2><button id="closeFixed" type="button">×</button></div><form id="fixedForm"><input id="fixedId" type="hidden">
+<label>Conta<select id="fixedAccount"><option value="PF">Pessoa Física</option><option value="CNPJ">CNPJ</option></select></label>
+<label>Descrição<input id="fixedDesc" placeholder="Ex.: Internet, Água, Luz" required></label>
+<label>Tipo de valor
+<select id="fixedValueType">
+  <option value="fixo">Valor fixo</option>
+  <option value="variavel">Valor variável</option>
+</select>
+</label>
+<label id="fixedValueWrap">Valor padrão (R$)<input id="fixedValue" type="text" inputmode="decimal" placeholder="R$ 0,00"></label>
+<label>Prioridade
+<select id="fixedPriority">
+  <option value="urgente">Urgente</option>
+  <option value="prioritaria">Prioritária</option>
+  <option value="pode_esperar">Pode esperar</option>
+</select>
+</label>
+<label>Dia do vencimento<input id="fixedDay" type="number" min="1" max="31" required></label>
+<p id="fixedVariableHelp" class="meta hidden">O valor será informado quando a fatura do mês chegar.</p>
+<button class="primary">Salvar conta fixa</button></form></div></div>
 
 <div id="calendarActionModal" class="modal hidden"><div class="card modal-card"><div class="head"><h2>Novo lançamento</h2><button id="closeCalendarAction" type="button">×</button></div><p id="calendarActionDate" class="transfer-direction"></p><div class="calendar-actions"><button data-cal-action="entrada" class="primary" type="button">+ Entrada</button><button data-cal-action="saida" type="button">+ Gasto</button><button data-cal-action="conta" type="button">+ Conta a pagar</button></div><label>Conta<select id="calendarAccount"><option value="PF">Pessoa Física</option><option value="CNPJ">CNPJ</option></select></label></div></div>
 
@@ -275,5 +294,5 @@
 <button class="danger remove-cost" type="button">×</button></div></template>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script><script src="config.js"></script><script src="app.js?v=8.0.2"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script><script src="config.js"></script><script src="app.js?v=8.0.3"></script>
 </body></html>

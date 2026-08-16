@@ -168,7 +168,7 @@ function openMov(tipo,x=null,forcedDate=null,forcedAccount=null){
   if(forcedAccount)current=forcedAccount;
   $("mode").value="mov";$("editId").value=x?.id||"";
   $("modalTitle").textContent=x?"Editar lançamento":tipo==="entrada"?"Nova entrada":"Novo gasto";
-  $("descricao").value=x?.descricao||"";$("valor").value=x?.valor||"";
+  $("descricao").value=x?.descricao||"";formatBRMoneyInput($("valor"),x?.valor||0);
   $("data").value=x?.data||forcedDate||hoje();$("data").dataset.tipo=tipo;
   $("categoryWrap").classList.toggle("hidden",tipo==="entrada");
   $("priorityWrap").classList.add("hidden");
@@ -183,7 +183,7 @@ function openConta(x=null,forcedDate=null,forcedAccount=null){
   $("categoryWrap").classList.add("hidden");
   $("priorityWrap").classList.remove("hidden");
   $("prioridade").value=x?.prioridade||"prioritaria";
-  $("descricao").value=x?.descricao||"";$("valor").value=x?.valor||"";
+  $("descricao").value=x?.descricao||"";formatBRMoneyInput($("valor"),x?.valor||0);
   $("data").value=x?.vencimento||forcedDate||hoje();
   $("dateLabel").childNodes[0].nodeValue="Vencimento ";
   $("modal").classList.remove("hidden");
@@ -195,11 +195,11 @@ $("modalForm").onsubmit=async e=>{
   const editing=$("editId").value;
   if($("mode").value==="mov"){
     const tipoMov=$("data").dataset.tipo;
-    const p={user_id:uid(),conta:current,tipo:tipoMov,descricao:$("descricao").value.trim(),valor:+$("valor").value,data:$("data").value,origem:"manual",categoria:tipoMov==="entrada"?"Receita":$("categoria").value};
+    const p={user_id:uid(),conta:current,tipo:tipoMov,descricao:$("descricao").value.trim(),valor:parseBRMoney($("valor").value),data:$("data").value,origem:"manual",categoria:tipoMov==="entrada"?"Receita":$("categoria").value};
     const q=editing?sb.from("movimentacoes").update(p).eq("id",editing):sb.from("movimentacoes").insert(p);
     const {error}=await q;if(error)return alert(error.message);
   }else{
-    const p={user_id:uid(),conta:current,descricao:$("descricao").value.trim(),valor:+$("valor").value,vencimento:$("data").value,prioridade:$("prioridade").value};
+    const p={user_id:uid(),conta:current,descricao:$("descricao").value.trim(),valor:parseBRMoney($("valor").value),vencimento:$("data").value,prioridade:$("prioridade").value};
     if(!editing)p.status="pendente";
     const q=editing?sb.from("contas").update(p).eq("id",editing):sb.from("contas").insert(p);
     const {error}=await q;if(error)return alert(error.message);
@@ -221,9 +221,14 @@ function editMov(id){const x=state.mov.find(x=>x.id===id);if(x)openMov(x.tipo,x)
 function editConta(id){const x=state.contas.find(x=>x.id===id);if(x)openConta(x)}
 async function pagarConta(id){
   const x=state.contas.find(x=>x.id===id);if(!x)return;
+  if(x.valor==null||Number(x.valor)<=0){
+    alert("Informe primeiro o valor real desta conta.");
+    openConta(x);
+    return;
+  }
   let {error}=await sb.from("contas").update({status:"pago",pago_em:hoje()}).eq("id",id);
   if(error)return alert(error.message);
-  ({error}=await sb.from("movimentacoes").insert({user_id:uid(),conta:x.conta,tipo:"saida",descricao:x.descricao,valor:x.valor,data:hoje(),origem:"conta_paga"}));
+  ({error}=await sb.from("movimentacoes").insert({user_id:uid(),conta:x.conta,tipo:"saida",descricao:x.descricao,valor:x.valor,data:hoje(),origem:"conta_paga",categoria:"Outros"}));
   if(error)return alert(error.message);
   await loadAll();
 }
@@ -481,37 +486,66 @@ function dueText(x){
   return `<span class="due">Vence em ${days} dias</span>`;
 }
 function listConta(a,open){
-  return a.length?a.map(x=>`<div class="item bill-item"><div><b>${esc(x.descricao)}</b><div class="meta">${dueText(x)} · ${priorityLabel(x)}</div></div><div class="item-value-actions"><b class="money-inline">${brl(x.valor)}</b>${actionMenu([
+  return a.length?a.map(x=>`<div class="item bill-item"><div><b>${esc(x.descricao)}</b><div class="meta">${dueText(x)} · ${priorityLabel(x)}</div></div><div class="item-value-actions"><b class="money-inline">${x.valor==null?"Valor pendente":brl(x.valor)}</b>${actionMenu([
     open?`<button onclick="pagarConta('${x.id}')">Marcar paga</button>`:"",
     open?`<button onclick="editConta('${x.id}')">Editar</button>`:"",
     open?`<button onclick="delConta('${x.id}')">Remover conta</button>`:""
   ])}</div></div>`).join(""):`<p class="meta">Nenhuma conta.</p>`;
 }
 
+
+prepareMoneyInput($("valor"));
+prepareMoneyInput($("fixedValue"));
+
 // CONTAS FIXAS
 
 $("fixedActionsBtn").onclick=()=>$("fixedActionsMenu").classList.toggle("hidden");
 $("addFixedBtn").onclick=()=>{$("fixedActionsMenu").classList.add("hidden");openFixed()};
 $("closeFixed").onclick=()=>$("fixedModal").classList.add("hidden");
+function syncFixedValueType(){
+  const variable=$("fixedValueType").value==="variavel";
+  $("fixedValueWrap").classList.toggle("disabled-field",variable);
+  $("fixedValue").disabled=variable;
+  $("fixedVariableHelp").classList.toggle("hidden",!variable);
+  if(variable)$("fixedValue").value="";
+}
+$("fixedValueType").onchange=syncFixedValueType;
+
 function openFixed(x=null){
   $("fixedId").value=x?.id||"";
   $("fixedTitle").textContent=x?"Editar conta fixa":"Nova conta fixa";
   $("fixedAccount").value=x?.conta||current||"PF";
   $("fixedDesc").value=x?.descricao||"";
-  $("fixedValue").value=x?.valor||"";
+  $("fixedValueType").value=x?.tipo_valor||"fixo";
+  $("fixedPriority").value=x?.prioridade||"prioritaria";
+  formatBRMoneyInput($("fixedValue"),x?.valor||0);
   $("fixedDay").value=x?.dia_vencimento||"";
+  syncFixedValueType();
   $("fixedModal").classList.remove("hidden");
 }
 $("fixedForm").onsubmit=async e=>{
   e.preventDefault();
   const id=$("fixedId").value;
-  const p={user_id:uid(),conta:$("fixedAccount").value,descricao:$("fixedDesc").value.trim(),valor:+$("fixedValue").value,dia_vencimento:+$("fixedDay").value,ativa:true};
+  const tipoValor=$("fixedValueType").value;
+  const valor=tipoValor==="fixo"?parseBRMoney($("fixedValue").value):null;
+  if(tipoValor==="fixo"&&!(valor>0))return alert("Informe o valor padrão da conta fixa.");
+  const p={
+    user_id:uid(),
+    conta:$("fixedAccount").value,
+    descricao:$("fixedDesc").value.trim(),
+    valor,
+    tipo_valor:tipoValor,
+    prioridade:$("fixedPriority").value,
+    dia_vencimento:+$("fixedDay").value,
+    ativa:true
+  };
   const q=id?sb.from("contas_fixas").update(p).eq("id",id):sb.from("contas_fixas").insert(p);
   const {error}=await q;
   if(error)return alert(error.message);
   $("fixedModal").classList.add("hidden");
   await loadAll();
 };
+
 async function delFixed(id){
   if(!confirm("Excluir esta conta fixa? As contas mensais já geradas não serão apagadas."))return;
   const {error}=await sb.from("contas_fixas").delete().eq("id",id);
@@ -529,10 +563,13 @@ $("generateFixedBtn").onclick=async()=>{
 function renderFixas(){
   if(!$("fixedList"))return;
   const a=current?state.fixas.filter(x=>x.conta===current):state.fixas;
-  $("fixedList").innerHTML=a.length?a.map(x=>`<div class="fixed-item"><div><b>${esc(x.descricao)}</b><div class="meta">${accountName(x.conta)} · vence dia ${x.dia_vencimento}</div></div><div class="item-value-actions"><b class="money-inline">${brl(x.valor)}</b>${actionMenu([
-    `<button onclick="editFixed('${x.id}')">Editar</button>`,
-    `<button onclick="delFixed('${x.id}')">Remover conta fixa</button>`
-  ])}</div></div>`).join(""):`<p class="meta">Nenhuma conta fixa cadastrada.</p>`;
+  $("fixedList").innerHTML=a.length?a.map(x=>{
+    const variable=(x.tipo_valor||"fixo")==="variavel";
+    return `<div class="fixed-item"><div><b>${esc(x.descricao)}</b><div class="meta">${accountName(x.conta)} · vence dia ${x.dia_vencimento} · ${variable?"Valor variável":"Valor fixo"} · ${priorityLabel(x)}</div></div><div class="item-value-actions"><b class="money-inline">${variable?"Valor do mês":brl(x.valor)}</b>${actionMenu([
+      `<button onclick="editFixed('${x.id}')">Editar</button>`,
+      `<button onclick="delFixed('${x.id}')">Remover conta fixa</button>`
+    ])}</div></div>`;
+  }).join(""):`<p class="meta">Nenhuma conta fixa cadastrada.</p>`;
 }
 
 
@@ -1255,3 +1292,24 @@ window.delMov=delMov;window.delConta=delConta;window.editMov=editMov;window.edit
 window.editCategory=editCategory;window.deleteCategory=deleteCategory;window.gerarPdfCliente=gerarPdfCliente;window.compartilharPdfCliente=compartilharPdfCliente;window.removePendingPhoto=removePendingPhoto;window.openBudgetPhotos=openBudgetPhotos;window.openApprovedCost=openApprovedCost;window.editFixed=editFixed;window.delFixed=delFixed;window.editOrc=editOrc;window.enviarOrc=enviarOrc;window.aprovarOrc=aprovarOrc;window.pagarOrc=pagarOrc;window.recalcularPago=recalcularPago;window.delOrc=delOrc;
 start();
 window.openFinancialSummary=openFinancialSummary;window.openModuleSettings=openModuleSettings;
+function parseBRMoney(v){
+  if(typeof v==="number")return v;
+  let s=String(v??"").trim().replace(/\s/g,"").replace(/^R\$/i,"");
+  if(!s)return 0;
+  if(s.includes(","))s=s.replace(/\./g,"").replace(",",".");
+  return Number(s.replace(/[^\d.-]/g,""))||0;
+}
+function formatBRMoneyInput(el,value=null){
+  if(!el)return;
+  const n=value===null?parseBRMoney(el.value):Number(value||0);
+  el.value=n?brl(n):"";
+}
+function prepareMoneyInput(el){
+  if(!el)return;
+  el.addEventListener("focus",()=>{
+    const n=parseBRMoney(el.value);
+    el.value=n? n.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2}) : "";
+  });
+  el.addEventListener("blur",()=>formatBRMoneyInput(el));
+}
+

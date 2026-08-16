@@ -570,3 +570,9 @@ button:disabled{opacity:.65;cursor:wait}
   .priority-cols{grid-template-columns:1fr!important}
   .row-action-popover{right:0}
 }
+
+/* V8.0.3 — moeda BR + contas de valor variável */
+input[inputmode="decimal"]{font-variant-numeric:tabular-nums}
+.disabled-field{opacity:.55}
+.disabled-field input{background:#f3f4f6}
+#fixedVariableHelp{padding:8px 10px;border-radius:9px;background:#f8fafc}
