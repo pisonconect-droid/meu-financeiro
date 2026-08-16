@@ -1,6 +1,6 @@
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 let session=null,current=null,authMode="login";
-let state={mov:[],contas:[],orc:[],orcItens:[],orcCustos:[],orcFotos:[],fixas:[],categorias:[],profile:null};
+let state={mov:[],contas:[],orc:[],orcItens:[],orcCustos:[],orcFotos:[],orcRecebimentos:[],fixas:[],categorias:[],profile:null};
 let editingOrcId=null;
 let movCategoryFilter="TODOS";
 let reportYear=new Date().getFullYear();
@@ -104,20 +104,21 @@ function restoreNavigation(){
 }
 
 async function loadAll(){
-  const [m,c,o,oi,oc,of,f,cat,p]=await Promise.all([
+  const [m,c,o,oi,oc,of,orx,f,cat,p]=await Promise.all([
     sb.from("movimentacoes").select("*").order("data",{ascending:false}).order("created_at",{ascending:false}),
     sb.from("contas").select("*").order("vencimento"),
     sb.from("orcamentos").select("*").order("created_at",{ascending:false}),
     sb.from("orcamento_itens").select("*"),
     sb.from("orcamento_custos").select("*"),
     sb.from("orcamento_fotos").select("*").order("created_at",{ascending:true}),
+    sb.from("orcamento_recebimentos").select("*").order("data_recebimento",{ascending:true}),
     sb.from("contas_fixas").select("*").order("descricao"),
     sb.from("categorias").select("*").eq("ativa",true).order("nome"),
     sb.from("profiles").select("*").eq("id",uid()).maybeSingle()
   ]);
-  const er=m.error||c.error||o.error||oi.error||oc.error||of.error||f.error||cat.error||p.error;
+  const er=m.error||c.error||o.error||oi.error||oc.error||of.error||orx.error||f.error||cat.error||p.error;
   if(er){alert(er.message);return}
-  state={mov:m.data||[],contas:c.data||[],orc:o.data||[],orcItens:oi.data||[],orcCustos:oc.data||[],orcFotos:of.data||[],fixas:f.data||[],categorias:cat.data||[],profile:p.data||null};
+  state={mov:m.data||[],contas:c.data||[],orc:o.data||[],orcItens:oi.data||[],orcCustos:oc.data||[],orcFotos:of.data||[],orcRecebimentos:orx.data||[],fixas:f.data||[],categorias:cat.data||[],profile:p.data||null};
   await ensureDefaultCategories();renderCategoryUI();render();renderCalendar();renderFixas();renderFinancialReport();renderBudgetSummary();
 }
 
@@ -910,41 +911,56 @@ function garantiaInfo(o){
   const ativa=ate>=hoje();
   return {inicio:String(inicio).slice(0,10),ate,ativa,meses:Number(o.garantia_meses||3)};
 }
+function recebimentoInfo(o){
+  const rs=state.orcRecebimentos.filter(r=>r.orcamento_id===o.id);
+  const recebido=rs.reduce((s,r)=>s+Number(r.valor||0),0);
+  const total=Number(o.total||0), saldo=Math.max(0,total-recebido);
+  const vencido=saldo>0 && o.proximo_vencimento && String(o.proximo_vencimento)<hoje();
+  const cor=saldo<=0?"verde":(recebido>0&&!vencido?"laranja":"vermelho");
+  return {rs,recebido,total,saldo,vencido,cor};
+}
 function pagarOrc(id){
   const o=state.orc.find(x=>x.id===id);if(!o)return;
+  const ri=recebimentoInfo(o);
   $("paymentOrcId").value=id;
-  $("paymentConclusionDate").value=hoje();
   $("paymentDate").value=hoje();
+  $("paymentConclusionDate").value="";
+  $("paymentNextDue").value=o.proximo_vencimento||"";
+  $("paymentInstallment").value="";
   $("paymentMethod").value=o.forma_pagamento||"PIX";
+  $("paymentAmount").value="";
+  $("paymentBalanceInfo").innerHTML=`<b>Total ${brl(ri.total)}</b><span>Recebido ${brl(ri.recebido)}</span><span>A receber ${brl(ri.saldo)}</span>`;
   $("paymentModal").classList.remove("hidden");
 }
+prepareMoneyInput($("paymentAmount"));
 $("closePaymentModal").onclick=()=>$("paymentModal").classList.add("hidden");
 $("paymentForm").onsubmit=async e=>{
   e.preventDefault();
   const id=$("paymentOrcId").value;
-  const conclusao=$("paymentConclusionDate").value;
-  const pagamento=$("paymentDate").value;
-  const forma=$("paymentMethod").value;
-  if(!id||!conclusao||!pagamento)return;
-  if(!confirm("Confirmar pagamento e conclusão? A garantia de 3 meses começará na data de conclusão/entrega."))return;
-
-  const {error}=await sb.rpc("marcar_orcamento_pago",{p_orcamento_id:id,p_data:pagamento});
-  if(error)return alert("Pagamento: "+error.message);
-
-  const garantiaAte=addMonthsISO(conclusao,3);
-  const up=await sb.from("orcamentos").update({
-    concluido_em:conclusao,
-    garantia_meses:3,
-    garantia_ate:garantiaAte,
-    forma_pagamento_efetiva:forma
-  }).eq("id",id).eq("user_id",uid());
-
-  if(up.error)return alert("Pagamento registrado, mas houve erro ao registrar os dados finais: "+up.error.message);
-
+  const o=state.orc.find(x=>x.id===id); if(!o)return;
+  const ri=recebimentoInfo(o);
+  const valor=parseBRMoney($("paymentAmount").value);
+  if(!(valor>0))return alert("Informe o valor recebido.");
+  if(valor>ri.saldo+0.009)return alert(`O valor recebido não pode ser maior que o saldo de ${brl(ri.saldo)}.`);
+  const payload={user_id:uid(),orcamento_id:id,valor,data_recebimento:$("paymentDate").value,forma_pagamento:$("paymentMethod").value,parcela:$("paymentInstallment").value.trim()||null};
+  let r=await sb.from("orcamento_recebimentos").insert(payload);
+  if(r.error)return alert("Recebimento: "+r.error.message);
+  const novoRecebido=ri.recebido+valor, quitado=novoRecebido>=ri.total-0.009;
+  const conclusao=$("paymentConclusionDate").value||null;
+  const up={proximo_vencimento:quitado?null:($("paymentNextDue").value||null),forma_pagamento_efetiva:$("paymentMethod").value};
+  if(conclusao){up.concluido_em=conclusao;up.garantia_meses=3;up.garantia_ate=addMonthsISO(conclusao,3)}
+  if(quitado){up.status="pago";up.pago_em=$("paymentDate").value;up.valor_recebido=novoRecebido}
+  else {up.status="aprovado";up.valor_recebido=novoRecebido}
+  r=await sb.from("orcamentos").update(up).eq("id",id).eq("user_id",uid());
+  if(r.error)return alert("Recebimento salvo, mas houve erro ao atualizar o orçamento: "+r.error.message);
+  // Caixa CNPJ recebe somente o dinheiro efetivamente recebido.
+  r=await sb.from("movimentacoes").insert({user_id:uid(),conta:"CNPJ",tipo:"entrada",descricao:`Recebimento orçamento ${o.numero} · ${o.cliente}`,valor,data:$("paymentDate").value,origem:"orcamento_recebimento",categoria:"Receita",referencia_id:id});
+  if(r.error)alert("Recebimento registrado, mas a entrada no caixa precisa ser conferida: "+r.error.message);
   $("paymentModal").classList.add("hidden");
-  alert(`Serviço concluído. Garantia de 3 meses válida até ${dataBR(garantiaAte)}.`);
+  alert(quitado?"Pagamento concluído. Orçamento quitado.":"Recebimento parcial registrado.");
   await loadAll();
 };
+
 async function delOrc(id){
   const o=state.orc.find(x=>x.id===id);
   if(!o)return;
@@ -1138,15 +1154,17 @@ function budgetCard(o){
   const resultado=Number(o.total)-custoItens-custoServico;
   const gi=garantiaInfo(o);
   const isDraft=["rascunho","orcamento"].includes(o.status);
+  const ri=recebimentoInfo(o);
   return `<details class="item budget-record"><summary><div><b>Orçamento ${o.numero} · ${esc(o.cliente)}</b><div class="meta">${dataBR(o.data)}${o.equipamento_modelo?` · ${esc(o.equipamento_modelo)}`:""}</div><span class="status-pill ${o.status}">${({orcamento:"Rascunho",rascunho:"Rascunho",enviado:"Enviado",aprovado:"Aprovado",pago:"Pago"}[o.status]||o.status)}</span>${gi?`<span class="warranty-pill ${gi.ativa?"active":"ended"}">${gi.ativa?"Garantia ativa":"Garantia encerrada"} · ${dataBR(gi.ate)}</span>`:""}</div><b class="money-inline">${brl(o.total)}</b></summary><div class="budget-detail">
     <div class="meta"><b>Prestador:</b> ${esc(o.prestador||"-")}</div>
     <div class="meta"><b>Pagamento:</b> ${esc(o.forma_pagamento||"Não informado")} · ${esc(o.condicao_pagamento||"Não informada")}${o.condicao_pagamento_detalhe?` · ${esc(o.condicao_pagamento_detalhe)}`:""}${o.forma_pagamento_efetiva?` · recebido via ${esc(o.forma_pagamento_efetiva)}`:""}</div>
+    ${["aprovado","pago"].includes(o.status)?`<div class="receivable-status ${ri.cor}"><b>${ri.cor==="verde"?"Pagamento concluído":ri.vencido?"Pagamento pendente / parcela vencida":ri.recebido>0?"Pagamento parcial":"Aguardando pagamento"}</b><span>Recebido ${moneySpan(ri.recebido)}</span><span>A receber ${moneySpan(ri.saldo)}</span>${o.proximo_vencimento&&ri.saldo>0?`<span>Próximo vencimento ${dataBR(o.proximo_vencimento)}</span>`:""}</div>`:""}
     <div class="budget-split"><span>Total cobrado <b class="money-inline">${brl(o.total)}</b></span><span>Gastos <b class="money-inline">${brl(custoItens+custoServico)}</b></span><span>Resultado ${o.status==="pago"?"real":"previsto"} <b class="money-inline">${brl(o.status==="pago"?o.resultado:resultado)}</b></span></div>
     <div class="photo-counts"><span>Antes (${antes})</span><span>Depois (${depois})</span></div>
     ${its.map(i=>`<div class="meta">${i.tipo==="peca"?"Item":"M.O."}: ${esc(i.descricao)} · ${i.quantidade} × ${moneySpan(i.valor_unitario)}${Number(i.custo_unitario||0)>0?` · custo ${moneySpan(Number(i.custo_unitario)*Number(i.quantidade))}`:""}</div>`).join("")}
     ${custos.length?`<div class="internal-box"><b>Custos internos</b>${custos.map(c=>`<div class="meta">${esc(c.descricao)} · ${esc(c.categoria||"Custos do serviço")} · ${moneySpan(c.valor)}</div>`).join("")}</div>`:""}
     ${fotos.length?`<button type="button" class="small" onclick="openBudgetPhotos('${o.id}')">Fotos (${fotos.length})</button>`:""}
-    <div class="actions"><button class="orc-icon-action pdf" onclick="gerarPdfCliente('${o.id}',this)" title="Gerar PDF" aria-label="Gerar PDF">📄</button><button class="orc-icon-action share" onclick="compartilharPdfCliente('${o.id}',this)" title="Compartilhar" aria-label="Compartilhar">↗</button>${o.status!=="pago"?`<button class="orc-icon-action edit" onclick="editOrc('${o.id}')" title="Editar orçamento" aria-label="Editar orçamento">✎</button>`:""}${isDraft?`<button onclick="enviarOrc('${o.id}')">Marcar enviado</button><button class="warning" onclick="aprovarOrc('${o.id}')">Aprovar</button><button class="danger" onclick="delOrc('${o.id}')">Excluir</button>`:""}${o.status==="enviado"?`<button class="warning" onclick="aprovarOrc('${o.id}')">Aprovar</button>`:""}${o.status==="aprovado"?`<button class="orc-icon-action cost" onclick="openApprovedCost('${o.id}')" title="Registrar custo" aria-label="Registrar custo">＋</button><button class="orc-icon-action done" onclick="pagarOrc('${o.id}')" title="Concluir / Marcar pago" aria-label="Concluir / Marcar pago">✓</button>`:""}${o.status==="pago"?`<button class="warning" onclick="recalcularPago('${o.id}')">Recalcular</button>`:""}</div>
+    <div class="actions"><button class="orc-icon-action pdf" onclick="gerarPdfCliente('${o.id}',this)" title="Gerar PDF" aria-label="Gerar PDF">📄</button><button class="orc-icon-action share" onclick="compartilharPdfCliente('${o.id}',this)" title="Compartilhar" aria-label="Compartilhar">↗</button>${o.status!=="pago"?`<button class="orc-icon-action edit" onclick="editOrc('${o.id}')" title="Editar orçamento" aria-label="Editar orçamento">✎</button>`:""}${isDraft?`<button onclick="enviarOrc('${o.id}')">Marcar enviado</button><button class="warning" onclick="aprovarOrc('${o.id}')">Aprovar</button><button class="danger" onclick="delOrc('${o.id}')">Excluir</button>`:""}${o.status==="enviado"?`<button class="warning" onclick="aprovarOrc('${o.id}')">Aprovar</button>`:""}${o.status==="aprovado"?`<button class="orc-icon-action cost" onclick="openApprovedCost('${o.id}')" title="Registrar custo" aria-label="Registrar custo">＋</button><button class="orc-icon-action done" onclick="pagarOrc('${o.id}')" title="Registrar recebimento" aria-label="Registrar recebimento">✓</button>`:""}${o.status==="pago"?`<button class="warning" onclick="recalcularPago('${o.id}')">Recalcular</button>`:""}</div>
   </div></details>`;
 }
 function renderOrc(){

@@ -948,3 +948,11 @@ input[inputmode="decimal"]{font-variant-numeric:tabular-nums}
   .form-actions{display:flex!important;justify-content:flex-end!important;align-items:center!important}
   #saveOrcBtn{flex:1 1 auto!important}
 }
+
+/* V8.1.0 — contas a receber */
+.receivable-summary,.receivable-status{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;padding:12px 14px;border-radius:12px;margin:8px 0 12px;border:1px solid #e5e7eb}
+.receivable-summary{background:#f8fafc}.receivable-summary b{width:100%}
+.receivable-status.vermelho{background:#fff1f2;border-color:#fecaca;color:#991b1b}
+.receivable-status.laranja{background:#fff7ed;border-color:#fed7aa;color:#9a3412}
+.receivable-status.verde{background:#f0fdf4;border-color:#bbf7d0;color:#166534}
+.receivable-status span{font-size:.84rem}

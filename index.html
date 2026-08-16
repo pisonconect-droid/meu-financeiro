@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111827">
 <title>Meu Financeiro</title>
-<link rel="stylesheet" href="styles.css?v=8.0.7">
+<link rel="stylesheet" href="styles.css?v=8.1.0">
 </head>
 <body>
 <section id="auth" class="auth"><div class="card auth-card"><h1>Meu Financeiro</h1><p>Acesse seus dados no computador e no celular.</p><div class="tabs"><button id="tabLogin" class="active" type="button">Entrar</button><button id="tabSignup" type="button">Criar conta</button></div><form id="authForm"><label id="nomeWrap" class="hidden">Nome<input id="nome"></label><label>E-mail<input id="email" type="email" required></label><label>Senha<input id="senha" type="password" minlength="6" required></label><button id="authSubmit" class="primary">Entrar</button><p id="authMsg" class="msg"></p></form></div></section>
@@ -236,22 +236,19 @@
 </div></div>
 
 <div id="paymentModal" class="modal hidden"><div class="card modal-card">
-<div class="head"><h2>Concluir / Marcar pago</h2><button id="closePaymentModal" type="button">×</button></div>
+<div class="head"><h2>Registrar recebimento</h2><button id="closePaymentModal" type="button">×</button></div>
 <form id="paymentForm">
   <input id="paymentOrcId" type="hidden">
-  <label>Data de conclusão / entrega<input id="paymentConclusionDate" type="date" required></label>
-  <label>Data do pagamento<input id="paymentDate" type="date" required></label>
-  <label>Forma de pagamento efetiva
-    <select id="paymentMethod">
-      <option value="PIX">PIX</option>
-      <option value="Dinheiro">Dinheiro</option>
-      <option value="Transferência">Transferência</option>
-      <option value="Cartão">Cartão</option>
-      <option value="Boleto">Boleto</option>
-      <option value="Outro">Outro</option>
-    </select>
+  <div id="paymentBalanceInfo" class="receivable-summary"></div>
+  <label>Valor recebido (R$)<input id="paymentAmount" type="text" inputmode="decimal" placeholder="R$ 0,00" required></label>
+  <label>Data do recebimento<input id="paymentDate" type="date" required></label>
+  <label>Forma de pagamento
+    <select id="paymentMethod"><option>PIX</option><option>Dinheiro</option><option>Transferência</option><option>Cartão</option><option>Boleto</option><option>Outro</option></select>
   </label>
-  <button class="primary">Confirmar pagamento e conclusão</button>
+  <label>Parcela / referência<input id="paymentInstallment" placeholder="Ex.: 1/3"></label>
+  <label>Próximo vencimento (opcional)<input id="paymentNextDue" type="date"></label>
+  <label>Data de conclusão / entrega (opcional)<input id="paymentConclusionDate" type="date"></label>
+  <button class="primary">Registrar recebimento</button>
 </form>
 </div></div>
 
@@ -316,5 +313,5 @@
 <button class="danger remove-cost remove-soft" type="button" title="Remover custo" aria-label="Remover custo"><span aria-hidden="true">🗑</span></button></div></template>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script><script src="config.js"></script><script src="app.js?v=8.0.7"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script><script src="config.js"></script><script src="app.js?v=8.1.0"></script>
 </body></html>
