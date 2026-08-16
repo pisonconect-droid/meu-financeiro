@@ -20,3 +20,10 @@ Substitua no GitHub:
 - README.md
 
 Depois faça Ctrl+F5.
+
+
+## Acabamento final V8.0.6a
+- Botões `×` de itens e custos substituídos por ícone de lixeira.
+- Fundo vermelho suave, borda discreta e cantos arredondados.
+- Tooltip: “Remover item” / “Remover custo”.
+- Nenhuma alteração de regra, cálculo ou Supabase.

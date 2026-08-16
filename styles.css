@@ -821,3 +821,40 @@ input[inputmode="decimal"]{font-variant-numeric:tabular-nums}
     grid-template-columns:1fr;
   }
 }
+
+/* V8.0.6a — acabamento dos botões de remoção */
+.remove-soft,
+.remove-budget-item,
+.remove-cost{
+  width:38px!important;
+  min-width:38px!important;
+  max-width:38px!important;
+  height:38px!important;
+  min-height:38px!important;
+  padding:0!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  border:1px solid #fecaca!important;
+  border-radius:10px!important;
+  background:#fff1f2!important;
+  color:#b91c1c!important;
+  font-size:.92rem!important;
+  line-height:1!important;
+  box-shadow:none!important;
+  cursor:pointer;
+  transition:background .15s ease,border-color .15s ease,transform .15s ease;
+}
+.remove-soft:hover,
+.remove-budget-item:hover,
+.remove-cost:hover{
+  background:#fee2e2!important;
+  border-color:#fca5a5!important;
+  transform:translateY(-1px);
+}
+.remove-soft:focus-visible,
+.remove-budget-item:focus-visible,
+.remove-cost:focus-visible{
+  outline:2px solid #fca5a5;
+  outline-offset:2px;
+}
