@@ -1,16 +1,18 @@
-# Meu Financeiro V8.1.0 — Recebimentos e Parcelas
+# Meu Financeiro V8.1.1 — Pré-visualização do PDF
 
-- Registra recebimentos parciais de orçamento.
-- Caixa CNPJ recebe somente o valor efetivamente recebido.
-- Vermelho: sem pagamento ou parcela vencida.
-- Laranja: pagamento parcial sem atraso.
-- Verde: orçamento totalmente quitado.
-- Mostra recebido, a receber e próximo vencimento.
-- Aceita referência de parcela (ex.: 1/3).
-- Ao zerar o saldo, orçamento muda para Pago.
-- Garantia pode iniciar pela data de conclusão/entrega.
+- Antes de gerar ou compartilhar, abre uma pré-visualização do documento do cliente.
+- A prévia oculta custos e resultados internos.
+- Mostra cliente, equipamento, descrição, itens, total, pagamento, fotos e garantia.
+- Ações da prévia: Editar, Gerar PDF e Compartilhar.
+- O gerador de PDF existente foi preservado.
+- Nenhuma alteração no Supabase.
 
 ## Instalação
-1. Execute `supabase_v8_1_0_recebimentos.sql` no Supabase.
-2. Depois substitua no GitHub: index.html, app.js, styles.css, config.js e README.md.
-3. Faça Ctrl+F5.
+Substitua no GitHub:
+- index.html
+- app.js
+- styles.css
+- config.js
+- README.md
+
+Depois faça Ctrl+F5.

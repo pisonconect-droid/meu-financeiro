@@ -979,6 +979,43 @@ async function imageUrlToData(url){
   });
 }
 function pdfSafe(v){return String(v??"").replace(/[^\x20-\x7EÀ-ÿ]/g," ")}
+let previewBudgetId=null;
+function buildBudgetClientPreview(o){
+  const its=state.orcItens.filter(x=>x.orcamento_id===o.id);
+  const fotos=state.orcFotos.filter(x=>x.orcamento_id===o.id);
+  const gi=garantiaInfo(o);
+  const itemRows=its.map(i=>`<tr><td>${i.tipo==="mao_obra"?"M.O.":"Item"}</td><td>${esc(i.descricao)}</td><td>${i.quantidade}</td><td>${brl(i.valor_unitario)}</td><td>${brl(Number(i.quantidade)*Number(i.valor_unitario))}</td></tr>`).join("");
+  const before=fotos.filter(f=>(f.tipo||"antes")==="antes").length, after=fotos.filter(f=>f.tipo==="depois").length;
+  return `<article class="client-document-preview">
+    <header><h1>ORÇAMENTO / RELATÓRIO DE SERVIÇO</h1></header>
+    <section class="preview-client-data">
+      <p><b>Prestador:</b> ${esc(o.prestador||state.profile?.prestador_nome||state.profile?.nome||"-")}</p>
+      <p><b>Orçamento Nº:</b> ${esc(o.numero)} <b>Data:</b> ${dataBR(o.data)}</p>
+      <p><b>Cliente:</b> ${esc(o.cliente||"-")}</p>
+      ${o.whatsapp?`<p><b>WhatsApp:</b> ${esc(o.whatsapp)}</p>`:""}
+      ${o.equipamento_modelo?`<p><b>Equipamento / Modelo:</b> ${esc(o.equipamento_modelo)}</p>`:""}
+      ${o.descricao?`<h3>Descrição do serviço</h3><p>${esc(o.descricao)}</p>`:""}
+    </section>
+    <h3>ITENS COMERCIAIS</h3>
+    <div class="preview-table-wrap"><table><thead><tr><th>Tipo</th><th>Descrição</th><th>Qtd.</th><th>Valor unit.</th><th>Total</th></tr></thead><tbody>${itemRows||`<tr><td colspan="5">Nenhum item.</td></tr>`}</tbody></table></div>
+    <div class="preview-grand-total">TOTAL: ${brl(o.total)}</div>
+    <section><p><b>Forma de pagamento:</b> ${esc(o.forma_pagamento||"Não informada")}</p><p><b>Condição de pagamento:</b> ${esc(o.condicao_pagamento||"Não informada")}${o.condicao_pagamento_detalhe?` — ${esc(o.condicao_pagamento_detalhe)}`:""}</p></section>
+    ${fotos.length?`<section class="preview-photo-summary"><h3>REGISTRO FOTOGRÁFICO</h3><p>Antes (${before}) · Depois (${after})</p><small>As fotografias serão incluídas no PDF gerado.</small></section>`:""}
+    <section class="preview-warranty"><b>Garantia do serviço:</b> ${gi?`${gi.meses} meses — válida até ${dataBR(gi.ate)}.`:"3 meses a partir da data de conclusão/entrega."}</section>
+    <footer>Documento referente ao orçamento e ao registro dos serviços descritos acima.</footer>
+  </article>`;
+}
+function previewPdfCliente(id){
+  const o=state.orc.find(x=>x.id===id);if(!o)return;
+  previewBudgetId=id;
+  $("pdfPreviewTitle").textContent=`Orçamento ${o.numero} · ${o.cliente||""}`;
+  $("pdfPreviewBody").innerHTML=buildBudgetClientPreview(o);
+  $("pdfPreviewModal").classList.remove("hidden");
+}
+$("closePdfPreview").onclick=()=>{$("pdfPreviewModal").classList.add("hidden");previewBudgetId=null};
+$("previewEditBtn").onclick=()=>{const id=previewBudgetId;$("pdfPreviewModal").classList.add("hidden");if(id)editOrc(id)};
+$("previewGenerateBtn").onclick=async()=>{if(previewBudgetId)await gerarPdfCliente(previewBudgetId,$("previewGenerateBtn"))};
+$("previewShareBtn").onclick=async()=>{if(previewBudgetId)await compartilharPdfCliente(previewBudgetId,$("previewShareBtn"))};
 async function gerarPdfCliente(id,btn=null,modo="salvar"){
   const o=state.orc.find(x=>x.id===id);if(!o)return;
   const its=state.orcItens.filter(x=>x.orcamento_id===id);
@@ -1164,7 +1201,7 @@ function budgetCard(o){
     ${its.map(i=>`<div class="meta">${i.tipo==="peca"?"Item":"M.O."}: ${esc(i.descricao)} · ${i.quantidade} × ${moneySpan(i.valor_unitario)}${Number(i.custo_unitario||0)>0?` · custo ${moneySpan(Number(i.custo_unitario)*Number(i.quantidade))}`:""}</div>`).join("")}
     ${custos.length?`<div class="internal-box"><b>Custos internos</b>${custos.map(c=>`<div class="meta">${esc(c.descricao)} · ${esc(c.categoria||"Custos do serviço")} · ${moneySpan(c.valor)}</div>`).join("")}</div>`:""}
     ${fotos.length?`<button type="button" class="small" onclick="openBudgetPhotos('${o.id}')">Fotos (${fotos.length})</button>`:""}
-    <div class="actions"><button class="orc-icon-action pdf" onclick="gerarPdfCliente('${o.id}',this)" title="Gerar PDF" aria-label="Gerar PDF">📄</button><button class="orc-icon-action share" onclick="compartilharPdfCliente('${o.id}',this)" title="Compartilhar" aria-label="Compartilhar">↗</button>${o.status!=="pago"?`<button class="orc-icon-action edit" onclick="editOrc('${o.id}')" title="Editar orçamento" aria-label="Editar orçamento">✎</button>`:""}${isDraft?`<button onclick="enviarOrc('${o.id}')">Marcar enviado</button><button class="warning" onclick="aprovarOrc('${o.id}')">Aprovar</button><button class="danger" onclick="delOrc('${o.id}')">Excluir</button>`:""}${o.status==="enviado"?`<button class="warning" onclick="aprovarOrc('${o.id}')">Aprovar</button>`:""}${o.status==="aprovado"?`<button class="orc-icon-action cost" onclick="openApprovedCost('${o.id}')" title="Registrar custo" aria-label="Registrar custo">＋</button><button class="orc-icon-action done" onclick="pagarOrc('${o.id}')" title="Registrar recebimento" aria-label="Registrar recebimento">✓</button>`:""}${o.status==="pago"?`<button class="warning" onclick="recalcularPago('${o.id}')">Recalcular</button>`:""}</div>
+    <div class="actions"><button class="orc-icon-action preview" onclick="previewPdfCliente('${o.id}')" title="Pré-visualizar documento" aria-label="Pré-visualizar documento">👁</button><button class="orc-icon-action share" onclick="previewPdfCliente('${o.id}')" title="Pré-visualizar antes de compartilhar" aria-label="Pré-visualizar antes de compartilhar">↗</button>${o.status!=="pago"?`<button class="orc-icon-action edit" onclick="editOrc('${o.id}')" title="Editar orçamento" aria-label="Editar orçamento">✎</button>`:""}${isDraft?`<button onclick="enviarOrc('${o.id}')">Marcar enviado</button><button class="warning" onclick="aprovarOrc('${o.id}')">Aprovar</button><button class="danger" onclick="delOrc('${o.id}')">Excluir</button>`:""}${o.status==="enviado"?`<button class="warning" onclick="aprovarOrc('${o.id}')">Aprovar</button>`:""}${o.status==="aprovado"?`<button class="orc-icon-action cost" onclick="openApprovedCost('${o.id}')" title="Registrar custo" aria-label="Registrar custo">＋</button><button class="orc-icon-action done" onclick="pagarOrc('${o.id}')" title="Registrar recebimento" aria-label="Registrar recebimento">✓</button>`:""}${o.status==="pago"?`<button class="warning" onclick="recalcularPago('${o.id}')">Recalcular</button>`:""}</div>
   </div></details>`;
 }
 function renderOrc(){
