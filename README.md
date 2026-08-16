@@ -1,25 +1,22 @@
-# Meu Financeiro V8.0 — MEP Financeiro
+# Meu Financeiro V8.0.1 — Correção da Home Modular
 
-## Escopo congelado implementado
-- Preferências de módulos por usuário: PF, CNPJ e Orçamentos.
-- Orçamentos dependem de CNPJ.
-- Home preparada para módulos mais compactos.
-- Lançamentos financeiros confirmados deixam de ser excluídos.
-- Categorias continuam acessíveis sob demanda.
-- Contas a pagar preparadas para prioridade: Urgente, Prioritária, Pode esperar.
-- Contas fixas preservadas.
-- Resumo financeiro em acesso próprio.
-- Gráfico Entradas × Gastos por mês.
-- Gráfico Gastos por categoria.
-- Mobile responsivo.
-- Toda a V7.2.5 de Orçamentos é preservada.
+Correção sobre a V8.0:
+- Home realmente passa a mostrar módulos por ícones.
+- Saldos deixam de aparecer na Home.
+- Ícones: Pessoa Física, CNPJ e Orçamentos.
+- Botão ⚙ para escolher módulos.
+- Preferências de módulos carregam já no login/início da sessão.
+- PF, CNPJ e Orçamentos são ocultados conforme a configuração do usuário.
+- Orçamentos continuam dependentes do CNPJ.
+- Toda a estrutura V8.0 e V7.2.5 é preservada.
+- Nenhuma alteração adicional no Supabase é necessária.
 
-## Ordem de instalação
-1. Execute `supabase_v8_0_mep_financeiro.sql`.
-2. Em Data API / Exposed tables, habilite `public.user_module_preferences`.
-3. Substitua no GitHub: index.html, app.js, styles.css, config.js e README.md.
-4. Atualize a página sem cache.
-5. Teste PF, CNPJ, Orçamentos, Resumo e mobile.
+## Atualização
+Substitua no GitHub:
+- index.html
+- app.js
+- styles.css
+- config.js
+- README.md
 
-## Observação
-A V8 não apaga dados antigos.
+Depois aguarde o GitHub Pages e faça Ctrl+F5.

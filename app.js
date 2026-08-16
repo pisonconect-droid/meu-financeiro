@@ -72,6 +72,7 @@ sb.auth.onAuthStateChange(async(event,s)=>{
     await ensureProfile(s.user);
     showApp(false);
     await loadAll();
+    await loadModulePrefs();
     if(event==="SIGNED_IN"||event==="INITIAL_SESSION")restoreNavigation();
   }else showAuth();
 });
@@ -80,7 +81,7 @@ async function start(){
   applyPrivacy();
   const {data}=await sb.auth.getSession();
   session=data.session;
-  if(session?.user){await ensureProfile(session.user);showApp(false);await loadAll();restoreNavigation()}
+  if(session?.user){await ensureProfile(session.user);showApp(false);await loadAll();await loadModulePrefs();restoreNavigation()}
   else showAuth();
 }
 function showAuth(){$("auth").classList.remove("hidden");$("app").classList.add("hidden")}
@@ -851,7 +852,6 @@ $("paymentForm").onsubmit=async e=>{
   $("paymentModal").classList.add("hidden");
   alert(`Serviço concluído. Garantia de 3 meses válida até ${dataBR(garantiaAte)}.`);
   await loadAll();
-  await loadModulePrefs();
 };
 async function delOrc(id){
   const o=state.orc.find(x=>x.id===id);
@@ -1103,10 +1103,12 @@ async function loadModulePrefs(){
   applyModulePrefs();
 }
 function applyModulePrefs(){
-  const map=[["PF",modulePrefs.pf],["CNPJ",modulePrefs.cnpj],["ORC",modulePrefs.orc&&modulePrefs.cnpj]];
-  map.forEach(([area,on])=>{
-    document.querySelectorAll(`[data-area="${area}"],[data-open="${area}"]`).forEach(el=>el.classList.toggle("module-hidden",!on));
-  });
+  const pf=document.querySelector('[data-account="PF"]');
+  const cnpj=document.querySelector('[data-account="CNPJ"]');
+  const orc=$("openBudgets");
+  if(pf)pf.classList.toggle("module-hidden",!modulePrefs.pf);
+  if(cnpj)cnpj.classList.toggle("module-hidden",!modulePrefs.cnpj);
+  if(orc)orc.classList.toggle("module-hidden",!(modulePrefs.orc&&modulePrefs.cnpj));
 }
 function openModuleSettings(){
   $("modPF").checked=modulePrefs.pf;

@@ -503,3 +503,43 @@ button:disabled{opacity:.65;cursor:wait}
 .check-row{display:flex;gap:10px;align-items:center;padding:10px 0}
 .check-row input{width:auto}
 @media(max-width:700px){.chart-grid{grid-template-columns:1fr}.chart-card{min-height:290px}}
+
+/* V8.0.1 — Home modular corrigida */
+.home-modules{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:18px;
+  width:min(720px,calc(100% - 32px));
+  margin:22px auto;
+}
+.module-tile{
+  min-height:170px;
+  border:1px solid #e5e7eb;
+  border-radius:18px;
+  background:#fff;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  text-align:center;
+  padding:20px;
+  cursor:pointer;
+}
+.module-tile:hover{transform:translateY(-1px)}
+.module-icon{font-size:42px;line-height:1}
+.module-tile b{font-size:1.05rem}
+.module-tile small{color:#6b7280}
+.home-hidden-value{
+  position:absolute!important;
+  width:1px!important;
+  height:1px!important;
+  overflow:hidden!important;
+  clip:rect(0,0,0,0)!important;
+  white-space:nowrap!important;
+}
+.icon-only{min-width:42px}
+@media(max-width:700px){
+  .home-modules{grid-template-columns:1fr;max-width:420px}
+  .module-tile{min-height:130px}
+}
