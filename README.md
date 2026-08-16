@@ -1,14 +1,11 @@
-# Meu Financeiro V8.0.6 — Correção de Layout do Orçamento
+# Meu Financeiro V8.0.7 — Acabamento Final dos Orçamentos
 
-## Correções
-- Linha de itens comerciais não ultrapassa mais a largura da tela.
-- Colunas foram compactadas sem remover informações.
-- Total do item permanece visível.
-- Botões de remover item/custo permanecem dentro do card.
-- Custos internos foram ajustados para não gerar overflow.
-- Salvar e Cancelar ficam totalmente visíveis.
-- Em tablet/mobile, os campos se reorganizam automaticamente.
-- Nenhuma alteração de lógica.
+- Contadores Rascunhos / Aprovados / Pagos alinhados.
+- Ações por ícones: PDF, Compartilhar, Editar, Registrar custo e Concluir.
+- Tooltips e acessibilidade preservados.
+- Fotos (n) permanece com texto.
+- Cancelar virou `×` discreto.
+- Salvar alterações continua como ação principal.
 - Nenhuma alteração no Supabase.
 
 ## Instalação
@@ -20,10 +17,3 @@ Substitua no GitHub:
 - README.md
 
 Depois faça Ctrl+F5.
-
-
-## Acabamento final V8.0.6a
-- Botões `×` de itens e custos substituídos por ícone de lixeira.
-- Fundo vermelho suave, borda discreta e cantos arredondados.
-- Tooltip: “Remover item” / “Remover custo”.
-- Nenhuma alteração de regra, cálculo ou Supabase.

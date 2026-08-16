@@ -858,3 +858,93 @@ input[inputmode="decimal"]{font-variant-numeric:tabular-nums}
   outline:2px solid #fca5a5;
   outline-offset:2px;
 }
+
+/* V8.0.7 — acabamento final dos orçamentos */
+.budget-group-summary{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 48px 24px;
+  align-items:center;
+  gap:10px;
+}
+.budget-group-count{
+  justify-self:center;
+  min-width:28px!important;
+  width:28px!important;
+  height:28px!important;
+  padding:0!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  font-variant-numeric:tabular-nums;
+  line-height:1;
+}
+.budget-group-summary::after{justify-self:end}
+
+.budget-detail .actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  align-items:center;
+}
+.orc-icon-action{
+  width:42px!important;
+  min-width:42px!important;
+  max-width:42px!important;
+  height:42px!important;
+  min-height:42px!important;
+  padding:0!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  border-radius:11px!important;
+  font-size:1.15rem!important;
+  font-weight:800!important;
+  border:1px solid #e5e7eb!important;
+  background:#fff!important;
+  box-shadow:none!important;
+  transition:transform .14s ease,background .14s ease,border-color .14s ease,box-shadow .14s ease;
+}
+.orc-icon-action:hover{
+  transform:translateY(-1px);
+  box-shadow:0 6px 14px rgba(15,23,42,.08)!important;
+}
+.orc-icon-action.pdf{color:#dc2626!important;background:#fff7f7!important;border-color:#fecaca!important}
+.orc-icon-action.share{color:#15803d!important;background:#f0fdf4!important;border-color:#bbf7d0!important}
+.orc-icon-action.edit{color:#4f46e5!important;background:#eef2ff!important;border-color:#c7d2fe!important}
+.orc-icon-action.cost{color:#6d28d9!important;background:#f5f3ff!important;border-color:#ddd6fe!important}
+.orc-icon-action.done{color:#15803d!important;background:#ecfdf5!important;border-color:#bbf7d0!important}
+
+.cancel-icon-btn{
+  width:44px!important;
+  min-width:44px!important;
+  max-width:44px!important;
+  height:44px!important;
+  min-height:44px!important;
+  padding:0!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  border-radius:11px!important;
+  border:1px solid #e5e7eb!important;
+  background:#f8fafc!important;
+  color:#475569!important;
+  font-size:1.25rem!important;
+  font-weight:700!important;
+  box-shadow:none!important;
+}
+.cancel-icon-btn:hover{
+  background:#f1f5f9!important;
+  border-color:#cbd5e1!important;
+  transform:translateY(-1px);
+}
+#saveOrcBtn{min-width:150px!important}
+.budget-record[open]{box-shadow:0 8px 22px rgba(15,23,42,.05)}
+.budget-detail{padding-top:12px}
+
+@media(max-width:700px){
+  .budget-group-summary{grid-template-columns:minmax(0,1fr) 40px 20px}
+  .budget-detail .actions{gap:7px}
+  .orc-icon-action{width:44px!important;min-width:44px!important;max-width:44px!important;height:44px!important}
+  .form-actions{display:flex!important;justify-content:flex-end!important;align-items:center!important}
+  #saveOrcBtn{flex:1 1 auto!important}
+}
