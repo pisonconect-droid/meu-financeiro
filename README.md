@@ -1,23 +1,31 @@
-# Meu Financeiro V8.0.3 — Valores BR + Contas Variáveis
+# Meu Financeiro V8.0.4 — Acabamento Visual
 
 ## Alterações
-- Campo monetário principal aceita vírgula e centavos no padrão brasileiro.
-- Conta fixa pode ser:
-  - **Valor fixo**: exige valor padrão.
-  - **Valor variável**: não exige valor no cadastro.
-- Conta variável gerada no mês aparece como **Valor pendente**.
-- Para marcar conta variável como paga, primeiro é obrigatório informar o valor real.
-- Prioridade da conta recorrente é preservada ao gerar o mês.
-- Água, luz e similares podem ser cadastradas como recorrentes sem inventar valor.
-- Restante da V8.0.2 preservado.
+- Barra principal usa apenas ícones:
+  - ＋ Entrada
+  - − Gasto
+  - ⇄ Transferência
+  - ▣ Calendário
+- Cores semânticas:
+  - Verde: entradas e resultados positivos
+  - Vermelho: gastos e urgências
+  - Azul: PF e transferência
+  - Roxo: CNPJ e calendário
+  - Âmbar: orçamentos
+- Home com identidade visual por módulo.
+- Cards mensais ganham detalhes de cor.
+- Resultado mensal muda de cor conforme positivo/negativo.
+- Contas a pagar reforçam visualmente prioridade.
+- Orçamentos recebem acabamento por estágio.
+- Mobile preservado.
+- Nenhuma alteração no Supabase.
 
 ## Instalação
-1. Execute `supabase_v8_0_3_valores_variaveis.sql`.
-2. Não há tabela nova para expor no Data API.
-3. Substitua no GitHub:
-   - index.html
-   - app.js
-   - styles.css
-   - config.js
-   - README.md
-4. Faça Ctrl+F5.
+Substitua no GitHub:
+- index.html
+- app.js
+- styles.css
+- config.js
+- README.md
+
+Depois faça Ctrl+F5.

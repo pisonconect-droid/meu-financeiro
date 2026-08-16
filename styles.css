@@ -576,3 +576,27 @@ input[inputmode="decimal"]{font-variant-numeric:tabular-nums}
 .disabled-field{opacity:.55}
 .disabled-field input{background:#f3f4f6}
 #fixedVariableHelp{padding:8px 10px;border-radius:9px;background:#f8fafc}
+
+/* V8.0.4 — acabamento visual */
+.module-tile{position:relative;overflow:hidden;transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease}
+.module-tile::before{content:"";position:absolute;inset:0 auto 0 0;width:5px;border-radius:18px 0 0 18px}
+.module-pf::before{background:#2563eb}.module-cnpj::before{background:#6d28d9}.module-orc::before{background:#d97706}
+.module-tile:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(15,23,42,.08)}
+.summary-card{position:relative;overflow:hidden;border:1px solid #e5e7eb;background:#fff}
+.summary-card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px}
+.summary-income::before{background:#16a34a}.summary-expense::before{background:#dc2626}.summary-result::before{background:#64748b}
+.summary-result.result-positive::before{background:#16a34a}.summary-result.result-negative::before{background:#dc2626}
+.summary-income strong{color:#15803d}.summary-expense strong{color:#b91c1c}
+.summary-result.result-positive strong{color:#15803d}.summary-result.result-negative strong{color:#b91c1c}
+.quick-icons{gap:10px}
+.quick-icon-btn{min-height:52px;border-radius:14px!important;font-size:1.55rem;font-weight:800;display:flex;align-items:center;justify-content:center;transition:transform .14s ease,box-shadow .14s ease,background .14s ease}
+.quick-icon-btn:hover{transform:translateY(-1px);box-shadow:0 6px 16px rgba(15,23,42,.08)}
+.action-income{background:#ecfdf5!important;color:#15803d!important;border-color:#bbf7d0!important}
+.action-expense{background:#fef2f2!important;color:#b91c1c!important;border-color:#fecaca!important}
+.action-transfer{background:#eff6ff!important;color:#1d4ed8!important;border-color:#bfdbfe!important}
+.action-calendar{background:#f5f3ff!important;color:#6d28d9!important;border-color:#ddd6fe!important}
+.acc-daily>summary{border-left:4px solid #2563eb}.acc-bills>summary{border-left:4px solid #dc2626}.acc-fixed>summary{border-left:4px solid #0f766e}
+.priority-cols .overdue{border-color:#fecaca;background:#fff7f7}.priority-cols .pending{border-color:#fde68a;background:#fffdf5}.priority-cols .paid{border-color:#bfdbfe;background:#f8fbff}
+.positive{color:#15803d!important}.negative{color:#b91c1c!important}.urgent-text,.overdue-text{color:#b91c1c!important}
+.budget-group:nth-child(1)>.budget-group-summary{border-left:4px solid #64748b}.budget-group:nth-child(2)>.budget-group-summary{border-left:4px solid #d97706}.budget-group:nth-child(3)>.budget-group-summary{border-left:4px solid #16a34a}
+@media(max-width:700px){.quick-icons{grid-template-columns:repeat(4,1fr)!important}.quick-icon-btn{min-height:48px;font-size:1.35rem}}

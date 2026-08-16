@@ -442,7 +442,14 @@ function render(){
     $("summaryLabel3").textContent="Resultado do mês";
     $("summaryValue1").textContent=brl(entradas);
     $("summaryValue2").textContent=brl(gastos);
-    $("summaryValue3").textContent=brl(entradas-gastos);
+    const monthResult=entradas-gastos;
+    $("summaryValue3").textContent=brl(monthResult);
+    const resultCard=$("summaryValue3")?.closest(".summary-card");
+    if(resultCard){
+      resultCard.classList.toggle("result-positive",monthResult>0);
+      resultCard.classList.toggle("result-negative",monthResult<0);
+      resultCard.classList.toggle("result-neutral",monthResult===0);
+    }
   }
   if(!current)return;
   const s=saldo(current);
