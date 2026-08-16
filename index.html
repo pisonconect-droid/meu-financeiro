@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111827">
 <title>Meu Financeiro</title>
-<link rel="stylesheet" href="styles.css?v=8.0.4">
+<link rel="stylesheet" href="styles.css?v=8.0.5">
 </head>
 <body>
 <section id="auth" class="auth"><div class="card auth-card"><h1>Meu Financeiro</h1><p>Acesse seus dados no computador e no celular.</p><div class="tabs"><button id="tabLogin" class="active" type="button">Entrar</button><button id="tabSignup" type="button">Criar conta</button></div><form id="authForm"><label id="nomeWrap" class="hidden">Nome<input id="nome"></label><label>E-mail<input id="email" type="email" required></label><label>Senha<input id="senha" type="password" minlength="6" required></label><button id="authSubmit" class="primary">Entrar</button><p id="authMsg" class="msg"></p></form></div></section>
@@ -146,7 +146,7 @@
     </div>
   </div>
   <details id="orcWrap" class="card accordion acc-budget" open><summary><span>Gestão de Orçamentos</span><small>Vinculado ao financeiro CNPJ</small></summary><div class="accordion-body"><div class="section-action"><button id="btnOrc" class="primary small" type="button">+ Criar orçamento</button></div>
-<div id="orcFormWrap" class="hidden"><form id="orcForm"><div class="form-grid">
+<div id="orcEditModeBanner" class="edit-mode-banner hidden"><div><small>Modo de edição</small><strong id="orcEditModeTitle">Orçamento</strong></div></div><div id="orcFormWrap" class="hidden"><form id="orcForm"><div class="form-grid">
 <label>Prestador<input id="orcPrestador" placeholder="Seu nome"></label><label>Cliente<input id="orcCliente" required></label>
 <label>WhatsApp<input id="orcWhatsapp" inputmode="tel"></label><label>Equipamento / Modelo<input id="orcEquipamento" placeholder="Ex.: cilindro, máquina, modelo"></label>
 <label>Data<input id="orcData" type="date" required></label>
@@ -174,6 +174,15 @@
 <label>Descrição<textarea id="orcDesc"></textarea></label>
 </div>
 <div class="head item-head"><div><h3>Itens comerciais</h3><small>Valor cobrado aparece para o cliente. Custo real fica interno.</small></div><button type="button" id="addItem" class="small">+ Item</button></div>
+<div class="budget-item-headings">
+  <span>Tipo</span>
+  <span>Descrição</span>
+  <span>Qtd.</span>
+  <span>Valor unitário</span>
+  <span>Custo interno</span>
+  <span>Total do item</span>
+  <span></span>
+</div>
 <div id="orcItens"></div>
 <details class="internal-box" open><summary>Custos internos do serviço</summary><p class="meta">Gasolina, almoço, pedágio, ajudante e outros custos que o cliente não vê.</p><div class="section-action"><button type="button" id="addCostBtn" class="small">+ Custo interno</button></div><div id="orcCustos"></div></details>
 <details class="internal-box" open><summary>Fotos do serviço</summary>
@@ -291,7 +300,15 @@
 
 <div id="calendarActionModal" class="modal hidden"><div class="card modal-card"><div class="head"><h2>Novo lançamento</h2><button id="closeCalendarAction" type="button">×</button></div><p id="calendarActionDate" class="transfer-direction"></p><div class="calendar-actions"><button data-cal-action="entrada" class="primary" type="button">+ Entrada</button><button data-cal-action="saida" type="button">+ Gasto</button><button data-cal-action="conta" type="button">+ Conta a pagar</button></div><label>Conta<select id="calendarAccount"><option value="PF">Pessoa Física</option><option value="CNPJ">CNPJ</option></select></label></div></div>
 
-<template id="budgetItemTemplate"><div class="budget-item-row"><select class="iTipo"><option value="peca">Peça / item</option><option value="mao_obra">M.O.</option></select><input class="iDesc" placeholder="Descrição" required><input class="iQtd" type="number" value="1" min="0.01" step="0.01" required><input class="iVal" type="number" step="0.01" min="0" placeholder="Valor cobrado" required><input class="iCusto" type="number" step="0.01" min="0" placeholder="Custo real"><button class="danger remove-budget-item" type="button">×</button></div></template>
+<template id="budgetItemTemplate"><div class="budget-item-row">
+<select class="iTipo"><option value="peca">Peça / item</option><option value="mao_obra">M.O.</option></select>
+<input class="iDesc" placeholder="Descrição" required>
+<input class="iQtd" type="number" value="1" min="0.01" step="0.01" required>
+<input class="iVal" type="number" step="0.01" min="0" placeholder="Valor cobrado" required>
+<input class="iCusto" type="number" step="0.01" min="0" placeholder="Custo interno">
+<div class="iTotal money-inline">R$ 0,00</div>
+<button class="danger remove-budget-item" type="button">×</button>
+</div></template>
 <template id="costTemplate"><div class="cost-row">
 <input class="cDesc" placeholder="Ex.: Gasolina" required>
 <select class="cCat"></select>
@@ -299,5 +316,5 @@
 <button class="danger remove-cost" type="button">×</button></div></template>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script><script src="config.js"></script><script src="app.js?v=8.0.4"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script><script src="config.js"></script><script src="app.js?v=8.0.5"></script>
 </body></html>

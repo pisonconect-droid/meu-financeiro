@@ -1,22 +1,19 @@
-# Meu Financeiro V8.0.4 — Acabamento Visual
+# Meu Financeiro V8.0.5 — Orçamento em modo foco
 
-## Alterações
-- Barra principal usa apenas ícones:
-  - ＋ Entrada
-  - − Gasto
-  - ⇄ Transferência
-  - ▣ Calendário
-- Cores semânticas:
-  - Verde: entradas e resultados positivos
-  - Vermelho: gastos e urgências
-  - Azul: PF e transferência
-  - Roxo: CNPJ e calendário
-  - Âmbar: orçamentos
-- Home com identidade visual por módulo.
-- Cards mensais ganham detalhes de cor.
-- Resultado mensal muda de cor conforme positivo/negativo.
-- Contas a pagar reforçam visualmente prioridade.
-- Orçamentos recebem acabamento por estágio.
+## Correções
+- Ao criar ou editar um orçamento, a lista de outros orçamentos é escondida.
+- Salvar ou Cancelar retorna para a Gestão de Orçamentos.
+- Banner mostra claramente qual orçamento está em edição.
+- Itens comerciais agora têm cabeçalhos:
+  - Tipo
+  - Descrição
+  - Qtd.
+  - Valor unitário
+  - Custo interno
+  - Total do item
+- Total do item é calculado automaticamente.
+- Custo interno recebe diferenciação visual.
+- Resumo financeiro existente continua visível durante a edição.
 - Mobile preservado.
 - Nenhuma alteração no Supabase.
 

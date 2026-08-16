@@ -600,3 +600,58 @@ input[inputmode="decimal"]{font-variant-numeric:tabular-nums}
 .positive{color:#15803d!important}.negative{color:#b91c1c!important}.urgent-text,.overdue-text{color:#b91c1c!important}
 .budget-group:nth-child(1)>.budget-group-summary{border-left:4px solid #64748b}.budget-group:nth-child(2)>.budget-group-summary{border-left:4px solid #d97706}.budget-group:nth-child(3)>.budget-group-summary{border-left:4px solid #16a34a}
 @media(max-width:700px){.quick-icons{grid-template-columns:repeat(4,1fr)!important}.quick-icon-btn{min-height:48px;font-size:1.35rem}}
+
+/* V8.0.5 — orçamento em modo foco */
+.edit-mode-banner{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin:0 0 12px;
+  padding:10px 14px;
+  border:1px solid #ddd6fe;
+  border-left:4px solid #6d28d9;
+  border-radius:12px;
+  background:#faf7ff;
+}
+.edit-mode-banner.hidden{display:none}
+.edit-mode-banner small{display:block;color:#6b7280}
+.edit-mode-banner strong{font-size:1rem}
+
+.budget-item-headings{
+  display:grid;
+  grid-template-columns:120px 1.5fr .7fr 1fr 1fr 1fr 42px;
+  gap:8px;
+  padding:0 0 6px;
+  font-size:.74rem;
+  font-weight:700;
+  color:#64748b;
+}
+.budget-item-row{
+  grid-template-columns:120px 1.5fr .7fr 1fr 1fr 1fr 42px!important;
+}
+.iTotal{
+  display:flex;
+  align-items:center;
+  min-height:42px;
+  padding:0 10px;
+  border:1px solid #e5e7eb;
+  border-radius:10px;
+  background:#f8fafc;
+  font-weight:800;
+  white-space:nowrap;
+}
+.iCusto{
+  background:#f8fafc!important;
+}
+#orcList.hidden{display:none!important}
+
+@media(max-width:900px){
+  .budget-item-headings{display:none}
+  .budget-item-row{
+    grid-template-columns:1fr 1fr!important;
+  }
+  .budget-item-row>*{min-width:0}
+  .budget-item-row .iDesc{grid-column:1/-1}
+  .budget-item-row .iTotal{grid-column:1/-1}
+  .budget-item-row .remove-budget-item{grid-column:1/-1}
+}

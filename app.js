@@ -585,6 +585,9 @@ $("orcCondicaoPagamento").onchange=()=>{
 };
 // ORÇAMENTOS
 $("btnOrc").onclick=()=>{
+  $("orcList").classList.add("hidden");
+  $("orcEditModeBanner").classList.remove("hidden");
+  $("orcEditModeTitle").textContent="Novo orçamento";
   resetOrc(false);
   $("orcFormWrap").classList.remove("hidden");
   $("saveOrcBtn").textContent="Salvar orçamento";
@@ -618,7 +621,7 @@ function resetOrc(hide=true){
   $("orcForm").reset();
   $("orcItens").innerHTML="";
   $("orcCustos").innerHTML="";
-  if(hide)$("orcFormWrap").classList.add("hidden");
+  if(hide){$("orcFormWrap").classList.add("hidden");$("orcList").classList.remove("hidden");$("orcEditModeBanner").classList.add("hidden");}
   calcOrc();
 }
 function addOrcItem(data=null){
@@ -659,6 +662,9 @@ function addCost(data=null){
 function editOrc(id){
   const o=state.orc.find(x=>x.id===id);
   if(!o)return;
+  $("orcList").classList.add("hidden");
+  $("orcEditModeBanner").classList.remove("hidden");
+  $("orcEditModeTitle").textContent=`Orçamento ${o.numero} · ${o.cliente||""}`;
   if(!["rascunho","orcamento","enviado","aprovado"].includes(o.status)){
     alert("Este orçamento não pode mais ser editado.");
     return;
@@ -756,6 +762,7 @@ async function openBudgetPhotos(id){
 }
 
 function calcOrc(){
+  document.querySelectorAll(".budget-item-row").forEach(r=>{const q=Number(r.querySelector(".iQtd")?.value||0),v=Number(r.querySelector(".iVal")?.value||0);const t=r.querySelector(".iTotal");if(t)t.textContent=brl(q*v)});
   const its=orcItems(),custos=orcCosts();
   const pecas=its.filter(x=>x.tipo==="peca").reduce((s,x)=>s+x.quantidade*x.valor_unitario,0);
   const mo=its.filter(x=>x.tipo==="mao_obra").reduce((s,x)=>s+x.quantidade*x.valor_unitario,0);
@@ -842,6 +849,8 @@ $("orcForm").onsubmit=async e=>{
   resetOrc(false);
   await loadAll();
   $("orcFormWrap").classList.add("hidden");
+  $("orcList").classList.remove("hidden");
+  $("orcEditModeBanner").classList.add("hidden");
 };
 async function enviarOrc(id){
   if(!confirm("Marcar este orçamento como enviado ao cliente?"))return;
@@ -1141,6 +1150,7 @@ function budgetCard(o){
   </div></details>`;
 }
 function renderOrc(){
+  if(!editingOrcId&&$("orcList"))$("orcList").classList.remove("hidden");
   const groups=[
     {key:"draft",title:"Rascunhos",open:false,items:state.orc.filter(o=>["rascunho","orcamento","enviado"].includes(o.status))},
     {key:"approved",title:"Aprovados / Em andamento",open:true,items:state.orc.filter(o=>o.status==="aprovado")},
