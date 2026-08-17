@@ -712,15 +712,47 @@ function orcCosts(){
 }
 
 
-function addPendingPhotos(files,tipo){
-  [...files].forEach(file=>pendingPhotos.push({file,tipo}));
+async function compressPhotoFile(file){
+  if(!file||!String(file.type||"").startsWith("image/"))return file;
+  try{
+    const bmp=await createImageBitmap(file);
+    const maxSide=1600;
+    const ratio=Math.min(1,maxSide/Math.max(bmp.width,bmp.height));
+    const w=Math.max(1,Math.round(bmp.width*ratio)),h=Math.max(1,Math.round(bmp.height*ratio));
+    const canvas=document.createElement("canvas");canvas.width=w;canvas.height=h;
+    canvas.getContext("2d").drawImage(bmp,0,0,w,h);
+    bmp.close?.();
+    const blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/jpeg",0.82));
+    if(!blob)return file;
+    const base=(file.name||"foto").replace(/\.[^.]+$/,"");
+    return new File([blob],`${base}.jpg`,{type:"image/jpeg",lastModified:Date.now()});
+  }catch(e){console.warn("Compressão de foto:",e);return file}
+}
+async function addPendingPhotos(files,tipo){
+  for(const file of [...files]){
+    const compressed=await compressPhotoFile(file);
+    pendingPhotos.push({file:compressed,tipo,legenda:""});
+  }
   renderPendingPhotos();
 }
-$("orcFotosAntes").onchange=e=>{addPendingPhotos(e.target.files,"antes");e.target.value=""};
-$("orcFotosDepois").onchange=e=>{addPendingPhotos(e.target.files,"depois");e.target.value=""};
+const bindPhotoInput=(id,tipo)=>{
+  const el=$(id);if(!el)return;
+  el.onchange=async e=>{await addPendingPhotos(e.target.files,tipo);e.target.value=""};
+};
+bindPhotoInput("orcCameraAntes","antes");
+bindPhotoInput("orcFotosAntes","antes");
+bindPhotoInput("orcCameraDurante","durante");
+bindPhotoInput("orcFotosDurante","durante");
+bindPhotoInput("orcCameraDepois","depois");
+bindPhotoInput("orcFotosDepois","depois");
 
+function photoStageLabel(tipo){return tipo==="depois"?"DEPOIS":tipo==="durante"?"DURANTE":"ANTES"}
 function renderPendingPhotos(){
-  $("photoPreview").innerHTML=pendingPhotos.map((p,i)=>`<div class="photo-thumb pending"><div><span class="photo-tag ${p.tipo}">${p.tipo==="antes"?"ANTES":"DEPOIS"}</span><span>${esc(p.file.name)}</span></div><button type="button" onclick="removePendingPhoto(${i})">×</button></div>`).join("");
+  $("photoPreview").innerHTML=pendingPhotos.map((p,i)=>`<div class="photo-thumb pending photo-pending-card">
+    <div><span class="photo-tag ${p.tipo}">${photoStageLabel(p.tipo)}</span><span>${esc(p.file.name)}</span></div>
+    <input class="photo-caption-input" value="${esc(p.legenda||"")}" placeholder="Legenda opcional" oninput="pendingPhotos[${i}].legenda=this.value">
+    <button type="button" onclick="removePendingPhoto(${i})" title="Remover foto">🗑</button>
+  </div>`).join("");
 }
 function removePendingPhoto(i){pendingPhotos.splice(i,1);renderPendingPhotos()}
 
@@ -733,9 +765,15 @@ async function renderExistingPhotos(orcamentoId){
   const grid=$("existingPhotos").querySelector(".existing-photo-grid");
   grid.innerHTML=rows.map(({f,url})=>`<div class="existing-photo-card">
     <div class="existing-photo-image">${url?`<img src="${url}" alt="${(f.tipo||"antes")==="depois"?"Depois":"Antes"}">`:'<div class="photo-unavailable">Foto indisponível</div>'}</div>
-    <div class="existing-photo-info"><span class="photo-tag ${f.tipo||"antes"}">${(f.tipo||"antes")==="depois"?"DEPOIS":"ANTES"}</span><small title="${esc(f.nome_arquivo||"foto")}">${esc(f.nome_arquivo||"foto")}</small></div>
+    <div class="existing-photo-info"><span class="photo-tag ${f.tipo||"antes"}">${photoStageLabel(f.tipo||"antes")}</span><small title="${esc(f.nome_arquivo||"foto")}">${esc(f.nome_arquivo||"foto")}</small>
+    <input class="photo-caption-input" value="${esc(f.legenda||"")}" placeholder="Legenda opcional" onchange="savePhotoCaption('${f.id}',this.value)"></div>
     <button type="button" class="photo-delete-btn" onclick="deleteSavedPhoto('${f.id}')" title="Remover esta foto" aria-label="Remover esta foto">🗑</button>
   </div>`).join("");
+}
+async function savePhotoCaption(id,legenda){
+  const r=await sb.from("orcamento_fotos").update({legenda:String(legenda||"").trim()||null}).eq("id",id).eq("user_id",uid());
+  if(r.error)return alert("Não foi possível salvar a legenda: "+r.error.message);
+  const f=state.orcFotos.find(x=>x.id===id);if(f)f.legenda=String(legenda||"").trim()||null;
 }
 async function deleteSavedPhoto(id){
   const f=state.orcFotos.find(x=>x.id===id);if(!f)return;
@@ -761,7 +799,7 @@ async function uploadBudgetPhotos(orcamentoId){
     const up=await sb.storage.from("orcamento-fotos").upload(path,file,{upsert:false,contentType:file.type||"image/jpeg"});
     if(up.error)throw up.error;
     const ins=await sb.from("orcamento_fotos").insert({
-      user_id:uid(),orcamento_id:orcamentoId,storage_path:path,nome_arquivo:file.name,tipo:p.tipo
+      user_id:uid(),orcamento_id:orcamentoId,storage_path:path,nome_arquivo:file.name,tipo:p.tipo,legenda:p.legenda||null
     });
     if(ins.error)throw ins.error;
   }
@@ -1000,6 +1038,7 @@ async function imageUrlToData(url){
 }
 function pdfSafe(v){return String(v??"").replace(/[^\x20-\x7EÀ-ÿ]/g," ")}
 let previewBudgetId=null;
+let previewGeneratedPack=null;
 async function buildBudgetClientPreview(o){
   const its=state.orcItens.filter(x=>x.orcamento_id===o.id);
   const fotos=state.orcFotos.filter(x=>x.orcamento_id===o.id);
@@ -1009,7 +1048,7 @@ async function buildBudgetClientPreview(o){
   const photoHtml=(tipo,label)=>{
     const group=photos.filter(x=>(x.f.tipo||"antes")===tipo);
     if(!group.length)return"";
-    return `<section class="preview-photo-group"><h4>${label}</h4><div class="preview-photo-grid">${group.map(x=>`<figure><img src="${x.url}" alt="${label}"><figcaption>${esc(x.f.nome_arquivo||"Foto")}</figcaption></figure>`).join("")}</div></section>`;
+    return `<section class="preview-photo-group"><h4>${label}</h4><div class="preview-photo-grid">${group.map(x=>`<figure><img src="${x.url}" alt="${label}"><figcaption>${x.f.legenda?esc(x.f.legenda):esc(x.f.nome_arquivo||"Foto")}</figcaption></figure>`).join("")}</div></section>`;
   };
   return `<article class="client-document-preview">
     <header><h1>ORÇAMENTO / RELATÓRIO DE SERVIÇO</h1></header>
@@ -1025,7 +1064,7 @@ async function buildBudgetClientPreview(o){
     <div class="preview-table-wrap"><table><thead><tr><th>Tipo</th><th>Descrição</th><th>Qtd.</th><th>Valor unit.</th><th>Total</th></tr></thead><tbody>${itemRows||`<tr><td colspan="5">Nenhum item.</td></tr>`}</tbody></table></div>
     <div class="preview-grand-total">TOTAL: ${brl(o.total)}</div>
     <section><p><b>Forma de pagamento:</b> ${esc(o.forma_pagamento||"Não informada")}</p><p><b>Condição de pagamento:</b> ${esc(o.condicao_pagamento||"Não informada")}${o.condicao_pagamento_detalhe?` — ${esc(o.condicao_pagamento_detalhe)}`:""}</p></section>
-    ${photos.length?`<section class="preview-photo-summary"><h3>REGISTRO FOTOGRÁFICO</h3>${photoHtml("antes","ANTES")}${photoHtml("depois","DEPOIS")}</section>`:""}
+    ${photos.length?`<section class="preview-photo-summary"><h3>REGISTRO FOTOGRÁFICO</h3>${photoHtml("antes","ANTES")}${photoHtml("durante","DURANTE")}${photoHtml("depois","DEPOIS")}</section>`:""}
     <section class="preview-warranty"><b>Garantia do serviço:</b> ${gi?`${gi.meses} meses — válida até ${dataBR(gi.ate)}.`:"3 meses a partir da data de conclusão/entrega."}</section>
     <footer>Documento referente ao orçamento e ao registro dos serviços descritos acima.</footer>
   </article>`;
@@ -1033,15 +1072,40 @@ async function buildBudgetClientPreview(o){
 async function previewPdfCliente(id){
   const o=state.orc.find(x=>x.id===id);if(!o)return;
   previewBudgetId=id;
+  previewGeneratedPack=null;
+  $("previewShareBtn").disabled=true;
+  $("previewShareBtn").title="Gere o PDF antes de compartilhar";
   $("pdfPreviewTitle").textContent=`Orçamento ${o.numero} · ${o.cliente||""}`;
   $("pdfPreviewBody").innerHTML='<div class="preview-loading">Carregando pré-visualização e fotos...</div>';
   $("pdfPreviewModal").classList.remove("hidden");
   $("pdfPreviewBody").innerHTML=await buildBudgetClientPreview(o);
 }
-$("closePdfPreview").onclick=()=>{$("pdfPreviewModal").classList.add("hidden");previewBudgetId=null};
+$("closePdfPreview").onclick=()=>{$("pdfPreviewModal").classList.add("hidden");previewBudgetId=null;previewGeneratedPack=null};
 $("previewEditBtn").onclick=()=>{const id=previewBudgetId;$("pdfPreviewModal").classList.add("hidden");if(id)editOrc(id)};
-$("previewGenerateBtn").onclick=async()=>{if(previewBudgetId)await gerarPdfCliente(previewBudgetId,$("previewGenerateBtn"))};
-$("previewShareBtn").onclick=async()=>{if(previewBudgetId)await compartilharPdfCliente(previewBudgetId,$("previewShareBtn"))};
+$("previewGenerateBtn").onclick=async()=>{
+  if(!previewBudgetId)return;
+  const btn=$("previewGenerateBtn"),original=btn.innerHTML;
+  btn.disabled=true;btn.innerHTML="⏳ <span>Gerando...</span>";
+  try{
+    const pack=await gerarPdfCliente(previewBudgetId,null,"blob");
+    if(!pack)throw new Error("Não foi possível gerar o PDF.");
+    previewGeneratedPack=pack;
+    downloadGeneratedPdf(pack);
+    $("previewShareBtn").disabled=false;
+    $("previewShareBtn").title="Compartilhar PDF";
+    btn.innerHTML="✓ <span>PDF gerado</span>";
+    setTimeout(()=>{btn.disabled=false;btn.innerHTML=original},1600);
+  }catch(err){
+    previewGeneratedPack=null;
+    $("previewShareBtn").disabled=true;
+    btn.disabled=false;btn.innerHTML=original;
+    alert("Erro ao gerar PDF: "+(err.message||err));
+  }
+};
+$("previewShareBtn").onclick=async()=>{
+  if(!previewGeneratedPack)return alert("Gere o PDF antes de compartilhar.");
+  await compartilharPackPdf(previewGeneratedPack,$("previewShareBtn"));
+};
 async function gerarPdfCliente(id,btn=null,modo="salvar"){
   const o=state.orc.find(x=>x.id===id);if(!o)return;
   const its=state.orcItens.filter(x=>x.orcamento_id===id);
@@ -1116,7 +1180,7 @@ async function gerarPdfCliente(id,btn=null,modo="salvar"){
 
       const gap=5;
       const cellW=(contentW-gap)/2;
-      const cellH=52;
+      const imageH=46;const captionH=8;const cellH=imageH+captionH;
       let col=0;
 
       for(const f of gf){
@@ -1126,14 +1190,20 @@ async function gerarPdfCliente(id,btn=null,modo="salvar"){
         try{
           const data=await imageUrlToData(url);
           const props=doc.getImageProperties(data);
-          const scale=Math.min(cellW/props.width,cellH/props.height);
+          const scale=Math.min(cellW/props.width,imageH/props.height);
           const w=props.width*scale,h=props.height*scale;
           const x=margin+col*(cellW+gap)+(cellW-w)/2;
-          const yy=y+(cellH-h)/2;
+          const yy=y+(imageH-h)/2;
 
           doc.setDrawColor(220);
           doc.roundedRect(margin+col*(cellW+gap),y,cellW,cellH,1.5,1.5);
           doc.addImage(data,props.fileType||"JPEG",x,yy,w,h);
+          if(f.legenda){
+            doc.setFont("helvetica","normal");doc.setFontSize(7);doc.setTextColor(90);
+            const cap=doc.splitTextToSize(pdfSafe(f.legenda),cellW-4).slice(0,2);
+            doc.text(cap,margin+col*(cellW+gap)+2,y+imageH+4);
+            doc.setTextColor(0);
+          }
 
           col++;
           if(col===2){
@@ -1150,6 +1220,7 @@ async function gerarPdfCliente(id,btn=null,modo="salvar"){
       ensure(20);
       line("REGISTRO FOTOGRÁFICO",12,true);
       await drawPhotoGrid("antes","ANTES");
+      await drawPhotoGrid("durante","DURANTE");
       await drawPhotoGrid("depois","DEPOIS");
     }
 
@@ -1183,6 +1254,31 @@ async function gerarPdfCliente(id,btn=null,modo="salvar"){
     if(btn){btn.disabled=false;btn.textContent=originalText;}
   }
 }
+function downloadGeneratedPdf(pack){
+  const url=URL.createObjectURL(pack.blob),a=document.createElement("a");
+  a.href=url;a.download=pack.filename;document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1800);
+}
+async function compartilharPackPdf(pack,btn=null){
+  const original=btn?.innerHTML||"Compartilhar";
+  if(btn){btn.disabled=true;btn.innerHTML="⏳";}
+  try{
+    const file=new File([pack.blob],pack.filename,{type:"application/pdf"});
+    if(navigator.share&&(!navigator.canShare||navigator.canShare({files:[file]}))){
+      await navigator.share({title:"Orçamento / Relatório de Serviço",text:"Segue o orçamento / relatório de serviço.",files:[file]});
+      return;
+    }
+    downloadGeneratedPdf(pack);
+    alert("Este navegador não permite compartilhar o PDF diretamente. O arquivo foi baixado para você enviar pelo WhatsApp, e-mail ou outro aplicativo.");
+  }catch(err){
+    if(err?.name!=="AbortError"){
+      downloadGeneratedPdf(pack);
+      alert("Não foi possível abrir o compartilhamento nativo. O PDF foi baixado como alternativa.");
+    }
+  }finally{
+    if(btn){btn.disabled=false;btn.innerHTML=original;}
+  }
+}
 async function compartilharPdfCliente(id,btn=null){
   const original=btn?.textContent||"Compartilhar";
   if(btn){btn.disabled=true;btn.textContent="Preparando...";}
@@ -1211,6 +1307,7 @@ function budgetCard(o){
   const custos=state.orcCustos.filter(x=>x.orcamento_id===o.id);
   const fotos=state.orcFotos.filter(x=>x.orcamento_id===o.id);
   const antes=fotos.filter(f=>(f.tipo||"antes")==="antes").length;
+  const durante=fotos.filter(f=>f.tipo==="durante").length;
   const depois=fotos.filter(f=>f.tipo==="depois").length;
   const custoItens=its.filter(x=>x.tipo==="peca").reduce((s,x)=>s+Number(x.quantidade)*Number(x.custo_unitario||0),0);
   const custoServico=custos.reduce((s,x)=>s+Number(x.valor),0);
@@ -1223,7 +1320,7 @@ function budgetCard(o){
     <div class="meta"><b>Pagamento:</b> ${esc(o.forma_pagamento||"Não informado")} · ${esc(o.condicao_pagamento||"Não informada")}${o.condicao_pagamento_detalhe?` · ${esc(o.condicao_pagamento_detalhe)}`:""}${o.forma_pagamento_efetiva?` · recebido via ${esc(o.forma_pagamento_efetiva)}`:""}</div>
     ${["aprovado","pago"].includes(o.status)?`<div class="receivable-status ${ri.cor}"><b>${ri.cor==="verde"?"Pagamento concluído":ri.vencido?"Pagamento pendente / parcela vencida":ri.recebido>0?"Pagamento parcial":"Aguardando pagamento"}</b><span>Recebido ${moneySpan(ri.recebido)}</span><span>A receber ${moneySpan(ri.saldo)}</span>${o.proximo_vencimento&&ri.saldo>0?`<span>Próximo vencimento ${dataBR(o.proximo_vencimento)}</span>`:""}</div>`:""}
     <div class="budget-split"><span>Total cobrado <b class="money-inline">${brl(o.total)}</b></span><span>Gastos <b class="money-inline">${brl(custoItens+custoServico)}</b></span><span>Resultado ${o.status==="pago"?"real":"previsto"} <b class="money-inline">${brl(o.status==="pago"?o.resultado:resultado)}</b></span></div>
-    <div class="photo-counts"><span>Antes (${antes})</span><span>Depois (${depois})</span></div>
+    <div class="photo-counts"><span>Antes (${antes})</span><span>Durante (${durante})</span><span>Depois (${depois})</span></div>
     ${its.map(i=>`<div class="meta">${i.tipo==="peca"?"Item":"M.O."}: ${esc(i.descricao)} · ${i.quantidade} × ${moneySpan(i.valor_unitario)}${Number(i.custo_unitario||0)>0?` · custo ${moneySpan(Number(i.custo_unitario)*Number(i.quantidade))}`:""}</div>`).join("")}
     ${custos.length?`<div class="internal-box"><b>Custos internos</b>${custos.map(c=>`<div class="meta">${esc(c.descricao)} · ${esc(c.categoria||"Custos do serviço")} · ${moneySpan(c.valor)}</div>`).join("")}</div>`:""}
     ${fotos.length?`<button type="button" class="small" onclick="openBudgetPhotos('${o.id}')">Fotos (${fotos.length})</button>`:""}

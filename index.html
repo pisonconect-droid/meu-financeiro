@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111827">
 <title>Meu Financeiro</title>
-<link rel="stylesheet" href="styles.css?v=8.1.2">
+<link rel="stylesheet" href="styles.css?v=8.2.0">
 </head>
 <body>
 <section id="auth" class="auth"><div class="card auth-card"><h1>Meu Financeiro</h1><p>Acesse seus dados no computador e no celular.</p><div class="tabs"><button id="tabLogin" class="active" type="button">Entrar</button><button id="tabSignup" type="button">Criar conta</button></div><form id="authForm"><label id="nomeWrap" class="hidden">Nome<input id="nome"></label><label>E-mail<input id="email" type="email" required></label><label>Senha<input id="senha" type="password" minlength="6" required></label><button id="authSubmit" class="primary">Entrar</button><p id="authMsg" class="msg"></p></form></div></section>
@@ -186,10 +186,20 @@
 <div id="orcItens"></div>
 <details class="internal-box" open><summary>Custos internos do serviço</summary><p class="meta">Gasolina, almoço, pedágio, ajudante e outros custos que o cliente não vê.</p><div class="section-action"><button type="button" id="addCostBtn" class="small">+ Custo interno</button></div><div id="orcCustos"></div></details>
 <details class="internal-box" open><summary>Fotos do serviço</summary>
-  <p class="meta">Registre o estado do equipamento antes e depois do serviço.</p>
-  <div class="photo-actions">
-    <label class="photo-picker">📷 Fotos — Antes<input id="orcFotosAntes" type="file" accept="image/*" multiple></label>
-    <label class="photo-picker">📷 Fotos — Depois<input id="orcFotosDepois" type="file" accept="image/*" multiple></label>
+  <p class="meta">Registre o serviço em três etapas: Antes → Durante → Depois.</p>
+  <div class="photo-stage-actions">
+    <div class="photo-stage-block before"><b>ANTES</b><div class="photo-source-actions">
+      <label class="photo-picker camera">📷 Tirar foto<input id="orcCameraAntes" type="file" accept="image/*" capture="environment"></label>
+      <label class="photo-picker gallery">▧ Galeria<input id="orcFotosAntes" type="file" accept="image/*" multiple></label>
+    </div></div>
+    <div class="photo-stage-block during"><b>DURANTE</b><div class="photo-source-actions">
+      <label class="photo-picker camera">📷 Tirar foto<input id="orcCameraDurante" type="file" accept="image/*" capture="environment"></label>
+      <label class="photo-picker gallery">▧ Galeria<input id="orcFotosDurante" type="file" accept="image/*" multiple></label>
+    </div></div>
+    <div class="photo-stage-block after"><b>DEPOIS</b><div class="photo-source-actions">
+      <label class="photo-picker camera">📷 Tirar foto<input id="orcCameraDepois" type="file" accept="image/*" capture="environment"></label>
+      <label class="photo-picker gallery">▧ Galeria<input id="orcFotosDepois" type="file" accept="image/*" multiple></label>
+    </div></div>
   </div>
   <div id="existingPhotos" class="photo-existing"></div>
   <div id="photoPreview" class="photo-grid"></div>
@@ -241,7 +251,7 @@
 <div class="preview-actions">
   <button id="previewEditBtn" type="button" title="Voltar para editar">✎ <span>Editar</span></button>
   <button id="previewGenerateBtn" class="primary" type="button" title="Gerar PDF">📄 <span>Gerar PDF</span></button>
-  <button id="previewShareBtn" type="button" title="Compartilhar">↗ <span>Compartilhar</span></button>
+  <button id="previewShareBtn" type="button" title="Gere o PDF antes de compartilhar" disabled>↗ <span>Compartilhar</span></button>
 </div>
 </div></div>
 <div id="paymentModal" class="modal hidden"><div class="card modal-card">
@@ -322,5 +332,5 @@
 <button class="danger remove-cost remove-soft" type="button" title="Remover custo" aria-label="Remover custo"><span aria-hidden="true">🗑</span></button></div></template>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script><script src="config.js"></script><script src="app.js?v=8.1.2"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script><script src="config.js"></script><script src="app.js?v=8.2.0"></script>
 </body></html>

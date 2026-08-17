@@ -1000,3 +1000,16 @@ input[inputmode="decimal"]{font-variant-numeric:tabular-nums}
 .photo-delete-btn{position:absolute;right:7px;bottom:7px;width:32px!important;height:32px!important;min-width:32px!important;padding:0!important;border-radius:9px!important;border:1px solid #fecaca!important;background:#fff1f2!important;color:#b91c1c!important;display:flex!important;align-items:center;justify-content:center}
 .photo-delete-btn:hover{background:#fee2e2!important}
 @media(max-width:600px){.preview-photo-grid{grid-template-columns:1fr}.preview-photo-grid img{height:auto;max-height:240px}.existing-photo-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* V8.2.0 — Antes/Durante/Depois + câmera + legenda + compartilhamento */
+.photo-stage-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:10px 0 14px}
+.photo-stage-block{border:1px solid #dbe3ee;border-radius:12px;padding:10px;background:#fff}
+.photo-stage-block.before{border-top:3px solid #2563eb}.photo-stage-block.during{border-top:3px solid #d97706}.photo-stage-block.after{border-top:3px solid #16a34a}
+.photo-stage-block>b{font-size:.78rem}.photo-source-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}
+.photo-source-actions .photo-picker{flex:1;min-width:105px;text-align:center}
+.photo-tag.durante{background:#ffedd5!important;color:#9a3412!important}
+.photo-pending-card{display:grid!important;gap:7px}
+.photo-caption-input{width:100%;min-width:0;box-sizing:border-box;padding:8px 9px;border:1px solid #dbe3ee;border-radius:8px;font-size:.78rem}
+.existing-photo-info .photo-caption-input{margin-top:7px}
+.preview-actions button:disabled{opacity:.45;cursor:not-allowed;transform:none!important}
+@media(max-width:700px){.photo-stage-actions{grid-template-columns:1fr}.photo-source-actions .photo-picker{min-height:44px;display:flex;align-items:center;justify-content:center}}
