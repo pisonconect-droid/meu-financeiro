@@ -1,16 +1,31 @@
-# Meu Financeiro V8.3.1 — Identidade Visual
+# Meu Financeiro V8.3.2 — Ícone Mobile / PWA
 
-MEP pequena de acabamento sobre a V8.3.0 homologada.
-
-## Alterações
-- Logo aprovada aplicada ao cabeçalho.
-- Favicon do navegador substituído.
-- Apple Touch Icon incluído para atalhos no iPhone/iPad.
-- Ícones 192 px e 512 px incluídos para uso do aplicativo.
-- Nenhuma regra financeira, orçamento, clientes, fotos, PDF ou compartilhamento foi alterada.
-- Não há alteração no Supabase.
+## Correção
+- Manifesto do aplicativo adicionado.
+- Ícones 192 px e 512 px declarados para Android/PWA.
+- Ícone maskable declarado para atalhos instalados.
+- Nome do aplicativo definido como "Meu Financeiro".
+- Cache de recursos atualizado para V8.3.2.
+- Nenhuma alteração de lógica, banco, clientes, orçamento ou Supabase.
 
 ## Instalação
-Substitua/adicione no GitHub os arquivos deste pacote e faça Ctrl+F5.
+Substitua/adicone no GitHub:
+- index.html
+- app.js
+- styles.css
+- config.js
+- README.md
+- favicon.png
+- apple-touch-icon.png
+- app-icon-192.png
+- app-icon-512.png
+- manifest.webmanifest
 
-Observação: ícones de atalhos já instalados no celular podem ficar em cache. Se necessário, remova o atalho antigo e adicione novamente.
+Depois:
+1. Aguarde o GitHub Pages publicar.
+2. No celular, remova o atalho antigo "Meu Financeiro".
+3. Abra o site novamente no Chrome.
+4. Atualize a página.
+5. Use "Adicionar à tela inicial" / "Instalar app" novamente.
+
+O Android costuma manter o ícone antigo no atalho já instalado, por isso é necessário recriar o atalho uma vez.
