@@ -1,6 +1,7 @@
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 let session=null,current=null,authMode="login";
-let state={mov:[],contas:[],orc:[],orcItens:[],orcCustos:[],orcFotos:[],orcRecebimentos:[],fixas:[],categorias:[],profile:null};
+let state={mov:[],contas:[],orc:[],orcItens:[],orcCustos:[],orcFotos:[],orcRecebimentos:[],fixas:[],categorias:[],clientes:[],profile:null};
+let selectedClientId=null;
 let editingOrcId=null;
 let movCategoryFilter="TODOS";
 let reportYear=new Date().getFullYear();
@@ -104,7 +105,7 @@ function restoreNavigation(){
 }
 
 async function loadAll(){
-  const [m,c,o,oi,oc,of,orx,f,cat,p]=await Promise.all([
+  const [m,c,o,oi,oc,of,orx,f,cat,cli,p]=await Promise.all([
     sb.from("movimentacoes").select("*").order("data",{ascending:false}).order("created_at",{ascending:false}),
     sb.from("contas").select("*").order("vencimento"),
     sb.from("orcamentos").select("*").order("created_at",{ascending:false}),
@@ -114,11 +115,12 @@ async function loadAll(){
     sb.from("orcamento_recebimentos").select("*").order("data_recebimento",{ascending:true}),
     sb.from("contas_fixas").select("*").order("descricao"),
     sb.from("categorias").select("*").eq("ativa",true).order("nome"),
+    sb.from("clientes").select("*").order("nome"),
     sb.from("profiles").select("*").eq("id",uid()).maybeSingle()
   ]);
-  const er=m.error||c.error||o.error||oi.error||oc.error||of.error||orx.error||f.error||cat.error||p.error;
+  const er=m.error||c.error||o.error||oi.error||oc.error||of.error||orx.error||f.error||cat.error||cli.error||p.error;
   if(er){alert(er.message);return}
-  state={mov:m.data||[],contas:c.data||[],orc:o.data||[],orcItens:oi.data||[],orcCustos:oc.data||[],orcFotos:of.data||[],orcRecebimentos:orx.data||[],fixas:f.data||[],categorias:cat.data||[],profile:p.data||null};
+  state={mov:m.data||[],contas:c.data||[],orc:o.data||[],orcItens:oi.data||[],orcCustos:oc.data||[],orcFotos:of.data||[],orcRecebimentos:orx.data||[],fixas:f.data||[],categorias:cat.data||[],clientes:cli.data||[],profile:p.data||null};
   await ensureDefaultCategories();renderCategoryUI();render();renderCalendar();renderFixas();renderFinancialReport();renderBudgetSummary();
 }
 
@@ -584,6 +586,41 @@ function renderFixas(){
 $("orcCondicaoPagamento").onchange=()=>{
   $("orcCondicaoDetalheWrap").classList.toggle("hidden",$("orcCondicaoPagamento").value!=="Personalizado");
 };
+
+// CLIENTES
+function normClient(v){return String(v||"").toLocaleLowerCase("pt-BR").normalize("NFD").replace(/[\u0300-\u036f]/g,"")}
+function renderClientSuggestions(){
+  const box=$("clientSuggestions"),q=normClient($("orcCliente").value.trim());
+  if(!q){box.classList.add("hidden");box.innerHTML="";return}
+  const digits=q.replace(/\D/g,"");
+  const found=state.clientes.filter(c=>normClient(c.nome).includes(q)||(digits&&String(c.documento||"").replace(/\D/g,"").includes(digits))).slice(0,6);
+  if(!found.length){box.innerHTML=`<button type="button" class="client-new-suggestion" onclick="openClientModalFromBudget()">＋ Cadastrar “${esc($("orcCliente").value.trim())}”</button>`;box.classList.remove("hidden");return}
+  box.innerHTML=found.map(c=>`<button type="button" class="client-suggestion" onclick="selectClient('${c.id}')"><b>${esc(c.nome)}</b><small>${esc(c.documento||c.whatsapp||"")}</small></button>`).join("");
+  box.classList.remove("hidden");
+}
+function selectClient(id){
+  const c=state.clientes.find(x=>x.id===id);if(!c)return;
+  selectedClientId=c.id;$("orcCliente").value=c.nome||"";$("orcWhatsapp").value=c.whatsapp||"";
+  $("clientSuggestions").classList.add("hidden");
+}
+$("orcCliente").oninput=()=>{selectedClientId=null;renderClientSuggestions()};
+$("orcCliente").onfocus=renderClientSuggestions;
+$("orcCliente").onblur=()=>setTimeout(()=>$("clientSuggestions").classList.add("hidden"),180);
+function openClientModalFromBudget(){
+  $("clientId").value="";$("clientName").value=$("orcCliente").value.trim();$("clientDocument").value="";$("clientWhatsapp").value=$("orcWhatsapp").value.trim();$("clientEmail").value="";$("clientAddress").value="";
+  $("clientModalTitle").textContent="Novo cliente";$("clientModal").classList.remove("hidden");setTimeout(()=>$("clientName").focus(),50);
+}
+$("newClientBtn").onclick=openClientModalFromBudget;
+function closeClientModal(){$("clientModal").classList.add("hidden")}
+$("closeClientModal").onclick=closeClientModal;$("cancelClientModal").onclick=closeClientModal;
+$("clientForm").onsubmit=async e=>{
+  e.preventDefault();
+  const payload={user_id:uid(),nome:$("clientName").value.trim(),documento:$("clientDocument").value.trim()||null,whatsapp:$("clientWhatsapp").value.trim()||null,email:$("clientEmail").value.trim()||null,endereco:$("clientAddress").value.trim()||null};
+  const {data,error}=await sb.from("clientes").insert(payload).select().single();
+  if(error)return alert("Cliente: "+error.message);
+  state.clientes.push(data);state.clientes.sort((a,b)=>String(a.nome).localeCompare(String(b.nome),"pt-BR"));
+  selectClient(data.id);closeClientModal();
+};
 // ORÇAMENTOS
 $("btnOrc").onclick=()=>{
   $("orcList").classList.add("hidden");
@@ -617,6 +654,7 @@ function showBudgetFeedback(msg,type="ok"){
 }
 function resetOrc(hide=true){
   editingOrcId=null;
+  selectedClientId=null;
   if($("saveOrcBtn"))$("saveOrcBtn").textContent="Salvar orçamento";
   pendingPhotos=[];
   $("orcForm").reset();
@@ -671,6 +709,7 @@ function editOrc(id){
     return;
   }
   editingOrcId=id;
+  selectedClientId=o.cliente_id||null;
   $("saveOrcBtn").textContent="Salvar alterações";
   $("orcForm").reset();
   $("orcItens").innerHTML="";
@@ -849,6 +888,7 @@ $("orcForm").onsubmit=async e=>{
 
   const payload={
     prestador,
+    cliente_id:selectedClientId,
     cliente:$("orcCliente").value.trim(),
     whatsapp:$("orcWhatsapp").value,
     equipamento_modelo:$("orcEquipamento").value.trim(),

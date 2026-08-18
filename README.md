@@ -1,26 +1,21 @@
-# Meu Financeiro V8.2.0 — Fotos 3 Etapas + Câmera + Compartilhamento
+# Meu Financeiro V8.3.0 — Cadastro de Clientes
 
-## Registro fotográfico
-- Antes → Durante → Depois.
-- Várias fotos por etapa.
-- No celular: Tirar foto ou escolher da Galeria.
-- Compressão automática antes do upload (máx. 1600 px, JPEG).
-- Legenda opcional em fotos novas e já salvas.
-- Exclusão individual preservada.
-- Pré-visualização e PDF mostram as três etapas e legendas.
-
-## PDF / Compartilhamento
-- Ao abrir a prévia, Compartilhar começa desabilitado.
-- Gerar PDF cria o arquivo com sucesso e só então habilita Compartilhar.
-- O mesmo PDF gerado é usado no compartilhamento.
-- Em navegadores compatíveis, abre o compartilhamento nativo do celular.
-- Se não houver suporte ou ocorrer erro, o PDF é baixado como alternativa segura.
+## Escopo
+- Cadastro interno de clientes.
+- Nome/Razão Social, CPF/CNPJ, WhatsApp, e-mail e endereço.
+- Busca no Novo Orçamento por nome ou documento.
+- Seleção preenche nome e WhatsApp automaticamente.
+- Botão + ao lado do cliente cadastra um novo cliente sem sair do orçamento.
+- Orçamento fica vinculado ao cliente por `cliente_id`.
+- Orçamentos antigos são preservados e vinculados automaticamente quando possível.
+- Sem portal do cliente, equipamentos, favoritos ou complexidade adicional.
 
 ## Instalação
-1. Execute `supabase_v8_2_0_fotos_legenda.sql`.
-2. Não há tabela nova para expor.
+1. Execute `supabase_v8_3_0_clientes.sql`.
+2. No Supabase Data API, confirme que `public.clientes` está exposta.
 3. Substitua no GitHub: index.html, app.js, styles.css, config.js e README.md.
 4. Ctrl+F5.
 
-## Teste mobile
-criar → foto Antes → Durante → Depois → pré-visualizar → excluir foto → gerar PDF → compartilhar
+## Teste
+Novo orçamento → digitar cliente → selecionar → conferir WhatsApp → salvar.
+Depois criar outro orçamento e confirmar que o cliente é recuperado.
