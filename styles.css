@@ -1023,3 +1023,25 @@ input[inputmode="decimal"]{font-variant-numeric:tabular-nums}
 /* V8.3.1 — identidade visual */
 .app-brand-logo{width:38px;height:38px;object-fit:cover;border-radius:10px;vertical-align:middle;margin-right:9px;box-shadow:0 2px 8px rgba(0,0,0,.18)}
 @media(max-width:600px){.app-brand-logo{width:34px;height:34px;border-radius:9px;margin-right:7px}}
+
+/* V8.4.0 — fornecimento de materiais */
+.budget-item-headings{
+  grid-template-columns:minmax(90px,.72fr) minmax(170px,1.45fr) minmax(60px,.5fr) minmax(105px,.85fr) minmax(100px,.85fr) minmax(100px,.85fr) minmax(125px,1fr) 38px!important;
+}
+.budget-item-row{
+  grid-template-columns:minmax(90px,.72fr) minmax(170px,1.45fr) minmax(60px,.5fr) minmax(105px,.85fr) minmax(100px,.85fr) minmax(100px,.85fr) minmax(125px,1fr) 38px!important;
+}
+.iFornec:disabled{background:#f8fafc;color:#64748b}
+.client-supplied-total,.client-supplied-label{color:#0f766e!important;font-weight:800!important}
+.client-supplied-total{font-size:.78rem;white-space:normal!important;line-height:1.15;text-align:center;justify-content:center}
+@media(max-width:1150px){
+  .budget-item-headings{display:none}
+  .budget-item-row{grid-template-columns:1fr 1fr!important}
+  .budget-item-row .iDesc{grid-column:1/-1}
+  .budget-item-row .iTotal{grid-column:1/-1}
+  .budget-item-row .remove-budget-item{grid-column:1/-1;justify-self:end}
+}
+@media(max-width:520px){
+  .budget-item-row{grid-template-columns:1fr!important}
+  .budget-item-row>*{grid-column:1/-1!important}
+}

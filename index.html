@@ -5,12 +5,12 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111827">
 <title>Meu Financeiro</title>
-<link rel="stylesheet" href="styles.css?v=8.3.2">
+<link rel="stylesheet" href="styles.css?v=8.4.0">
 
 <link rel="icon" type="image/png" href="favicon.png?v=8.3.1">
 <link rel="apple-touch-icon" href="apple-touch-icon.png?v=8.3.1">
 <meta name="theme-color" content="#071b15">
-<link rel="manifest" href="manifest.webmanifest?v=8.3.2">
+<link rel="manifest" href="manifest.webmanifest?v=8.4.0">
 
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -193,6 +193,7 @@
   <span>Tipo</span>
   <span>Descrição</span>
   <span>Qtd.</span>
+  <span>Fornecimento</span>
   <span>Valor unitário</span>
   <span>Custo interno</span>
   <span>Total do item</span>
@@ -346,10 +347,11 @@
 <div id="calendarActionModal" class="modal hidden"><div class="card modal-card"><div class="head"><h2>Novo lançamento</h2><button id="closeCalendarAction" type="button">×</button></div><p id="calendarActionDate" class="transfer-direction"></p><div class="calendar-actions"><button data-cal-action="entrada" class="primary" type="button">+ Entrada</button><button data-cal-action="saida" type="button">+ Gasto</button><button data-cal-action="conta" type="button">+ Conta a pagar</button></div><label>Conta<select id="calendarAccount"><option value="PF">Pessoa Física</option><option value="CNPJ">CNPJ</option></select></label></div></div>
 
 <template id="budgetItemTemplate"><div class="budget-item-row">
-<select class="iTipo"><option value="peca">Peça / item</option><option value="mao_obra">M.O.</option></select>
+<select class="iTipo"><option value="peca">Peça / material</option><option value="mao_obra">M.O.</option></select>
 <input class="iDesc" placeholder="Descrição" required>
 <input class="iQtd" type="number" value="1" min="0.01" step="0.01" required>
-<input class="iVal" type="number" step="0.01" min="0" placeholder="Valor cobrado" required>
+<select class="iFornec" title="Quem fornece este material"><option value="prestador">Prestador</option><option value="cliente">Cliente</option></select>
+<input class="iVal" type="number" step="0.01" min="0" placeholder="Valor cobrado">
 <input class="iCusto" type="number" step="0.01" min="0" placeholder="Custo interno">
 <div class="iTotal money-inline">R$ 0,00</div>
 <button class="danger remove-budget-item remove-soft" type="button" title="Remover item" aria-label="Remover item"><span aria-hidden="true">🗑</span></button>
@@ -361,5 +363,5 @@
 <button class="danger remove-cost remove-soft" type="button" title="Remover custo" aria-label="Remover custo"><span aria-hidden="true">🗑</span></button></div></template>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script><script src="config.js"></script><script src="app.js?v=8.3.2"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script><script src="config.js"></script><script src="app.js?v=8.4.0"></script>
 </body></html>

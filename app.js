@@ -665,26 +665,43 @@ function resetOrc(hide=true){
 }
 function addOrcItem(data=null){
   const f=$("budgetItemTemplate").content.cloneNode(true),r=f.querySelector(".budget-item-row");
-  const tipo=r.querySelector(".iTipo"),desc=r.querySelector(".iDesc"),qtd=r.querySelector(".iQtd"),val=r.querySelector(".iVal"),custo=r.querySelector(".iCusto");
+  const tipo=r.querySelector(".iTipo"),desc=r.querySelector(".iDesc"),qtd=r.querySelector(".iQtd"),fornec=r.querySelector(".iFornec"),val=r.querySelector(".iVal"),custo=r.querySelector(".iCusto");
   if(data){
     tipo.value=data.tipo||"peca";
     desc.value=data.descricao||"";
     qtd.value=data.quantidade??1;
+    fornec.value=data.fornecimento||"prestador";
     val.value=data.valor_unitario??0;
     custo.value=data.custo_unitario??0;
   }
-  const syncTipo=()=>{
+  const syncItem=()=>{
     const mao=tipo.value==="mao_obra";
-    custo.disabled=mao;
-    if(mao)custo.value="0";
-    custo.placeholder=mao?"M.O. não é custo":"Custo real";
+    if(mao){
+      fornec.value="prestador";
+      fornec.disabled=true;
+      custo.disabled=true;
+      custo.value="0";
+      val.disabled=false;
+      val.required=true;
+      val.placeholder="Valor da M.O.";
+    }else{
+      fornec.disabled=false;
+      const cliente=fornec.value==="cliente";
+      val.disabled=cliente;
+      custo.disabled=cliente;
+      val.required=!cliente;
+      if(cliente){val.value="0";custo.value="0"}
+      val.placeholder=cliente?"Fornecido pelo cliente":"Valor cobrado";
+      custo.placeholder=cliente?"Sem custo do prestador":"Custo real";
+    }
     calcOrc();
   };
   r.querySelectorAll("input,select").forEach(i=>i.oninput=calcOrc);
-  tipo.onchange=syncTipo;
+  tipo.onchange=syncItem;
+  fornec.onchange=syncItem;
   r.querySelector(".remove-budget-item").onclick=()=>{r.remove();calcOrc()};
   $("orcItens").appendChild(f);
-  syncTipo();
+  syncItem();
 }
 function addCost(data=null){
   const f=$("costTemplate").content.cloneNode(true),r=f.querySelector(".cost-row");
@@ -734,13 +751,19 @@ function editOrc(id){
   $("orcFormWrap").scrollIntoView({behavior:"smooth",block:"start"});
 }
 function orcItems(){
-  return[...document.querySelectorAll(".budget-item-row")].map(r=>({
-    tipo:r.querySelector(".iTipo").value,
-    descricao:r.querySelector(".iDesc").value.trim(),
-    quantidade:+r.querySelector(".iQtd").value||0,
-    valor_unitario:+r.querySelector(".iVal").value||0,
-    custo_unitario:+r.querySelector(".iCusto").value||0
-  }));
+  return[...document.querySelectorAll(".budget-item-row")].map(r=>{
+    const tipo=r.querySelector(".iTipo").value;
+    const fornecimento=tipo==="mao_obra"?"prestador":r.querySelector(".iFornec").value;
+    const cliente=tipo==="peca"&&fornecimento==="cliente";
+    return{
+      tipo,
+      fornecimento,
+      descricao:r.querySelector(".iDesc").value.trim(),
+      quantidade:+r.querySelector(".iQtd").value||0,
+      valor_unitario:cliente?0:(+r.querySelector(".iVal").value||0),
+      custo_unitario:cliente?0:(+r.querySelector(".iCusto").value||0)
+    };
+  });
 }
 function orcCosts(){
   return[...document.querySelectorAll(".cost-row")].map(r=>({
@@ -767,12 +790,29 @@ async function compressPhotoFile(file){
     return new File([blob],`${base}.jpg`,{type:"image/jpeg",lastModified:Date.now()});
   }catch(e){console.warn("Compressão de foto:",e);return file}
 }
+async function photoFileHash(file){
+  try{
+    const buf=await file.arrayBuffer();
+    const digest=await crypto.subtle.digest("SHA-256",buf);
+    return [...new Uint8Array(digest)].map(b=>b.toString(16).padStart(2,"0")).join("");
+  }catch(e){
+    return `${file.name}:${file.size}:${file.lastModified}`;
+  }
+}
+function photoHashExists(hash){
+  if(!hash)return false;
+  return pendingPhotos.some(p=>p.arquivo_hash===hash)||state.orcFotos.some(f=>f.orcamento_id===editingOrcId&&f.arquivo_hash===hash);
+}
 async function addPendingPhotos(files,tipo){
+  let duplicadas=0;
   for(const file of [...files]){
     const compressed=await compressPhotoFile(file);
-    pendingPhotos.push({file:compressed,tipo,legenda:""});
+    const arquivo_hash=await photoFileHash(compressed);
+    if(photoHashExists(arquivo_hash)){duplicadas++;continue}
+    pendingPhotos.push({file:compressed,tipo,legenda:"",arquivo_hash});
   }
   renderPendingPhotos();
+  if(duplicadas)alert(`${duplicadas} foto(s) duplicada(s) não foram adicionadas.`);
 }
 const bindPhotoInput=(id,tipo)=>{
   const el=$(id);if(!el)return;
@@ -838,7 +878,7 @@ async function uploadBudgetPhotos(orcamentoId){
     const up=await sb.storage.from("orcamento-fotos").upload(path,file,{upsert:false,contentType:file.type||"image/jpeg"});
     if(up.error)throw up.error;
     const ins=await sb.from("orcamento_fotos").insert({
-      user_id:uid(),orcamento_id:orcamentoId,storage_path:path,nome_arquivo:file.name,tipo:p.tipo,legenda:p.legenda||null
+      user_id:uid(),orcamento_id:orcamentoId,storage_path:path,nome_arquivo:file.name,tipo:p.tipo,legenda:p.legenda||null,arquivo_hash:p.arquivo_hash||null
     });
     if(ins.error)throw ins.error;
   }
@@ -860,11 +900,21 @@ async function openBudgetPhotos(id){
 }
 
 function calcOrc(){
-  document.querySelectorAll(".budget-item-row").forEach(r=>{const q=Number(r.querySelector(".iQtd")?.value||0),v=Number(r.querySelector(".iVal")?.value||0);const t=r.querySelector(".iTotal");if(t)t.textContent=brl(q*v)});
+  document.querySelectorAll(".budget-item-row").forEach(r=>{
+    const tipo=r.querySelector(".iTipo")?.value;
+    const fornecimento=tipo==="mao_obra"?"prestador":r.querySelector(".iFornec")?.value;
+    const cliente=tipo==="peca"&&fornecimento==="cliente";
+    const q=Number(r.querySelector(".iQtd")?.value||0),v=Number(r.querySelector(".iVal")?.value||0);
+    const t=r.querySelector(".iTotal");
+    if(t){
+      t.textContent=cliente?"Fornecido pelo cliente":brl(q*v);
+      t.classList.toggle("client-supplied-total",cliente);
+    }
+  });
   const its=orcItems(),custos=orcCosts();
-  const pecas=its.filter(x=>x.tipo==="peca").reduce((s,x)=>s+x.quantidade*x.valor_unitario,0);
+  const pecas=its.filter(x=>x.tipo==="peca"&&x.fornecimento!=="cliente").reduce((s,x)=>s+x.quantidade*x.valor_unitario,0);
   const mo=its.filter(x=>x.tipo==="mao_obra").reduce((s,x)=>s+x.quantidade*x.valor_unitario,0);
-  const custoItens=its.filter(x=>x.tipo==="peca").reduce((s,x)=>s+x.quantidade*x.custo_unitario,0);
+  const custoItens=its.filter(x=>x.tipo==="peca"&&x.fornecimento!=="cliente").reduce((s,x)=>s+x.quantidade*x.custo_unitario,0);
   const custoServico=custos.reduce((s,x)=>s+x.valor,0);
   const total=pecas+mo,resultado=total-custoItens-custoServico;
   $("totalPecas").textContent=brl(pecas);
@@ -1083,7 +1133,10 @@ async function buildBudgetClientPreview(o){
   const its=state.orcItens.filter(x=>x.orcamento_id===o.id);
   const fotos=state.orcFotos.filter(x=>x.orcamento_id===o.id);
   const gi=garantiaInfo(o);
-  const itemRows=its.map(i=>`<tr><td>${i.tipo==="mao_obra"?"M.O.":"Item"}</td><td>${esc(i.descricao)}</td><td>${i.quantidade}</td><td>${brl(i.valor_unitario)}</td><td>${brl(Number(i.quantidade)*Number(i.valor_unitario))}</td></tr>`).join("");
+  const itemRows=its.map(i=>{
+    const cliente=i.tipo==="peca"&&i.fornecimento==="cliente";
+    return `<tr><td>${i.tipo==="mao_obra"?"M.O.":"Material"}</td><td>${esc(i.descricao)}</td><td>${i.quantidade}</td><td>${cliente?"Cliente":"Prestador"}</td><td>${cliente?"—":brl(i.valor_unitario)}</td><td>${cliente?'<b class="client-supplied-label">Fornecido pelo cliente</b>':brl(Number(i.quantidade)*Number(i.valor_unitario))}</td></tr>`;
+  }).join("");
   const photos=(await Promise.all(fotos.map(async f=>({f,url:await signedPhotoUrl(f.storage_path)})))).filter(x=>x.url);
   const photoHtml=(tipo,label)=>{
     const group=photos.filter(x=>(x.f.tipo||"antes")===tipo);
@@ -1101,7 +1154,7 @@ async function buildBudgetClientPreview(o){
       ${o.descricao?`<h3>Descrição do serviço</h3><p>${esc(o.descricao)}</p>`:""}
     </section>
     <h3>ITENS COMERCIAIS</h3>
-    <div class="preview-table-wrap"><table><thead><tr><th>Tipo</th><th>Descrição</th><th>Qtd.</th><th>Valor unit.</th><th>Total</th></tr></thead><tbody>${itemRows||`<tr><td colspan="5">Nenhum item.</td></tr>`}</tbody></table></div>
+    <div class="preview-table-wrap"><table><thead><tr><th>Tipo</th><th>Descrição</th><th>Qtd.</th><th>Fornecimento</th><th>Valor unit.</th><th>Total</th></tr></thead><tbody>${itemRows||`<tr><td colspan="6">Nenhum item.</td></tr>`}</tbody></table></div>
     <div class="preview-grand-total">TOTAL: ${brl(o.total)}</div>
     <section><p><b>Forma de pagamento:</b> ${esc(o.forma_pagamento||"Não informada")}</p><p><b>Condição de pagamento:</b> ${esc(o.condicao_pagamento||"Não informada")}${o.condicao_pagamento_detalhe?` — ${esc(o.condicao_pagamento_detalhe)}`:""}</p></section>
     ${photos.length?`<section class="preview-photo-summary"><h3>REGISTRO FOTOGRÁFICO</h3>${photoHtml("antes","ANTES")}${photoHtml("durante","DURANTE")}${photoHtml("depois","DEPOIS")}</section>`:""}
@@ -1193,8 +1246,13 @@ async function gerarPdfCliente(id,btn=null,modo="salvar"){
     ensure(25);y+=3;line("ITENS COMERCIAIS",12,true);
     its.forEach(i=>{
       ensure(10);
-      const tipo=i.tipo==="mao_obra"?"M.O.":"Item";
-      line(`${tipo}: ${i.descricao} — ${i.quantidade} x ${brl(i.valor_unitario)} = ${brl(Number(i.quantidade)*Number(i.valor_unitario))}`,9);
+      const tipo=i.tipo==="mao_obra"?"M.O.":"Material";
+      const cliente=i.tipo==="peca"&&i.fornecimento==="cliente";
+      if(cliente){
+        line(`${tipo}: ${i.descricao} — Qtd. ${i.quantidade} — Fornecido pelo cliente`,9);
+      }else{
+        line(`${tipo}: ${i.descricao} — ${i.quantidade} x ${brl(i.valor_unitario)} = ${brl(Number(i.quantidade)*Number(i.valor_unitario))}`,9);
+      }
     });
 
     ensure(18);y+=4;
@@ -1361,7 +1419,10 @@ function budgetCard(o){
     ${["aprovado","pago"].includes(o.status)?`<div class="receivable-status ${ri.cor}"><b>${ri.cor==="verde"?"Pagamento concluído":ri.vencido?"Pagamento pendente / parcela vencida":ri.recebido>0?"Pagamento parcial":"Aguardando pagamento"}</b><span>Recebido ${moneySpan(ri.recebido)}</span><span>A receber ${moneySpan(ri.saldo)}</span>${o.proximo_vencimento&&ri.saldo>0?`<span>Próximo vencimento ${dataBR(o.proximo_vencimento)}</span>`:""}</div>`:""}
     <div class="budget-split"><span>Total cobrado <b class="money-inline">${brl(o.total)}</b></span><span>Gastos <b class="money-inline">${brl(custoItens+custoServico)}</b></span><span>Resultado ${o.status==="pago"?"real":"previsto"} <b class="money-inline">${brl(o.status==="pago"?o.resultado:resultado)}</b></span></div>
     <div class="photo-counts"><span>Antes (${antes})</span><span>Durante (${durante})</span><span>Depois (${depois})</span></div>
-    ${its.map(i=>`<div class="meta">${i.tipo==="peca"?"Item":"M.O."}: ${esc(i.descricao)} · ${i.quantidade} × ${moneySpan(i.valor_unitario)}${Number(i.custo_unitario||0)>0?` · custo ${moneySpan(Number(i.custo_unitario)*Number(i.quantidade))}`:""}</div>`).join("")}
+    ${its.map(i=>{
+      const cliente=i.tipo==="peca"&&i.fornecimento==="cliente";
+      return `<div class="meta">${i.tipo==="peca"?"Material":"M.O."}: ${esc(i.descricao)} · ${i.quantidade}${cliente?' · <b class="client-supplied-label">Fornecido pelo cliente</b>':` × ${moneySpan(i.valor_unitario)}${Number(i.custo_unitario||0)>0?` · custo ${moneySpan(Number(i.custo_unitario)*Number(i.quantidade))}`:""}`}</div>`;
+    }).join("")}
     ${custos.length?`<div class="internal-box"><b>Custos internos</b>${custos.map(c=>`<div class="meta">${esc(c.descricao)} · ${esc(c.categoria||"Custos do serviço")} · ${moneySpan(c.valor)}</div>`).join("")}</div>`:""}
     ${fotos.length?`<button type="button" class="small" onclick="openBudgetPhotos('${o.id}')">Fotos (${fotos.length})</button>`:""}
     <div class="actions"><button class="orc-icon-action preview" onclick="previewPdfCliente('${o.id}')" title="Pré-visualizar documento" aria-label="Pré-visualizar documento">👁</button><button class="orc-icon-action share" onclick="previewPdfCliente('${o.id}')" title="Pré-visualizar antes de compartilhar" aria-label="Pré-visualizar antes de compartilhar">↗</button>${o.status!=="pago"?`<button class="orc-icon-action edit" onclick="editOrc('${o.id}')" title="Editar orçamento" aria-label="Editar orçamento">✎</button>`:""}${isDraft?`<button onclick="enviarOrc('${o.id}')">Marcar enviado</button><button class="warning" onclick="aprovarOrc('${o.id}')">Aprovar</button><button class="danger" onclick="delOrc('${o.id}')">Excluir</button>`:""}${o.status==="enviado"?`<button class="warning" onclick="aprovarOrc('${o.id}')">Aprovar</button>`:""}${o.status==="aprovado"?`<button class="orc-icon-action cost" onclick="openApprovedCost('${o.id}')" title="Registrar custo" aria-label="Registrar custo">＋</button><button class="orc-icon-action done" onclick="pagarOrc('${o.id}')" title="Registrar recebimento" aria-label="Registrar recebimento">✓</button>`:""}${o.status==="pago"?`<button class="warning" onclick="recalcularPago('${o.id}')">Recalcular</button>`:""}</div>

@@ -1,31 +1,53 @@
-# Meu Financeiro V8.3.2 — Ícone Mobile / PWA
+# Meu Financeiro V8.4.0 — Fornecimento de Materiais
 
-## Correção
-- Manifesto do aplicativo adicionado.
-- Ícones 192 px e 512 px declarados para Android/PWA.
-- Ícone maskable declarado para atalhos instalados.
-- Nome do aplicativo definido como "Meu Financeiro".
-- Cache de recursos atualizado para V8.3.2.
-- Nenhuma alteração de lógica, banco, clientes, orçamento ou Supabase.
+## Alteração principal
+Itens de Peça / Material agora possuem **Fornecimento**:
+- Prestador
+- Cliente
+
+### Prestador
+- Quantidade e valor unitário normais.
+- Compõe o total do orçamento.
+- Mantém custo interno e resultado financeiro atuais.
+
+### Cliente
+- Quantidade continua disponível.
+- Valor unitário e custo interno são desabilitados.
+- Não compõe o total financeiro.
+- Pré-visualização e PDF mostram **Fornecido pelo cliente**.
+- Não aparece como material gratuito fornecido pelo prestador.
+
+### Mão de obra
+- Continua sempre como fornecimento do prestador.
+- Comportamento financeiro preservado.
+
+## Registro técnico
+Descrições continuam livres, portanto é possível registrar:
+`Gavião — substituição mediante avaliação.`
+A presença da descrição não altera automaticamente o status de execução.
+
+## Fotos
+- Antes / Durante / Depois preservados.
+- Câmera e galeria preservadas.
+- Legendas e exclusão individual preservadas.
+- Compressão preservada.
+- Fotos novas recebem hash e duplicadas no mesmo orçamento são rejeitadas.
+
+## Compartilhamento
+Fluxo homologado preservado:
+Pré-visualizar → Gerar PDF → Compartilhar.
 
 ## Instalação
-Substitua/adicone no GitHub:
-- index.html
-- app.js
-- styles.css
-- config.js
-- README.md
-- favicon.png
-- apple-touch-icon.png
-- app-icon-192.png
-- app-icon-512.png
-- manifest.webmanifest
+1. Execute `supabase_v8_4_0_fornecimento_materiais.sql`.
+2. Não há tabela nova.
+3. Substitua no GitHub os arquivos do pacote.
+4. Faça Ctrl+F5.
 
-Depois:
-1. Aguarde o GitHub Pages publicar.
-2. No celular, remova o atalho antigo "Meu Financeiro".
-3. Abra o site novamente no Chrome.
-4. Atualize a página.
-5. Use "Adicionar à tela inicial" / "Instalar app" novamente.
-
-O Android costuma manter o ícone antigo no atalho já instalado, por isso é necessário recriar o atalho uma vez.
+## Cenário de validação recomendado
+Orçamento 4 — O'Martin:
+- M.O. Reforma da caçamba: R$ 7.500,00
+- Chapa do fundo: Cliente
+- Taliscas: Cliente
+- Olhais: Cliente
+- Gavião — substituição mediante avaliação: Cliente
+- TOTAL esperado: R$ 7.500,00
