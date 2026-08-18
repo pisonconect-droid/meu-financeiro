@@ -693,7 +693,9 @@ function addOrcItem(data=null){
       if(cliente){val.value="0";custo.value="0"}
       val.placeholder=cliente?"Fornecido pelo cliente":"Valor cobrado";
       custo.placeholder=cliente?"Sem custo do prestador":"Custo real";
+      r.classList.toggle("supplied-by-client",cliente);
     }
+    if(mao)r.classList.remove("supplied-by-client");
     calcOrc();
   };
   r.querySelectorAll("input,select").forEach(i=>i.oninput=calcOrc);

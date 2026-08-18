@@ -1045,3 +1045,99 @@ input[inputmode="decimal"]{font-variant-numeric:tabular-nums}
   .budget-item-row{grid-template-columns:1fr!important}
   .budget-item-row>*{grid-column:1/-1!important}
 }
+
+/* =========================================================
+   V8.4.1 — UX MOBILE DOS ITENS COMERCIAIS
+   Apenas apresentação; regras financeiras preservadas.
+   ========================================================= */
+.mobile-item-field{display:contents}
+.mobile-item-label{display:none}
+
+@media (max-width:1150px){
+  .budget-item-row{
+    position:relative;
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+    gap:12px!important;
+    padding:18px 14px 14px!important;
+    margin-bottom:14px!important;
+    border:1px solid #d9e0e8!important;
+    border-radius:16px!important;
+    background:#fff!important;
+    box-shadow:0 2px 8px rgba(15,23,42,.05);
+  }
+  .budget-item-row .mobile-item-field{
+    display:flex;
+    flex-direction:column;
+    min-width:0;
+    gap:5px;
+  }
+  .budget-item-row .mobile-item-label{
+    display:block;
+    font-size:.74rem;
+    line-height:1.1;
+    font-weight:800;
+    color:#526174;
+  }
+  .budget-item-row .item-description-field{grid-column:1/-1}
+  .budget-item-row .item-total-field{grid-column:1/-1}
+  .budget-item-row .iTotal{
+    min-height:46px;
+    border:1px solid #d9e0e8;
+    border-radius:11px;
+    background:#f8fafc;
+    padding:10px 12px;
+    display:flex;
+    align-items:center;
+    justify-content:flex-end;
+  }
+  .budget-item-row .remove-budget-item{
+    position:absolute!important;
+    top:10px!important;
+    right:10px!important;
+    width:38px!important;
+    height:38px!important;
+    min-width:38px!important;
+    padding:0!important;
+    display:grid!important;
+    place-items:center!important;
+    border-radius:10px!important;
+    z-index:2;
+  }
+  .budget-item-row .item-supply-field{padding-right:42px}
+  .budget-item-row.supplied-by-client .item-value-field,
+  .budget-item-row.supplied-by-client .item-cost-field{
+    display:none!important;
+  }
+  .budget-item-row.supplied-by-client .item-total-field .mobile-item-label{
+    display:none;
+  }
+  .budget-item-row.supplied-by-client .iTotal{
+    justify-content:center;
+    background:#ecfdf5;
+    border-color:#a7f3d0;
+    color:#0f766e!important;
+    font-size:.88rem;
+  }
+}
+
+@media (max-width:600px){
+  .budget-item-row{
+    grid-template-columns:minmax(0,1fr) minmax(0,.72fr)!important;
+    gap:10px!important;
+    padding:16px 12px 12px!important;
+  }
+  .budget-item-row .item-description-field{grid-column:1/-1!important}
+  .budget-item-row .item-total-field{grid-column:1/-1!important}
+  .budget-item-row select,
+  .budget-item-row input{
+    min-height:46px!important;
+    font-size:16px!important;
+  }
+}
+
+@media (max-width:390px){
+  .budget-item-row{grid-template-columns:1fr!important}
+  .budget-item-row .mobile-item-field{grid-column:1!important}
+  .budget-item-row .item-supply-field{padding-right:42px}
+}

@@ -1,53 +1,24 @@
-# Meu Financeiro V8.4.0 — Fornecimento de Materiais
+# Meu Financeiro V8.4.1 — UX Mobile dos Itens
 
-## Alteração principal
-Itens de Peça / Material agora possuem **Fornecimento**:
-- Prestador
-- Cliente
+Correção de acabamento identificada em uso real no celular.
 
-### Prestador
-- Quantidade e valor unitário normais.
-- Compõe o total do orçamento.
-- Mantém custo interno e resultado financeiro atuais.
-
-### Cliente
-- Quantidade continua disponível.
-- Valor unitário e custo interno são desabilitados.
-- Não compõe o total financeiro.
-- Pré-visualização e PDF mostram **Fornecido pelo cliente**.
-- Não aparece como material gratuito fornecido pelo prestador.
-
-### Mão de obra
-- Continua sempre como fornecimento do prestador.
-- Comportamento financeiro preservado.
-
-## Registro técnico
-Descrições continuam livres, portanto é possível registrar:
-`Gavião — substituição mediante avaliação.`
-A presença da descrição não altera automaticamente o status de execução.
-
-## Fotos
-- Antes / Durante / Depois preservados.
-- Câmera e galeria preservadas.
-- Legendas e exclusão individual preservadas.
-- Compressão preservada.
-- Fotos novas recebem hash e duplicadas no mesmo orçamento são rejeitadas.
-
-## Compartilhamento
-Fluxo homologado preservado:
-Pré-visualizar → Gerar PDF → Compartilhar.
+## Alterações
+- Cada item comercial vira um card legível no mobile.
+- Campos recebem rótulos visíveis: Tipo, Descrição, Quantidade, Fornecimento, Valor unitário, Custo interno e Total.
+- Quando `Fornecimento = Cliente`, Valor unitário e Custo interno ficam ocultos no celular.
+- O card mostra diretamente `Fornecido pelo cliente`.
+- Botão de excluir fica no canto superior do item.
+- Layout desktop permanece em formato de tabela.
+- Nenhuma regra financeira, banco, PDF, fotos, clientes, status ou compartilhamento foi alterada.
+- Não há alteração no Supabase.
 
 ## Instalação
-1. Execute `supabase_v8_4_0_fornecimento_materiais.sql`.
-2. Não há tabela nova.
-3. Substitua no GitHub os arquivos do pacote.
-4. Faça Ctrl+F5.
+Substitua os arquivos no GitHub e faça atualização forçada.
+No celular, feche/reabra o PWA ou atualize a página instalada.
 
-## Cenário de validação recomendado
-Orçamento 4 — O'Martin:
-- M.O. Reforma da caçamba: R$ 7.500,00
-- Chapa do fundo: Cliente
-- Taliscas: Cliente
-- Olhais: Cliente
-- Gavião — substituição mediante avaliação: Cliente
-- TOTAL esperado: R$ 7.500,00
+## Teste rápido
+1. Abrir orçamento.
+2. Material → Cliente: conferir que preço/custo somem e aparece `Fornecido pelo cliente`.
+3. Material → Prestador: conferir Valor unitário e Custo interno.
+4. M.O.: conferir funcionamento normal.
+5. Salvar e confirmar que o total permanece inalterado.
