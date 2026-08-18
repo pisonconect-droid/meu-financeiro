@@ -1141,3 +1141,24 @@ input[inputmode="decimal"]{font-variant-numeric:tabular-nums}
   .budget-item-row .mobile-item-field{grid-column:1!important}
   .budget-item-row .item-supply-field{padding-right:42px}
 }
+
+/* V8.4.2 — botão voltar no mobile */
+.mobile-budget-back{display:none}
+@media(max-width:700px){
+  .mobile-budget-back{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+    margin:0 0 10px;
+    min-height:42px;
+    padding:8px 13px;
+    border:1px solid #cbd5e1;
+    border-radius:11px;
+    background:#fff;
+    color:#0f172a;
+    font-weight:800;
+    box-shadow:0 2px 7px rgba(15,23,42,.05);
+  }
+  .mobile-budget-back.hidden{display:none!important}
+}

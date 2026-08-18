@@ -624,6 +624,7 @@ $("clientForm").onsubmit=async e=>{
 // ORÇAMENTOS
 $("btnOrc").onclick=()=>{
   $("orcList").classList.add("hidden");
+  $("mobileBudgetBack")?.classList.remove("hidden");
   $("orcEditModeBanner").classList.remove("hidden");
   $("orcEditModeTitle").textContent="Novo orçamento";
   resetOrc(false);
@@ -640,6 +641,9 @@ $("btnOrc").onclick=()=>{
   $("orcFormWrap").scrollIntoView({behavior:"smooth",block:"start"});
 };
 $("cancelOrc").onclick=()=>resetOrc();
+$("mobileBudgetBack").onclick=()=>{
+  if(confirm("Voltar para a lista de orçamentos? Alterações não salvas serão descartadas."))resetOrc();
+};
 $("addItem").onclick=()=>addOrcItem();
 $("addCostBtn").onclick=()=>addCost();
 
@@ -660,7 +664,7 @@ function resetOrc(hide=true){
   $("orcForm").reset();
   $("orcItens").innerHTML="";
   $("orcCustos").innerHTML="";
-  if(hide){$("orcFormWrap").classList.add("hidden");$("orcList").classList.remove("hidden");$("orcEditModeBanner").classList.add("hidden");}
+  if(hide){$("orcFormWrap").classList.add("hidden");$("orcList").classList.remove("hidden");$("orcEditModeBanner").classList.add("hidden");$("mobileBudgetBack")?.classList.add("hidden");}
   calcOrc();
 }
 function addOrcItem(data=null){
@@ -721,6 +725,7 @@ function editOrc(id){
   const o=state.orc.find(x=>x.id===id);
   if(!o)return;
   $("orcList").classList.add("hidden");
+  $("mobileBudgetBack")?.classList.remove("hidden");
   $("orcEditModeBanner").classList.remove("hidden");
   $("orcEditModeTitle").textContent=`Orçamento ${o.numero} · ${o.cliente||""}`;
   if(!["rascunho","orcamento","enviado","aprovado"].includes(o.status)){
@@ -1002,6 +1007,7 @@ $("orcForm").onsubmit=async e=>{
   $("orcFormWrap").classList.add("hidden");
   $("orcList").classList.remove("hidden");
   $("orcEditModeBanner").classList.add("hidden");
+  $("mobileBudgetBack")?.classList.add("hidden");
 };
 async function enviarOrc(id){
   if(!confirm("Marcar este orçamento como enviado ao cliente?"))return;
