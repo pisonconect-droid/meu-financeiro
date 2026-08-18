@@ -1019,3 +1019,7 @@ input[inputmode="decimal"]{font-variant-numeric:tabular-nums}
 .client-suggestions{position:absolute;z-index:80;left:0;right:0;top:100%;margin-top:3px;background:#fff;border:1px solid #cbd5e1;border-radius:10px;box-shadow:0 12px 28px rgba(15,23,42,.15);overflow:hidden}
 .client-suggestion,.client-new-suggestion{width:100%;display:flex;justify-content:space-between;align-items:center;gap:10px;border:0!important;border-bottom:1px solid #eef2f7!important;border-radius:0!important;background:#fff!important;padding:11px 12px!important;text-align:left!important;color:#111827!important}
 .client-suggestion:hover,.client-new-suggestion:hover{background:#f8fafc!important}.client-suggestion small{color:#64748b}.client-modal-card{max-width:720px}.full-field{grid-column:1/-1}
+
+/* V8.3.1 — identidade visual */
+.app-brand-logo{width:38px;height:38px;object-fit:cover;border-radius:10px;vertical-align:middle;margin-right:9px;box-shadow:0 2px 8px rgba(0,0,0,.18)}
+@media(max-width:600px){.app-brand-logo{width:34px;height:34px;border-radius:9px;margin-right:7px}}
