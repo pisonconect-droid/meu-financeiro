@@ -1225,3 +1225,12 @@ input[inputmode="decimal"]{font-variant-numeric:tabular-nums}
   .mei-limit-editor label{min-width:0}
   .intelligence-controls label{min-width:0;width:100%}
 }
+
+/* V8.6.1 */
+.payable-future-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0 0 12px}
+.payable-future-summary span{padding:10px 12px;border:1px solid #dbe3ee;border-radius:11px;background:#f8fafc}
+.payable-future-summary small{display:block;color:#64748b}.payable-future-summary b{display:block;margin-top:3px}
+.chart-card canvas{cursor:pointer}
+#categoryDrilldown:not(.hidden),#intelligenceDetail:not(.hidden){border:2px solid #cbd5e1;box-shadow:0 8px 22px rgba(15,23,42,.08)}
+.intelligence-row{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid #eef2f7}
+@media(max-width:650px){.payable-future-summary{grid-template-columns:1fr}}

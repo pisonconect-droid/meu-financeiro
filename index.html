@@ -5,12 +5,12 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111827">
 <title>Meu Financeiro</title>
-<link rel="stylesheet" href="styles.css?v=8.6.0">
+<link rel="stylesheet" href="styles.css?v=8.6.1">
 
 <link rel="icon" type="image/png" href="favicon.png?v=8.3.1">
 <link rel="apple-touch-icon" href="apple-touch-icon.png?v=8.3.1">
 <meta name="theme-color" content="#071b15">
-<link rel="manifest" href="manifest.webmanifest?v=8.6.0">
+<link rel="manifest" href="manifest.webmanifest?v=8.6.1">
 
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -78,6 +78,11 @@
 <summary><span>Contas a pagar</span><small>Priorize o que precisa ser pago primeiro</small></summary>
 <div class="accordion-body">
   <div class="section-action"><button id="btnConta" class="primary icon-plus" type="button" title="Adicionar conta">+</button></div>
+  <div id="payableFutureSummary" class="payable-future-summary">
+    <span><small>Total a pagar</small><b id="payableTotal">R$ 0,00</b></span>
+    <span><small>Próximos 30 dias</small><b id="payable30">R$ 0,00</b></span>
+    <span><small>Contas em aberto</small><b id="payableCount">0</b></span>
+  </div>
   <div class="cols priority-cols">
     <details class="bill-group overdue" open><summary>Urgentes <span class="money-value" id="tAtrasadas">R$ 0,00</span></summary><div id="atrasadas"></div></details>
     <details class="bill-group pending" open><summary>Prioritárias <span class="money-value" id="tPagar">R$ 0,00</span></summary><div id="pagar"></div></details>
@@ -413,5 +418,5 @@
 <button class="danger remove-cost remove-soft" type="button" title="Remover custo" aria-label="Remover custo"><span aria-hidden="true">🗑</span></button></div></template>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script><script src="config.js"></script><script src="app.js?v=8.6.0"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script><script src="config.js"></script><script src="app.js?v=8.6.1"></script>
 </body></html>

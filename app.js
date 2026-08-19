@@ -13,7 +13,7 @@ let privacyHidden=localStorage.getItem("mf_privacy_hidden")==="1";
 
 const $=id=>document.getElementById(id);
 const brl=v=>Number(v||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
-const hoje=()=>new Date().toISOString().slice(0,10);
+const hoje=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;};
 const dataBR=s=>{if(!s)return"";const[y,m,d]=s.split("-");return`${d}/${m}/${y}`};
 const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
 const uid=()=>session?.user?.id;
@@ -466,6 +466,11 @@ function render(){
     : movimentosConta.filter(x=>inferCategory(x)===movCategoryFilter);
   $("movList").innerHTML=listMov(movimentosFiltrados);
   const cs=state.contas.filter(x=>x.conta===current&&x.status==="pendente");
+  const totalOpen=cs.reduce((s,x)=>s+Number(x.valor||0),0);
+  const next30=cs.filter(x=>{const [y,m,d]=String(x.vencimento||"").slice(0,10).split("-").map(Number);const [ty,tm,td]=hoje().split("-").map(Number);if(!y||!ty)return false;const diff=Math.round((Date.UTC(y,m-1,d)-Date.UTC(ty,tm-1,td))/86400000);return diff>=0&&diff<=30}).reduce((s,x)=>s+Number(x.valor||0),0);
+  if($("payableTotal"))$("payableTotal").textContent=brl(totalOpen);
+  if($("payable30"))$("payable30").textContent=brl(next30);
+  if($("payableCount"))$("payableCount").textContent=String(cs.length);
   const urgent=cs.filter(x=>(x.prioridade||"prioritaria")==="urgente");
   const priority=cs.filter(x=>(x.prioridade||"prioritaria")==="prioritaria");
   const wait=cs.filter(x=>x.prioridade==="pode_esperar");
@@ -1070,8 +1075,10 @@ function garantiaInfo(o){
 }
 function recebimentoInfo(o){
   const rs=state.orcRecebimentos.filter(r=>r.orcamento_id===o.id);
-  const recebido=rs.reduce((s,r)=>s+Number(r.valor||0),0);
-  const total=Number(o.total||0), saldo=Math.max(0,total-recebido);
+  let recebido=rs.reduce((s,r)=>s+Number(r.valor||0),0);
+  const total=Number(o.total||0);
+  if(recebido<=0&&o.status==="pago")recebido=Number(o.valor_recebido||total||0);
+  const saldo=Math.max(0,total-recebido);
   const vencido=saldo>0 && o.proximo_vencimento && String(o.proximo_vencimento)<hoje();
   const cor=saldo<=0?"verde":(recebido>0&&!vencido?"laranja":"vermelho");
   return {rs,recebido,total,saldo,vencido,cor};
@@ -1418,7 +1425,7 @@ function nfseFinancialInfo(o,n){
 }
 function renderNfseSection(o){
   const n=nfseForOrc(o.id);
-  const operacional=o.concluido_em?"Serviço concluído":"Serviço em andamento";
+  const operacional=(o.concluido_em||o.status==="pago")?"Serviço concluído":"Serviço em andamento";
   if(!n){
     return `<details class="nfse-section"><summary><span>Nota Fiscal</span><span class="nfse-pill not-issued">Não emitida</span></summary>
       <div class="nfse-body">
@@ -1661,6 +1668,82 @@ function openFinancialSummary(){
 }
 if($("closeFinancialSummary"))$("closeFinancialSummary").onclick=()=>$("financialSummaryModal").classList.add("hidden");
 
+if($("financePeriodPreset"))$("financePeriodPreset").onchange=renderFinancialCharts;
+if($("financeStart"))$("financeStart").onchange=renderFinancialCharts;
+if($("financeEnd"))$("financeEnd").onchange=renderFinancialCharts;
+if($("clientMetricSelect"))$("clientMetricSelect").onchange=renderBusinessIntelligence;
+
+
+
+function financeDateInRange(v,start,end){
+  const d=String(v||"").slice(0,10);
+  return d&&d>=start&&d<=end;
+}
+function financePeriodBounds(){
+  const preset=$("financePeriodPreset")?.value||"year",today=hoje(),year=today.slice(0,4);
+  let start=`${year}-01-01`,end=`${year}-12-31`;
+  const dt=new Date();
+  if(preset==="month")start=today.slice(0,7)+"-01",end=today;
+  if(preset==="3m"){dt.setMonth(dt.getMonth()-2);start=`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,"0")}-01`;end=today}
+  if(preset==="6m"){dt.setMonth(dt.getMonth()-5);start=`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,"0")}-01`;end=today}
+  if(preset==="custom"){start=$("financeStart")?.value||start;end=$("financeEnd")?.value||today}
+  return{start,end};
+}
+function budgetFiscalStatus(o){
+  if(state.orcNfse?.some(n=>n.orcamento_id===o.id))return"nfse_emitida";
+  return o.situacao_fiscal||"pendente";
+}
+function serviceCost(o){
+  const item=state.orcItens.filter(x=>x.orcamento_id===o.id).reduce((s,x)=>s+Number(x.quantidade||0)*Number(x.custo_unitario||0),0);
+  const extra=state.orcCustos.filter(x=>x.orcamento_id===o.id).reduce((s,x)=>s+Number(x.valor||0),0);
+  return item+extra;
+}
+function trackedRevenue(start,end){
+  const t={nfse:0,dispensed:0,pending:0,total:0};
+  state.orcRecebimentos.filter(r=>financeDateInRange(r.data_recebimento,start,end)).forEach(r=>{
+    const o=state.orc.find(x=>x.id===r.orcamento_id);if(!o)return;
+    const v=Number(r.valor||0),f=budgetFiscalStatus(o);t.total+=v;
+    if(f==="nfse_emitida")t.nfse+=v;else if(f==="dispensada_pf")t.dispensed+=v;else t.pending+=v;
+  });
+  return t;
+}
+function renderCategoryDrilldown(category,rows){
+  const list=rows.filter(x=>x.tipo==="saida"&&(x.categoria||"Sem categoria")===category);
+  const box=$("categoryDrilldown");if(!box)return;
+  box.classList.remove("hidden");
+  box.innerHTML=`<div class="drilldown-head"><div><h4>${esc(category)}</h4><small>${list.length} lançamento(s) · ${brl(list.reduce((s,x)=>s+Number(x.valor||0),0))}</small></div><button type="button" onclick="$('categoryDrilldown').classList.add('hidden')">×</button></div><div class="drilldown-list">${list.map(x=>`<div><span><b>${esc(x.descricao)}</b><small>${dataBR(x.data)}</small></span><b>${brl(x.valor)}</b></div>`).join("")}</div>`;
+  setTimeout(()=>box.scrollIntoView({behavior:"smooth",block:"nearest"}),0);
+}
+function renderBusinessIntelligence(){
+  const section=$("cnpjIntelligence");if(!section)return;
+  const isCnpj=current==="CNPJ";section.classList.toggle("hidden",!isCnpj);if(!isCnpj)return;
+  const {start,end}=financePeriodBounds(),t=trackedRevenue(start,end);
+  if($("trackedRevenueCards"))$("trackedRevenueCards").innerHTML=`<div><small>Com NFS-e</small><b>${brl(t.nfse)}</b></div><div><small>Sem NFS-e / PF</small><b>${brl(t.dispensed)}</b></div><div class="tracked-total"><small>Total acompanhado</small><b>${brl(t.total)}</b></div>${t.pending?`<div class="tracked-pending"><small>Situação fiscal pendente</small><b>${brl(t.pending)}</b></div>`:""}`;
+
+  const metric=$("clientMetricSelect")?.value||"received";
+  const rows=state.orc.map(o=>{
+    const receipts=state.orcRecebimentos.filter(r=>r.orcamento_id===o.id&&financeDateInRange(r.data_recebimento,start,end));
+    const received=receipts.reduce((s,r)=>s+Number(r.valor||0),0);
+    const contracted=financeDateInRange(o.data,start,end)?Number(o.total||0):0;
+    const cost=received>0&&Number(o.total||0)>0?serviceCost(o)*Math.min(1,received/Number(o.total||0)):0;
+    return{o,received,contracted,result:received-cost,cost};
+  });
+  const key=metric==="result"?"result":metric==="contracted"?"contracted":"received",label=metric==="result"?"Resultado acompanhado":metric==="contracted"?"Valor dos serviços":"Recebido";
+  const byClient={};rows.forEach(r=>byClient[r.o.cliente||"Sem cliente"]=(byClient[r.o.cliente||"Sem cliente"]||0)+Number(r[key]||0));
+  const clientEntries=Object.entries(byClient).filter(([,v])=>Math.abs(v)>0.009).sort((a,b)=>b[1]-a[1]);
+  if(window.clientChartInstance)window.clientChartInstance.destroy();
+  if(window.serviceChartInstance)window.serviceChartInstance.destroy();
+  const cc=$("clientChart"),sc=$("serviceChart");
+  if(cc){
+    window.clientChartInstance=new Chart(cc,{type:"bar",data:{labels:clientEntries.map(x=>x[0]),datasets:[{label,data:clientEntries.map(x=>x[1])}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:"y"}});
+    cc.onclick=e=>{const els=window.clientChartInstance.getElementsAtEventForMode(e,"nearest",{intersect:true},true);if(!els.length)return;const name=clientEntries[els[0].index][0],list=rows.filter(r=>(r.o.cliente||"Sem cliente")===name),box=$("intelligenceDetail");box.classList.remove("hidden");box.innerHTML=`<h4>${esc(name)}</h4>${list.map(r=>`<div class="intelligence-row"><span>#${r.o.numero} · ${esc(r.o.descricao||r.o.equipamento_modelo||"Serviço")}</span><b>${brl(r[key])}</b></div>`).join("")}`;};
+  }
+  const services=rows.filter(r=>Math.abs(Number(r[key]||0))>0.009).sort((a,b)=>b[key]-a[key]);
+  if(sc){
+    window.serviceChartInstance=new Chart(sc,{type:"bar",data:{labels:services.map(r=>`#${r.o.numero} · ${r.o.cliente}`),datasets:[{label,data:services.map(r=>r[key])}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:"y"}});
+    sc.onclick=e=>{const els=window.serviceChartInstance.getElementsAtEventForMode(e,"nearest",{intersect:true},true);if(!els.length)return;const r=services[els[0].index],box=$("intelligenceDetail");box.classList.remove("hidden");box.innerHTML=`<h4>Orçamento ${r.o.numero} · ${esc(r.o.cliente)}</h4><div class="service-kpis"><span>Serviço <b>${brl(r.o.total)}</b></span><span>Recebido <b>${brl(r.received)}</b></span><span>Custos <b>${brl(r.cost)}</b></span><span>Resultado <b>${brl(r.result)}</b></span></div>`;};
+  }
+}
 function renderFinancialCharts(){
   if(!window.Chart)return;
   const rows=financialRows();
@@ -1675,8 +1758,11 @@ function renderFinancialCharts(){
   if(monthlyChartInstance)monthlyChartInstance.destroy();
   if(categoryChartInstance)categoryChartInstance.destroy();
   monthlyChartInstance=new Chart($("monthlyChart"),{type:"bar",data:{labels,datasets:[{label:"Entradas",data:entradas},{label:"Gastos",data:gastos}]},options:{responsive:true,maintainAspectRatio:false}});
-  categoryChartInstance=new Chart($("categoryChart"),{type:"doughnut",data:{labels:Object.keys(cats),datasets:[{data:Object.values(cats)}]},options:{responsive:true,maintainAspectRatio:false}});
+  const catEntries=Object.entries(cats),catCanvas=$("categoryChart");
+  categoryChartInstance=new Chart(catCanvas,{type:"doughnut",data:{labels:catEntries.map(x=>x[0]),datasets:[{data:catEntries.map(x=>x[1])}]},options:{responsive:true,maintainAspectRatio:false}});
+  catCanvas.onclick=e=>{const els=categoryChartInstance.getElementsAtEventForMode(e,"nearest",{intersect:true},true);if(!els.length)return;renderCategoryDrilldown(catEntries[els[0].index][0],rows);};
   $("summaryTable").innerHTML=`<div class="budget-split"><span>Entradas no ano <b>${brl(entradas.reduce((a,b)=>a+b,0))}</b></span><span>Gastos no ano <b>${brl(gastos.reduce((a,b)=>a+b,0))}</b></span><span>Resultado <b>${brl(entradas.reduce((a,b)=>a+b,0)-gastos.reduce((a,b)=>a+b,0))}</b></span></div>`;
+  renderBusinessIntelligence();
 }
 
 // Conta a pagar: prioridade visual calculada sem apagar histórico.
