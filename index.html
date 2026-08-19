@@ -5,12 +5,12 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111827">
 <title>Meu Financeiro</title>
-<link rel="stylesheet" href="styles.css?v=8.5.0">
+<link rel="stylesheet" href="styles.css?v=8.6.0">
 
 <link rel="icon" type="image/png" href="favicon.png?v=8.3.1">
 <link rel="apple-touch-icon" href="apple-touch-icon.png?v=8.3.1">
 <meta name="theme-color" content="#071b15">
-<link rel="manifest" href="manifest.webmanifest?v=8.5.0">
+<link rel="manifest" href="manifest.webmanifest?v=8.6.0">
 
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -241,13 +241,48 @@
 <label id="dateLabel">Data<input id="data" type="date" required></label><button class="primary">Salvar</button></form></div></div>
 
 
-<div id="financialSummaryModal" class="modal hidden"><div class="card modal-card wide-modal">
-<div class="head"><h2>Resumo financeiro</h2><button id="closeFinancialSummary" type="button">×</button></div>
+<div id="financialSummaryModal" class="modal hidden"><div class="card modal-card wide-modal intelligence-modal">
+<div class="head"><div><h2>Resumo financeiro</h2><small>Saldo, faturamento acompanhado e resultado dos serviços</small></div><button id="closeFinancialSummary" type="button">×</button></div>
+
+<div class="finance-filter-bar">
+  <label>Período<select id="financePeriodPreset">
+    <option value="month">Mês atual</option>
+    <option value="3m">3 meses</option>
+    <option value="6m">6 meses</option>
+    <option value="year" selected>Ano atual</option>
+    <option value="custom">Personalizado</option>
+  </select></label>
+  <label id="financeStartWrap" class="hidden">De<input id="financeStart" type="date"></label>
+  <label id="financeEndWrap" class="hidden">Até<input id="financeEnd" type="date"></label>
+</div>
+
 <div class="chart-grid">
-  <div class="chart-card"><h3>Entradas × Gastos por mês</h3><canvas id="monthlyChart"></canvas></div>
-  <div class="chart-card"><h3>Gastos por categoria</h3><canvas id="categoryChart"></canvas></div>
+  <div class="chart-card"><h3>Entradas × Gastos</h3><canvas id="monthlyChart"></canvas></div>
+  <div class="chart-card"><h3>Gastos por categoria</h3><p class="chart-help">Clique em uma categoria para ver os lançamentos.</p><canvas id="categoryChart"></canvas></div>
 </div>
 <div id="summaryTable"></div>
+<div id="categoryDrilldown" class="drilldown-panel hidden"></div>
+
+<section id="cnpjIntelligence" class="cnpj-intelligence hidden">
+  <div class="section-title-row"><div><h3>Faturamento acompanhado pelo app</h3><p>Receitas efetivamente recebidas. Não representa necessariamente períodos anteriores ainda não cadastrados.</p></div></div>
+  <div id="trackedRevenueCards" class="tracked-revenue-cards"></div>
+
+  <div id="meiPanel" class="mei-panel"></div>
+
+  <div class="section-title-row intelligence-controls">
+    <div><h3>Resultado por cliente e serviço</h3><p>Use recebimentos efetivos para enxergar quem mais gera resultado.</p></div>
+    <label>Métrica<select id="clientMetricSelect">
+      <option value="received">Recebido</option>
+      <option value="result">Resultado acompanhado</option>
+      <option value="contracted">Valor dos serviços</option>
+    </select></label>
+  </div>
+  <div class="chart-grid intelligence-charts">
+    <div class="chart-card"><h3 id="clientChartTitle">Recebido por cliente</h3><p class="chart-help">Clique em um cliente para detalhar os serviços.</p><canvas id="clientChart"></canvas></div>
+    <div class="chart-card"><h3 id="serviceChartTitle">Recebido por serviço</h3><p class="chart-help">Clique em um serviço para ver recebimentos e situação.</p><canvas id="serviceChart"></canvas></div>
+  </div>
+  <div id="intelligenceDetail" class="drilldown-panel hidden"></div>
+</section>
 </div></div>
 
 <div id="moduleSettingsModal" class="modal hidden"><div class="card modal-card">
@@ -267,6 +302,7 @@
     <input id="clientId" type="hidden">
     <div class="form-grid">
       <label>Nome / Razão Social<input id="clientName" required></label>
+      <label>Tipo de cliente<select id="clientType" required><option value="">Selecione</option><option value="pf">Pessoa Física</option><option value="pj">Pessoa Jurídica</option></select></label>
       <label>CPF / CNPJ<input id="clientDocument" inputmode="numeric"></label>
       <label>WhatsApp<input id="clientWhatsapp" inputmode="tel"></label>
       <label>E-mail<input id="clientEmail" type="email"></label>
@@ -377,5 +413,5 @@
 <button class="danger remove-cost remove-soft" type="button" title="Remover custo" aria-label="Remover custo"><span aria-hidden="true">🗑</span></button></div></template>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script><script src="config.js"></script><script src="app.js?v=8.5.0"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script><script src="config.js"></script><script src="app.js?v=8.6.0"></script>
 </body></html>
