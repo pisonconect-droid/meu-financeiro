@@ -5,12 +5,12 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111827">
 <title>Meu Financeiro</title>
-<link rel="stylesheet" href="styles.css?v=8.4.2">
+<link rel="stylesheet" href="styles.css?v=8.5.0">
 
 <link rel="icon" type="image/png" href="favicon.png?v=8.3.1">
 <link rel="apple-touch-icon" href="apple-touch-icon.png?v=8.3.1">
 <meta name="theme-color" content="#071b15">
-<link rel="manifest" href="manifest.webmanifest?v=8.4.2">
+<link rel="manifest" href="manifest.webmanifest?v=8.5.0">
 
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -275,6 +275,20 @@
     <div class="modal-actions"><button id="cancelClientModal" type="button">Cancelar</button><button class="primary" type="submit">Salvar cliente</button></div>
   </form>
 </div></div>
+<div id="nfseModal" class="modal hidden"><div class="card modal-card nfse-modal-card">
+<div class="head"><div><small>Controle documental</small><h2 id="nfseModalTitle">Registrar NFS-e</h2></div><button id="closeNfseModal" type="button">×</button></div>
+<form id="nfseForm">
+  <input id="nfseOrcId" type="hidden">
+  <label>Número da NFS-e<input id="nfseNumero" required></label>
+  <label>Data de emissão<input id="nfseDataEmissao" type="date" required></label>
+  <label>Valor da NFS-e (R$)<input id="nfseValor" type="text" inputmode="decimal" placeholder="R$ 0,00" required></label>
+  <label>Data prevista de pagamento (opcional)<input id="nfseDataPrevista" type="date"></label>
+  <label id="nfsePdfLabel">DANFSe em PDF<input id="nfsePdf" type="file" accept="application/pdf,.pdf"></label>
+  <div id="nfseCurrentFile" class="nfse-current-file hidden"></div>
+  <div id="nfseValueWarning" class="nfse-warning hidden">Valor da NFS-e diferente do valor total do orçamento.</div>
+  <button id="saveNfseBtn" class="primary" type="submit">Salvar NFS-e</button>
+</form>
+</div></div>
 <div id="pdfPreviewModal" class="modal hidden pdf-preview-modal"><div class="card pdf-preview-card">
 <div class="head preview-head"><div><small>Pré-visualização do cliente — informações internas ocultas</small><h2 id="pdfPreviewTitle">Orçamento</h2></div><button id="closePdfPreview" class="cancel-icon-btn" type="button" title="Fechar" aria-label="Fechar">×</button></div>
 <div id="pdfPreviewBody" class="pdf-preview-body"></div>
@@ -363,5 +377,5 @@
 <button class="danger remove-cost remove-soft" type="button" title="Remover custo" aria-label="Remover custo"><span aria-hidden="true">🗑</span></button></div></template>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script><script src="config.js"></script><script src="app.js?v=8.4.2"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script><script src="config.js"></script><script src="app.js?v=8.5.0"></script>
 </body></html>

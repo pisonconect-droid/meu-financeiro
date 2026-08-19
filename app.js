@@ -1,6 +1,6 @@
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 let session=null,current=null,authMode="login";
-let state={mov:[],contas:[],orc:[],orcItens:[],orcCustos:[],orcFotos:[],orcRecebimentos:[],fixas:[],categorias:[],clientes:[],profile:null};
+let state={mov:[],contas:[],orc:[],orcItens:[],orcCustos:[],orcFotos:[],orcRecebimentos:[],orcNfse:[],fixas:[],categorias:[],clientes:[],profile:null};
 let selectedClientId=null;
 let editingOrcId=null;
 let movCategoryFilter="TODOS";
@@ -105,7 +105,7 @@ function restoreNavigation(){
 }
 
 async function loadAll(){
-  const [m,c,o,oi,oc,of,orx,f,cat,cli,p]=await Promise.all([
+  const [m,c,o,oi,oc,of,orx,onf,f,cat,cli,p]=await Promise.all([
     sb.from("movimentacoes").select("*").order("data",{ascending:false}).order("created_at",{ascending:false}),
     sb.from("contas").select("*").order("vencimento"),
     sb.from("orcamentos").select("*").order("created_at",{ascending:false}),
@@ -113,14 +113,15 @@ async function loadAll(){
     sb.from("orcamento_custos").select("*"),
     sb.from("orcamento_fotos").select("*").order("created_at",{ascending:true}),
     sb.from("orcamento_recebimentos").select("*").order("data_recebimento",{ascending:true}),
+    sb.from("orcamento_nfse").select("*").order("data_emissao",{ascending:false}),
     sb.from("contas_fixas").select("*").order("descricao"),
     sb.from("categorias").select("*").eq("ativa",true).order("nome"),
     sb.from("clientes").select("*").order("nome"),
     sb.from("profiles").select("*").eq("id",uid()).maybeSingle()
   ]);
-  const er=m.error||c.error||o.error||oi.error||oc.error||of.error||orx.error||f.error||cat.error||cli.error||p.error;
+  const er=m.error||c.error||o.error||oi.error||oc.error||of.error||orx.error||onf.error||f.error||cat.error||cli.error||p.error;
   if(er){alert(er.message);return}
-  state={mov:m.data||[],contas:c.data||[],orc:o.data||[],orcItens:oi.data||[],orcCustos:oc.data||[],orcFotos:of.data||[],orcRecebimentos:orx.data||[],fixas:f.data||[],categorias:cat.data||[],clientes:cli.data||[],profile:p.data||null};
+  state={mov:m.data||[],contas:c.data||[],orc:o.data||[],orcItens:oi.data||[],orcCustos:oc.data||[],orcFotos:of.data||[],orcRecebimentos:orx.data||[],orcNfse:onf.data||[],fixas:f.data||[],categorias:cat.data||[],clientes:cli.data||[],profile:p.data||null};
   await ensureDefaultCategories();renderCategoryUI();render();renderCalendar();renderFixas();renderFinancialReport();renderBudgetSummary();
 }
 
@@ -1408,6 +1409,145 @@ async function compartilharPdfCliente(id,btn=null){
   }
 }
 
+
+function nfseForOrc(id){return state.orcNfse.find(n=>n.orcamento_id===id)||null}
+function nfseFinancialInfo(o,n){
+  const ri=recebimentoInfo(o);
+  const valor=Number(n?.valor||0);
+  return {recebido:ri.recebido,aReceber:Math.max(0,valor-ri.recebido),pago:o.status==="pago"||ri.saldo<=0};
+}
+function renderNfseSection(o){
+  const n=nfseForOrc(o.id);
+  const operacional=o.concluido_em?"Serviço concluído":"Serviço em andamento";
+  if(!n){
+    return `<details class="nfse-section"><summary><span>Nota Fiscal</span><span class="nfse-pill not-issued">Não emitida</span></summary>
+      <div class="nfse-body">
+        <div class="nfse-state-grid"><span><small>Operacional</small><b>${operacional}</b></span><span><small>Fiscal</small><b>NFS-e não emitida</b></span><span><small>Financeiro</small><b>${o.status==="pago"?"Pago":"Aguardando recebimento"}</b></span></div>
+        <button type="button" class="small" onclick="openNfseModal('${o.id}')">＋ Registrar NFS-e</button>
+      </div></details>`;
+  }
+  const fi=nfseFinancialInfo(o,n);
+  const diff=Math.abs(Number(n.valor||0)-Number(o.total||0))>0.009;
+  return `<details class="nfse-section"><summary><span>Nota Fiscal</span><span class="nfse-pill issued">Emitida</span></summary>
+    <div class="nfse-body">
+      <div class="nfse-state-grid">
+        <span><small>Operacional</small><b>${operacional}</b></span>
+        <span><small>Fiscal</small><b>NFS-e emitida</b></span>
+        <span><small>Financeiro</small><b>${fi.pago?"Pago":"Aguardando pagamento"}</b></span>
+      </div>
+      <div class="nfse-data-grid">
+        <span><small>Número</small><b>${esc(n.numero)}</b></span>
+        <span><small>Emissão</small><b>${dataBR(n.data_emissao)}</b></span>
+        <span><small>Valor</small><b class="money-inline">${brl(n.valor)}</b></span>
+        ${n.data_prevista_pagamento?`<span><small>Previsão pagamento</small><b>${dataBR(n.data_prevista_pagamento)}</b></span>`:""}
+      </div>
+      ${!fi.pago?`<div class="nfse-receivable"><b>NFS-e emitida — Aguardando pagamento</b><span>A receber considerando os recebimentos registrados: ${brl(fi.aReceber)}</span></div>`:""}
+      ${diff?`<div class="nfse-warning">Valor da NFS-e diferente do valor total do orçamento.</div>`:""}
+      <div class="nfse-actions">
+        <button type="button" class="orc-icon-action preview" onclick="viewNfsePdf('${o.id}')" title="Visualizar DANFSe" aria-label="Visualizar DANFSe">👁</button>
+        <button type="button" class="orc-icon-action pdf" onclick="downloadNfsePdf('${o.id}')" title="Baixar DANFSe" aria-label="Baixar DANFSe">📄</button>
+        <button type="button" class="orc-icon-action share" onclick="shareNfsePdf('${o.id}')" title="Compartilhar DANFSe" aria-label="Compartilhar DANFSe">↗</button>
+        <button type="button" class="orc-icon-action edit" onclick="openNfseModal('${o.id}',true)" title="Editar dados / substituir PDF" aria-label="Editar NFS-e">✎</button>
+      </div>
+    </div></details>`;
+}
+function openNfseModal(orcId,editing=false){
+  const o=state.orc.find(x=>x.id===orcId);if(!o)return;
+  const n=nfseForOrc(orcId);
+  $("nfseOrcId").value=orcId;
+  $("nfseModalTitle").textContent=n?"Editar NFS-e":"Registrar NFS-e";
+  $("nfseNumero").value=n?.numero||"";
+  $("nfseDataEmissao").value=n?.data_emissao||hoje();
+  formatBRMoneyInput($("nfseValor"),n?.valor??o.total??0);
+  $("nfseDataPrevista").value=n?.data_prevista_pagamento||"";
+  $("nfsePdf").value="";
+  $("nfsePdf").required=!n;
+  $("nfseCurrentFile").classList.toggle("hidden",!n?.pdf_nome);
+  $("nfseCurrentFile").innerHTML=n?.pdf_nome?`<b>PDF atual:</b> ${esc(n.pdf_nome)}<br><small>Para substituir, selecione outro PDF. A substituição será confirmada antes de salvar.</small>`:"";
+  updateNfseValueWarning();
+  $("nfseModal").classList.remove("hidden");
+}
+function closeNfseModal(){$("nfseModal").classList.add("hidden");$("nfsePdf").value=""}
+$("closeNfseModal").onclick=closeNfseModal;
+prepareMoneyInput($("nfseValor"));
+function updateNfseValueWarning(){
+  const o=state.orc.find(x=>x.id===$("nfseOrcId").value);
+  if(!o)return;
+  const v=parseBRMoney($("nfseValor").value);
+  $("nfseValueWarning").classList.toggle("hidden",Math.abs(v-Number(o.total||0))<=0.009);
+}
+$("nfseValor").addEventListener("input",updateNfseValueWarning);
+async function nfseSignedUrl(path){
+  const {data,error}=await sb.storage.from("orcamento-documentos").createSignedUrl(path,3600);
+  if(error)throw error;return data.signedUrl;
+}
+async function getNfsePdfPack(orcId){
+  const n=nfseForOrc(orcId);if(!n?.pdf_path)throw new Error("DANFSe não encontrado.");
+  const url=await nfseSignedUrl(n.pdf_path);
+  const r=await fetch(url);if(!r.ok)throw new Error("Não foi possível carregar o DANFSe.");
+  return {blob:await r.blob(),filename:n.pdf_nome||`danfse-${n.numero||"nfse"}.pdf`,url};
+}
+async function viewNfsePdf(orcId){
+  try{
+    const n=nfseForOrc(orcId);if(!n?.pdf_path)return alert("DANFSe não anexado.");
+    const url=await nfseSignedUrl(n.pdf_path);
+    const w=window.open(url,"_blank");
+    if(!w)location.href=url;
+  }catch(e){alert("DANFSe: "+(e.message||e))}
+}
+async function downloadNfsePdf(orcId){
+  try{
+    const p=await getNfsePdfPack(orcId),url=URL.createObjectURL(p.blob),a=document.createElement("a");
+    a.href=url;a.download=p.filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1800);
+  }catch(e){alert("DANFSe: "+(e.message||e))}
+}
+async function shareNfsePdf(orcId){
+  try{
+    const p=await getNfsePdfPack(orcId);
+    const file=new File([p.blob],p.filename,{type:"application/pdf"});
+    if(navigator.share&&(!navigator.canShare||navigator.canShare({files:[file]}))){
+      await navigator.share({title:"DANFSe",text:"Segue o DANFSe do serviço.",files:[file]});return;
+    }
+    const url=URL.createObjectURL(p.blob),a=document.createElement("a");a.href=url;a.download=p.filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1800);
+    alert("O compartilhamento direto não está disponível neste navegador. O DANFSe foi baixado para você compartilhar.");
+  }catch(e){if(e?.name!=="AbortError")alert("DANFSe: "+(e.message||e))}
+}
+$("nfseForm").onsubmit=async e=>{
+  e.preventDefault();
+  const orcId=$("nfseOrcId").value,o=state.orc.find(x=>x.id===orcId);if(!o)return;
+  const atual=nfseForOrc(orcId);
+  const file=$("nfsePdf").files?.[0]||null;
+  if(file&&file.type&&file.type!=="application/pdf")return alert("Anexe somente o DANFSe em PDF.");
+  if(file&&atual?.pdf_path&&!confirm("Substituir o PDF/DANFSe atual?"))return;
+  const valor=parseBRMoney($("nfseValor").value);
+  if(!(valor>0))return alert("Informe o valor da NFS-e.");
+  $("saveNfseBtn").disabled=true;$("saveNfseBtn").textContent="Salvando...";
+  try{
+    let pdf_path=atual?.pdf_path||null,pdf_nome=atual?.pdf_nome||null;
+    if(file){
+      pdf_path=`${uid()}/${orcId}/danfse.pdf`;
+      const up=await sb.storage.from("orcamento-documentos").upload(pdf_path,file,{upsert:true,contentType:"application/pdf",cacheControl:"3600"});
+      if(up.error)throw up.error;
+      pdf_nome=file.name||`danfse-${$("nfseNumero").value.trim()}.pdf`;
+    }
+    if(!pdf_path)throw new Error("Anexe o PDF/DANFSe.");
+    const payload={
+      user_id:uid(),orcamento_id:orcId,numero:$("nfseNumero").value.trim(),
+      data_emissao:$("nfseDataEmissao").value,valor,
+      data_prevista_pagamento:$("nfseDataPrevista").value||null,
+      pdf_path,pdf_nome,updated_at:new Date().toISOString()
+    };
+    const q=await sb.from("orcamento_nfse").upsert(payload,{onConflict:"orcamento_id"}).select().single();
+    if(q.error)throw q.error;
+    const ix=state.orcNfse.findIndex(n=>n.orcamento_id===orcId);
+    if(ix>=0)state.orcNfse[ix]=q.data;else state.orcNfse.push(q.data);
+    closeNfseModal();renderOrc();
+    const diff=Math.abs(valor-Number(o.total||0))>0.009;
+    alert(diff?"NFS-e registrada. Atenção: valor diferente do total do orçamento.":"NFS-e registrada com sucesso.");
+  }catch(err){alert("NFS-e: "+(err.message||err))}
+  finally{$("saveNfseBtn").disabled=false;$("saveNfseBtn").textContent="Salvar NFS-e"}
+};
+
 function budgetCard(o){
   const its=state.orcItens.filter(x=>x.orcamento_id===o.id);
   const custos=state.orcCustos.filter(x=>x.orcamento_id===o.id);
@@ -1433,6 +1573,7 @@ function budgetCard(o){
     }).join("")}
     ${custos.length?`<div class="internal-box"><b>Custos internos</b>${custos.map(c=>`<div class="meta">${esc(c.descricao)} · ${esc(c.categoria||"Custos do serviço")} · ${moneySpan(c.valor)}</div>`).join("")}</div>`:""}
     ${fotos.length?`<button type="button" class="small" onclick="openBudgetPhotos('${o.id}')">Fotos (${fotos.length})</button>`:""}
+    ${renderNfseSection(o)}
     <div class="actions"><button class="orc-icon-action preview" onclick="previewPdfCliente('${o.id}')" title="Pré-visualizar documento" aria-label="Pré-visualizar documento">👁</button><button class="orc-icon-action share" onclick="previewPdfCliente('${o.id}')" title="Pré-visualizar antes de compartilhar" aria-label="Pré-visualizar antes de compartilhar">↗</button>${o.status!=="pago"?`<button class="orc-icon-action edit" onclick="editOrc('${o.id}')" title="Editar orçamento" aria-label="Editar orçamento">✎</button>`:""}${isDraft?`<button onclick="enviarOrc('${o.id}')">Marcar enviado</button><button class="warning" onclick="aprovarOrc('${o.id}')">Aprovar</button><button class="danger" onclick="delOrc('${o.id}')">Excluir</button>`:""}${o.status==="enviado"?`<button class="warning" onclick="aprovarOrc('${o.id}')">Aprovar</button>`:""}${o.status==="aprovado"?`<button class="orc-icon-action cost" onclick="openApprovedCost('${o.id}')" title="Registrar custo" aria-label="Registrar custo">＋</button><button class="orc-icon-action done" onclick="pagarOrc('${o.id}')" title="Registrar recebimento" aria-label="Registrar recebimento">✓</button>`:""}${o.status==="pago"?`<button class="warning" onclick="recalcularPago('${o.id}')">Recalcular</button>`:""}</div>
   </div></details>`;
 }

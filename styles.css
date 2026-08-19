@@ -1162,3 +1162,30 @@ input[inputmode="decimal"]{font-variant-numeric:tabular-nums}
   }
   .mobile-budget-back.hidden{display:none!important}
 }
+
+/* =========================================================
+   V8.5.0 — NFS-e vinculada ao orçamento
+   ========================================================= */
+.nfse-section{margin-top:12px;border:1px solid #dbe3ee;border-radius:12px;background:#fff;overflow:hidden}
+.nfse-section>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;font-weight:800;cursor:pointer;background:#f8fafc}
+.nfse-body{padding:13px}
+.nfse-pill{display:inline-flex;align-items:center;padding:5px 9px;border-radius:999px;font-size:.72rem}
+.nfse-pill.not-issued{background:#f1f5f9;color:#475569}.nfse-pill.issued{background:#dcfce7;color:#166534}
+.nfse-state-grid,.nfse-data-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:10px}
+.nfse-data-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+.nfse-state-grid>span,.nfse-data-grid>span{border:1px solid #e5e7eb;border-radius:10px;padding:9px;background:#fff;min-width:0}
+.nfse-state-grid small,.nfse-data-grid small{display:block;color:#64748b;font-size:.7rem;margin-bottom:3px}
+.nfse-state-grid b,.nfse-data-grid b{font-size:.82rem;overflow-wrap:anywhere}
+.nfse-receivable{display:flex;flex-direction:column;gap:4px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;padding:10px 12px;border-radius:10px;margin:8px 0}
+.nfse-warning{background:#fff7ed;border:1px solid #fdba74;color:#9a3412;padding:9px 11px;border-radius:9px;font-size:.82rem;margin:8px 0}
+.nfse-warning.hidden,.nfse-current-file.hidden{display:none}
+.nfse-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+.nfse-current-file{padding:9px 11px;border:1px solid #dbe3ee;border-radius:9px;background:#f8fafc;font-size:.82rem}
+.nfse-modal-card{max-width:650px}
+.nfse-modal-card form{display:grid;gap:10px}
+@media(max-width:700px){
+  .nfse-state-grid,.nfse-data-grid{grid-template-columns:1fr!important}
+  .nfse-section>summary{padding:11px}
+  .nfse-body{padding:10px}
+  .nfse-actions .orc-icon-action{width:44px!important;height:44px!important;min-width:44px!important}
+}
