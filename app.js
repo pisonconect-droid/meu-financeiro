@@ -1,6 +1,6 @@
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 let session=null,current=null,authMode="login";
-let state={mov:[],contas:[],orc:[],orcItens:[],orcCustos:[],orcFotos:[],orcRecebimentos:[],orcNfse:[],fixas:[],categorias:[],clientes:[],profile:null ,contaLiquidacoes:[],compensacoes:[]};
+let state={mov:[],contas:[],orc:[],orcItens:[],orcCustos:[],orcFotos:[],orcRecebimentos:[],orcNfse:[],fixas:[],categorias:[],clientes:[],profile:null,contaLiquidacoes:[],compensacoes:[],cartoes:[],faturasCartao:[]};
 let selectedClientId=null;
 let editingOrcId=null;
 let movCategoryFilter="TODOS";
@@ -105,7 +105,7 @@ function restoreNavigation(){
 }
 
 async function loadAll(){
-  const [m,c,o,oi,oc,of,orx,clq,cmp,onf,f,cat,cli,p]=await Promise.all([
+  const [m,c,o,oi,oc,of,orx,clq,cmp,onf,f,cat,cli,cc,inv,p]=await Promise.all([
     sb.from("movimentacoes").select("*").order("data",{ascending:false}).order("created_at",{ascending:false}),
     sb.from("contas").select("*").order("vencimento"),
     sb.from("orcamentos").select("*").order("created_at",{ascending:false}),
@@ -119,11 +119,13 @@ async function loadAll(){
     sb.from("contas_fixas").select("*").order("descricao"),
     sb.from("categorias").select("*").eq("ativa",true).order("nome"),
     sb.from("clientes").select("*").order("nome"),
+    sb.from("cartoes_credito").select("*").order("nome"),
+    sb.from("cartao_faturas").select("*").order("vencimento",{ascending:true}),
     sb.from("profiles").select("*").eq("id",uid()).maybeSingle()
   ]);
-  const er=m.error||c.error||o.error||oi.error||oc.error||of.error||orx.error||onf.error||f.error||cat.error||cli.error||p.error;
+  const er=m.error||c.error||o.error||oi.error||oc.error||of.error||orx.error||clq.error||cmp.error||onf.error||f.error||cat.error||cli.error||cc.error||inv.error||p.error;
   if(er){alert(er.message);return}
-  state={mov:m.data||[],contas:c.data||[],orc:o.data||[],orcItens:oi.data||[],orcCustos:oc.data||[],orcFotos:of.data||[],orcRecebimentos:orx.data||[],contaLiquidacoes:clq.data||[],compensacoes:cmp.data||[],orcNfse:onf.data||[],fixas:f.data||[],categorias:cat.data||[],clientes:cli.data||[],profile:p.data||null};
+  state={mov:m.data||[],contas:c.data||[],orc:o.data||[],orcItens:oi.data||[],orcCustos:oc.data||[],orcFotos:of.data||[],orcRecebimentos:orx.data||[],contaLiquidacoes:clq.data||[],compensacoes:cmp.data||[],orcNfse:onf.data||[],fixas:f.data||[],categorias:cat.data||[],clientes:cli.data||[],cartoes:cc.data||[],faturasCartao:inv.data||[],profile:p.data||null};
   await ensureDefaultCategories();renderCategoryUI();render();renderCalendar();renderFixas();renderFinancialReport();renderBudgetSummary();
 }
 
@@ -179,12 +181,6 @@ const immediateLiquidations=new Set(["pix","debito","dinheiro","transferencia","
 function liquidationLabel(v){return liquidationLabels[v]||v||"Não informado"}
 function isCompensation(v){return v==="compensacao"}
 function impactsCash(v){return immediateLiquidations.has(v)}
-function syncLiquidationFields(){
-  const method=$("liquidationMethod")?.value||"pix";
-  $("creditDueWrap")?.classList.toggle("hidden",method!=="credito");
-  if($("creditDueDate"))$("creditDueDate").required=method==="credito";
-}
-if($("liquidationMethod"))$("liquidationMethod").onchange=syncLiquidationFields;
 
 function accountLiquidationInfo(account){
   const rows=(state.contaLiquidacoes||[]).filter(r=>r.conta_id===account.id);
@@ -214,6 +210,129 @@ async function insertCompensation({conta,contraparte,descricao,valor,direcao,dat
   const {error}=await sb.from("compensacoes").insert({user_id:uid(),conta,contraparte,descricao,valor,direcao,data,referencia_tipo,referencia_id,observacao});
   if(error)throw error;
 }
+
+function safeCalendarDate(year,month1,day){
+  const last=new Date(year,month1,0).getDate();
+  return `${year}-${String(month1).padStart(2,"0")}-${String(Math.min(Math.max(1,Number(day)||1),last)).padStart(2,"0")}`;
+}
+function nextMonthYM(year,month1){return month1===12?[year+1,1]:[year,month1+1]}
+function invoiceCycleForPurchase(card,dateStr){
+  const [y,m,d]=String(dateStr||hoje()).split("-").map(Number),closeDay=Number(card.dia_fechamento),dueDay=Number(card.dia_vencimento);
+  let cy=y,cm=m;
+  const closingThis=safeCalendarDate(y,m,closeDay);
+  if(dateStr>closingThis)[cy,cm]=nextMonthYM(y,m);
+  const fechamento=safeCalendarDate(cy,cm,closeDay);
+  let dy=cy,dm=cm,due=safeCalendarDate(dy,dm,dueDay);
+  if(due<=fechamento){[dy,dm]=nextMonthYM(cy,cm);due=safeCalendarDate(dy,dm,dueDay)}
+  return {fechamento,vencimento:due,chave:`${card.id}|${due}`};
+}
+function activeCards(account=current){return (state.cartoes||[]).filter(c=>c.conta===account&&c.ativo!==false)}
+function cardById(id){return state.cartoes.find(c=>c.id===id)||null}
+function invoiceById(id){return state.faturasCartao.find(f=>f.id===id)||null}
+function invoicePurchases(invoiceId){return state.mov.filter(m=>m.fatura_cartao_id===invoiceId&&m.forma_liquidacao==="credito"&&m.origem!=="pagamento_fatura_cartao")}
+function invoiceTotal(invoice){return invoicePurchases(invoice.id).reduce((s,x)=>s+Number(x.valor||0),0)}
+function invoiceStatusLabel(inv){return inv.status==="quitada_antecipadamente"?"Quitada antecipadamente":inv.status==="paga"?"Paga":"Aberta"}
+function fillCreditCardSelect(selected=""){
+  const sel=$("creditCardSelect");if(!sel)return;
+  const cards=activeCards(current);
+  sel.innerHTML=`<option value="">Selecione</option>`+cards.map(c=>`<option value="${c.id}">${esc(c.nome)}</option>`).join("");
+  if(selected&&cards.some(c=>c.id===selected))sel.value=selected;
+}
+function updateCreditInvoicePreview(){
+  const wrap=$("creditCardWrap"),method=$("liquidationMethod")?.value,expense=$("data")?.dataset.tipo==="saida";
+  const show=method==="credito"&&expense&&$("mode")?.value==="mov";
+  wrap?.classList.toggle("hidden",!show);
+  if(!show)return;
+  fillCreditCardSelect($("creditCardSelect")?.value||"");
+  const card=cardById($("creditCardSelect")?.value),box=$("creditInvoicePreview");
+  if(!card){box.textContent="Selecione um cartão para calcular a fatura.";return}
+  const cycle=invoiceCycleForPurchase(card,$("data").value);
+  box.innerHTML=`<b>${esc(card.nome)}</b> · fechamento ${dataBR(cycle.fechamento)} · <b>fatura ${dataBR(cycle.vencimento)}</b>`;
+}
+function syncLiquidationFields(){
+  updateCreditInvoicePreview();
+}
+if($("liquidationMethod"))$("liquidationMethod").onchange=syncLiquidationFields;
+if($("creditCardSelect"))$("creditCardSelect").onchange=updateCreditInvoicePreview;
+if($("data"))$("data").addEventListener("change",updateCreditInvoicePreview);
+
+function openCreditCardModal(card=null,returnToExpense=false){
+  $("creditCardId").value=card?.id||"";
+  $("creditCardModalTitle").textContent=card?"Editar cartão":"Novo cartão";
+  $("creditCardName").value=card?.nome||"";
+  $("creditCardAccount").value=card?.conta||current||"PF";
+  $("creditCardClosingDay").value=card?.dia_fechamento||"";
+  $("creditCardDueDay").value=card?.dia_vencimento||"";
+  $("creditCardActive").value=String(card?.ativo??true);
+  $("creditCardModal").dataset.returnExpense=returnToExpense?"1":"0";
+  $("creditCardModal").classList.remove("hidden");
+}
+$("closeCreditCardModal").onclick=()=>$("creditCardModal").classList.add("hidden");
+$("addCreditCardBtn").onclick=()=>openCreditCardModal(null,false);
+$("addCardInlineBtn").onclick=()=>openCreditCardModal(null,true);
+$("creditCardForm").onsubmit=async e=>{
+  e.preventDefault();
+  const id=$("creditCardId").value,p={user_id:uid(),nome:$("creditCardName").value.trim(),conta:$("creditCardAccount").value,
+    dia_fechamento:+$("creditCardClosingDay").value,dia_vencimento:+$("creditCardDueDay").value,ativo:$("creditCardActive").value==="true"};
+  if(!p.nome||p.dia_fechamento<1||p.dia_fechamento>31||p.dia_vencimento<1||p.dia_vencimento>31)return alert("Confira nome, fechamento e vencimento do cartão.");
+  const q=id?sb.from("cartoes_credito").update(p).eq("id",id).eq("user_id",uid()):sb.from("cartoes_credito").insert(p).select().single();
+  const {data,error}=await q;if(error)return alert("Cartão: "+error.message);
+  const returnExpense=$("creditCardModal").dataset.returnExpense==="1";
+  $("creditCardModal").classList.add("hidden");
+  await loadAll();
+  if(returnExpense){fillCreditCardSelect(data?.id||id);if(data?.id)$("creditCardSelect").value=data.id;updateCreditInvoicePreview();$("modal").classList.remove("hidden")}
+};
+function editCreditCard(id){const c=cardById(id);if(c)openCreditCardModal(c,false)}
+
+async function getOrCreateInvoice(card,cycle){
+  let inv=state.faturasCartao.find(f=>f.cartao_id===card.id&&f.vencimento===cycle.vencimento);
+  if(inv)return inv;
+  const {data,error}=await sb.from("cartao_faturas").insert({user_id:uid(),cartao_id:card.id,conta:card.conta,fechamento:cycle.fechamento,vencimento:cycle.vencimento,status:"aberta"}).select().single();
+  if(error){
+    const existing=await sb.from("cartao_faturas").select("*").eq("cartao_id",card.id).eq("vencimento",cycle.vencimento).maybeSingle();
+    if(existing.error||!existing.data)throw error;
+    return existing.data;
+  }
+  state.faturasCartao.push(data);return data;
+}
+function openInvoiceDetails(id){
+  const inv=invoiceById(id),card=inv&&cardById(inv.cartao_id);if(!inv||!card)return;
+  const purchases=invoicePurchases(id),total=invoiceTotal(inv);
+  const box=$("creditInvoicesList");
+  let detail=document.getElementById("invoiceInlineDetail");if(detail)detail.remove();
+  detail=document.createElement("div");detail.id="invoiceInlineDetail";detail.className="invoice-inline-detail";
+  detail.innerHTML=`<div class="drilldown-head"><div><h4>${esc(card.nome)} · Fatura ${dataBR(inv.vencimento)}</h4><small>${purchases.length} compra(s) · ${brl(total)}</small></div><button type="button" onclick="this.closest('#invoiceInlineDetail').remove()">×</button></div>${purchases.length?`<div class="invoice-purchase-list">${purchases.map(x=>`<div><span><b>${esc(x.descricao)}</b><small>${dataBR(x.data)} · ${esc(inferCategory(x))}${x.observacao?` · ${esc(x.observacao)}`:""}</small></span><b>${brl(x.valor)}</b></div>`).join("")}</div>`:`<p class="meta">Nenhuma compra vinculada.</p>`}<div class="invoice-detail-total">Total <b>${brl(total)}</b></div>`;
+  box.prepend(detail);detail.scrollIntoView({behavior:"smooth",block:"nearest"});
+}
+function openInvoicePayment(id){
+  const inv=invoiceById(id),card=inv&&cardById(inv.cartao_id);if(!inv||!card||inv.status!=="aberta")return;
+  const total=invoiceTotal(inv);if(!(total>0))return alert("Esta fatura não possui compras para pagamento.");
+  $("invoicePaymentId").value=id;$("invoicePaymentTitle").textContent=`${card.nome} · ${dataBR(inv.vencimento)}`;
+  $("invoicePaymentSummary").innerHTML=`<b>Total ${brl(total)}</b><span>Vencimento ${dataBR(inv.vencimento)}</span>`;
+  $("invoicePaymentDate").value=hoje();$("invoicePaymentMethod").value="pix";$("invoicePaymentModal").classList.remove("hidden");
+}
+$("closeInvoicePaymentModal").onclick=()=>$("invoicePaymentModal").classList.add("hidden");
+$("invoicePaymentForm").onsubmit=async e=>{
+  e.preventDefault();
+  const id=$("invoicePaymentId").value,inv=invoiceById(id),card=inv&&cardById(inv.cartao_id);if(!inv||!card)return;
+  if(inv.status!=="aberta")return alert("Esta fatura já foi quitada.");
+  const total=invoiceTotal(inv),data=$("invoicePaymentDate").value,method=$("invoicePaymentMethod").value;
+  if(!(total>0))return alert("Fatura sem valor para pagamento.");
+  let r=await sb.from("movimentacoes").insert({user_id:uid(),conta:card.conta,tipo:"saida",descricao:`Pagamento fatura ${card.nome} · ${dataBR(inv.vencimento)}`,valor:total,data,
+    origem:"pagamento_fatura_cartao",categoria:"Outros",forma_liquidacao:method,impacta_saldo:true,situacao:"quitada",cartao_id:card.id,fatura_cartao_id:inv.id}).select().single();
+  if(r.error)return alert("Pagamento da fatura: "+r.error.message);
+  const status=data<inv.vencimento?"quitada_antecipadamente":"paga";
+  r=await sb.from("cartao_faturas").update({status,data_pagamento:data,forma_pagamento:method,valor_pago:total,movimentacao_pagamento_id:r.data.id}).eq("id",id).eq("user_id",uid());
+  if(r.error)return alert("Saída registrada, mas a fatura precisa ser conferida: "+r.error.message);
+  $("invoicePaymentModal").classList.add("hidden");await loadAll();
+};
+function renderCreditCards(){
+  const overview=$("creditCardsOverview"),list=$("creditInvoicesList");if(!overview||!list||!current)return;
+  const cards=(state.cartoes||[]).filter(c=>c.conta===current),ids=new Set(cards.map(c=>c.id));
+  overview.innerHTML=cards.length?`<div class="credit-card-chips">${cards.map(c=>`<button type="button" class="credit-card-chip ${c.ativo===false?"inactive":""}" onclick="editCreditCard('${c.id}')"><b>${esc(c.nome)}</b><small>Fecha ${c.dia_fechamento} · vence ${c.dia_vencimento}${c.ativo===false?" · inativo":""}</small></button>`).join("")}</div>`:`<p class="meta">Nenhum cartão cadastrado em ${accountName(current)}.</p>`;
+  const invoices=(state.faturasCartao||[]).filter(f=>ids.has(f.cartao_id)).sort((a,b)=>String(a.vencimento).localeCompare(String(b.vencimento)));
+  list.innerHTML=invoices.length?invoices.map(inv=>{const card=cardById(inv.cartao_id),purchases=invoicePurchases(inv.id),total=invoiceTotal(inv),open=inv.status==="aberta";return `<div class="credit-invoice ${open?"open":"paid"}"><div><b>${esc(card?.nome||"Cartão")} · Fatura ${dataBR(inv.vencimento)}</b><div class="meta">${purchases.length} compra(s) · ${invoiceStatusLabel(inv)}${inv.data_pagamento?` · paga em ${dataBR(inv.data_pagamento)}`:""}</div></div><div class="credit-invoice-actions"><b>${brl(total)}</b><button type="button" onclick="openInvoiceDetails('${inv.id}')">Ver compras</button>${open?`<button class="primary small" type="button" onclick="openInvoicePayment('${inv.id}')">Pagar fatura</button>`:""}</div></div>`}).join(""):`<p class="meta">Nenhuma fatura vinculada aos cartões desta conta.</p>`;
+}
 function openMov(tipo,x=null,forcedDate=null,forcedAccount=null){
   if(forcedAccount)current=forcedAccount;
   $("mode").value="mov";$("editId").value=x?.id||"";
@@ -226,7 +345,7 @@ function openMov(tipo,x=null,forcedDate=null,forcedAccount=null){
   $("liquidationMethod").value=x?.forma_liquidacao||"pix";
   $("liquidationCounterparty").value=x?.contraparte||"";
   $("liquidationNote").value=x?.observacao||"";
-  $("creditDueDate").value="";
+  fillCreditCardSelect(x?.cartao_id||"");
   syncLiquidationFields();
   $("dateLabel").childNodes[0].nodeValue="Data ";
   $("modal").classList.remove("hidden");
@@ -243,7 +362,7 @@ function openConta(x=null,forcedDate=null,forcedAccount=null){
   $("liquidationMethod").value=x?.forma_prevista||"pix";
   $("liquidationCounterparty").value=x?.contraparte||"";
   $("liquidationNote").value=x?.observacao||"";
-  $("creditDueDate").value="";
+  fillCreditCardSelect("");
   syncLiquidationFields();
   $("dateLabel").childNodes[0].nodeValue="Vencimento ";
   $("modal").classList.remove("hidden");
@@ -273,13 +392,14 @@ $("modalForm").onsubmit=async e=>{
       if(error)return alert(error.message);
 
       if(method==="credito"&&tipoMov==="saida"){
-        const due=$("creditDueDate").value;
-        if(!due)return alert("Informe o vencimento da obrigação do crédito.");
-        const {error:ce}=await sb.from("contas").insert({
-          user_id:uid(),conta:current,descricao:`Crédito · ${p.descricao}`,valor,vencimento:due,prioridade:"prioritaria",status:"pendente",
-          categoria:p.categoria,contraparte,observacao,forma_prevista:"pix",origem:"credito",referencia_id:mov.id
-        });
-        if(ce)return alert("Despesa registrada, mas a obrigação do crédito não pôde ser criada: "+ce.message);
+        const card=cardById($("creditCardSelect").value);
+        if(!card)return alert("Selecione um cartão de crédito.");
+        if(card.conta!==current)return alert("O cartão selecionado pertence a outra conta.");
+        try{
+          const cycle=invoiceCycleForPurchase(card,data),inv=await getOrCreateInvoice(card,cycle);
+          const {error:ue}=await sb.from("movimentacoes").update({cartao_id:card.id,fatura_cartao_id:inv.id}).eq("id",mov.id).eq("user_id",uid());
+          if(ue)throw ue;
+        }catch(err){return alert("Compra registrada, mas a fatura precisa ser conferida: "+err.message)}
       }
       if(method==="compensacao"){
         try{
@@ -502,7 +622,7 @@ function reportIncomeRows(conta,year,month=null){
 function reportExpenseRows(conta,year,month=null){
   return state.mov.filter(x=>{
     const d=String(x.data||"");
-    return x.conta===conta&&x.tipo==="saida"&&!isTransfer(x)&&x.origem!=="liquidacao_credito"&&d.startsWith(String(year))&&(month===null||d.slice(5,7)===String(month).padStart(2,"0"));
+    return x.conta===conta&&x.tipo==="saida"&&!isTransfer(x)&&x.origem!=="liquidacao_credito"&&x.origem!=="pagamento_fatura_cartao"&&d.startsWith(String(year))&&(month===null||d.slice(5,7)===String(month).padStart(2,"0"));
   });
 }
 function reportTransferRows(conta,year){
@@ -601,11 +721,14 @@ function render(){
     : movimentosConta.filter(x=>inferCategory(x)===movCategoryFilter);
   $("movList").innerHTML=listMov(movimentosFiltrados);
   const cs=state.contas.filter(x=>x.conta===current&&x.status==="pendente");
-  const totalOpen=cs.reduce((s,x)=>s+accountLiquidationInfo(x).saldo,0);
-  const next30=cs.filter(x=>{const [y,m,d]=String(x.vencimento||"").slice(0,10).split("-").map(Number);const [ty,tm,td]=hoje().split("-").map(Number);if(!y||!ty)return false;const diff=Math.round((Date.UTC(y,m-1,d)-Date.UTC(ty,tm-1,td))/86400000);return diff>=0&&diff<=30}).reduce((s,x)=>s+accountLiquidationInfo(x).saldo,0);
+  const openInvoices=(state.faturasCartao||[]).filter(f=>f.conta===current&&f.status==="aberta");
+  const invoiceOpenTotal=openInvoices.reduce((s,f)=>s+invoiceTotal(f),0);
+  const totalOpen=cs.reduce((s,x)=>s+accountLiquidationInfo(x).saldo,0)+invoiceOpenTotal;
+  const next30Accounts=cs.filter(x=>{const [y,m,d]=String(x.vencimento||"").slice(0,10).split("-").map(Number);const [ty,tm,td]=hoje().split("-").map(Number);if(!y||!ty)return false;const diff=Math.round((Date.UTC(y,m-1,d)-Date.UTC(ty,tm-1,td))/86400000);return diff>=0&&diff<=30}).reduce((s,x)=>s+accountLiquidationInfo(x).saldo,0);
+  const next30Invoices=openInvoices.filter(f=>{const [y,m,d]=String(f.vencimento||"").split("-").map(Number);const [ty,tm,td]=hoje().split("-").map(Number);const diff=Math.round((Date.UTC(y,m-1,d)-Date.UTC(ty,tm-1,td))/86400000);return diff>=0&&diff<=30}).reduce((s,f)=>s+invoiceTotal(f),0);
   if($("payableTotal"))$("payableTotal").textContent=brl(totalOpen);
-  if($("payable30"))$("payable30").textContent=brl(next30);
-  if($("payableCount"))$("payableCount").textContent=String(cs.length);
+  if($("payable30"))$("payable30").textContent=brl(next30Accounts+next30Invoices);
+  if($("payableCount"))$("payableCount").textContent=String(cs.length+openInvoices.length);
   const urgent=cs.filter(x=>(x.prioridade||"prioritaria")==="urgente");
   const priority=cs.filter(x=>(x.prioridade||"prioritaria")==="prioritaria");
   const wait=cs.filter(x=>x.prioridade==="pode_esperar");
@@ -616,6 +739,7 @@ function render(){
   $("pagar").innerHTML=listConta(priority,true);
   $("pagas").innerHTML=listConta(wait,true);
   renderCompensationSummary();
+  renderCreditCards();
   if(current==="CNPJ")renderOrc();
 }
 function actionMenu(items){
@@ -626,7 +750,7 @@ function actionMenu(items){
 function listMov(a){
   return a.length?a.slice(0,60).map(x=>{
     const canEdit=x.origem!=="transferencia"&&x.origem!=="orcamento_pago"&&!String(x.origem||"").startsWith("orcamento_custo");
-    return `<div class="item movement-item"><div><b>${esc(x.descricao)}</b><div class="meta">${dataBR(x.data)} · ${x.tipo==="entrada"?"Entrada":"Gasto"} · ${esc(inferCategory(x))}${x.forma_liquidacao?` · ${esc(liquidationLabel(x.forma_liquidacao))}`:""}${x.impacta_saldo===false?" · sem movimento bancário":""}${x.contraparte?` · ${esc(x.contraparte)}`:""}</div></div><div class="item-value-actions"><b class="money-inline ${x.tipo==="entrada"?"positive":"negative"}">${x.tipo==="entrada"?"+":"-"} ${brl(x.valor)}</b>${actionMenu([canEdit?`<button onclick="editMov('${x.id}')">Editar</button>`:""])}</div></div>`;
+    return `<div class="item movement-item"><div><b>${esc(x.descricao)}</b><div class="meta">${dataBR(x.data)} · ${x.tipo==="entrada"?"Entrada":"Gasto"} · ${esc(inferCategory(x))}${x.forma_liquidacao?` · ${esc(liquidationLabel(x.forma_liquidacao))}`:""}${x.cartao_id?` · ${esc(cardById(x.cartao_id)?.nome||"Cartão")}`:""}${x.fatura_cartao_id?` · Fatura ${dataBR(invoiceById(x.fatura_cartao_id)?.vencimento)}`:""}${x.impacta_saldo===false?" · sem movimento bancário":""}${x.contraparte?` · ${esc(x.contraparte)}`:""}</div></div><div class="item-value-actions"><b class="money-inline ${x.tipo==="entrada"?"positive":"negative"}">${x.tipo==="entrada"?"+":"-"} ${brl(x.valor)}</b>${actionMenu([canEdit?`<button onclick="editMov('${x.id}')">Editar</button>`:""])}</div></div>`;
   }).join(""):`<p class="meta">Nenhum lançamento.</p>`;
 }
 function dueText(x){

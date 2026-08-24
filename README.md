@@ -1,73 +1,69 @@
-# Meu Financeiro V8.7.0 — Formas de Pagamento / Liquidação
+# Meu Financeiro V8.8.0 — Cartões de Crédito e Faturas
 
 ## Estado
 ENTREGA PARA REVISÃO HUMANA. Não homologada.
 
-## Diagnóstico
-O modelo anterior tratava praticamente toda saída como movimento imediato de caixa e toda quitação de conta como pagamento financeiro integral. Isso não representava corretamente crédito, permuta ou liquidações mistas.
+## Estrutura criada
+### Cartões
+- Nome/apelido
+- PF ou CNPJ
+- Dia de fechamento
+- Dia de vencimento
+- Ativo/inativo
 
-## Regra por forma
-- Pix: impacto financeiro imediato.
-- Débito: impacto financeiro imediato.
-- Dinheiro: impacto financeiro imediato.
-- Transferência: impacto financeiro imediato.
-- Crédito: registra despesa econômica sem baixar o saldo e cria obrigação futura mínima.
-- Compensação / Permuta: registra valor econômico sem entrada/saída bancária.
-- Outro: nesta versão mantém comportamento financeiro imediato por compatibilidade.
+### Faturas
+- Cartão
+- Fechamento
+- Vencimento
+- Estado: aberta / quitada antecipadamente / paga
+- Data e forma de pagamento
+- Vínculo com a saída financeira do pagamento
 
-## Obrigações
-`conta_liquidacoes` permite múltiplas liquidações e pagamento parcial.
-Uma obrigação pode ser liquidada por dinheiro, compensação ou, de forma mínima, transferida para obrigação futura no crédito.
+## Regra de ciclo
+A data da compra é comparada ao fechamento do cartão.
+- Compra até o fechamento: pertence ao ciclo que fecha naquele mês.
+- Compra após o fechamento: pertence ao ciclo seguinte.
+- O vencimento é a primeira data configurada que ocorre depois do fechamento.
+- Dias inexistentes (29/30/31) usam o último dia válido do mês.
+- Cálculo usa datas civis locais, sem UTC.
 
-## Orçamentos / recebimentos
-`orcamento_recebimentos` passa a distinguir:
-- valor financeiro (`impacta_caixa=true`);
-- valor compensado (`impacta_caixa=false`).
+## Compra no Crédito
+- registra gasto econômico;
+- `impacta_saldo=false`;
+- exige selecionar cartão;
+- calcula fatura automaticamente;
+- não cria nova conta comum em `contas`;
+- a compra aparece individualmente no histórico com cartão e fatura.
 
-O saldo do serviço considera ambos para liquidação.
-O saldo bancário considera somente recebimento financeiro.
+## Bloco Cartões de crédito
+As faturas ficam separadas de Urgentes / Prioritárias / Podem esperar.
+A fatura mostra total, quantidade de compras, vencimento e situação.
+`Ver compras` abre sua composição.
 
-Exemplo:
-R$ 2.000 = R$ 1.200 Pix + R$ 800 compensação:
-- serviço liquidado: R$ 2.000;
-- caixa: +R$ 1.200;
-- compensação: R$ 800.
+## Pagamento da fatura
+- uma única saída bancária pelo total da fatura;
+- compras não geram nova saída;
+- pagamento antes do vencimento = `Quitada antecipadamente`;
+- pagamento no vencimento ou depois = `Paga`;
+- não existe pagamento parcial nesta MEP.
 
-## Compensações entre partes
-A tabela `compensacoes` mantém livro econômico separado por PF/CNPJ e contraparte.
-- `credito_usuario`: valor a seu favor.
-- `debito_usuario`: valor a favor da contraparte.
-Saldo econômico nunca altera saldo bancário.
+## Total a pagar
+Soma contas comuns abertas + faturas abertas.
+As compras da fatura não são somadas novamente como obrigações.
 
-## Cartão de crédito
-Implementado somente o essencial:
-- compra econômica;
-- obrigação futura;
-- pagamento futuro reduz caixa.
-
-Não existem fatura consolidada, limite, juros, parcelamento ou múltiplos cartões.
-
-## Histórico
-Movimentações antigas continuam válidas:
-- `impacta_saldo` default true;
-- forma de pagamento antiga pode permanecer nula;
-- não há recálculo retroativo.
+## Histórico anterior
+Compras no Crédito já existentes continuam exatamente como estavam.
+Nenhuma associação a cartão/fatura é inventada.
+Nenhum saldo histórico é recalculado.
 
 ## Banco
-Novas colunas:
-- `movimentacoes.forma_liquidacao`
-- `movimentacoes.impacta_saldo`
-- `movimentacoes.contraparte`
-- `movimentacoes.observacao`
-- `movimentacoes.situacao`
-- metadados em `contas`
-- `orcamento_recebimentos.forma_liquidacao`
-- `orcamento_recebimentos.impacta_caixa`
-- contraparte/observação em recebimentos
-
 Novas tabelas:
-- `conta_liquidacoes`
-- `compensacoes`
+- `cartoes_credito`
+- `cartao_faturas`
+
+Novas referências em `movimentacoes`:
+- `cartao_id`
+- `fatura_cartao_id`
 
 ## Arquivos alterados
 - index.html
@@ -75,7 +71,7 @@ Novas tabelas:
 - styles.css
 - README.md
 - manifest.webmanifest
-- supabase_v8_7_0_formas_liquidacao.sql
+- supabase_v8_8_0_cartoes_faturas.sql
 
 ## Não executado
 - commit
