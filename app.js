@@ -1,6 +1,6 @@
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 let session=null,current=null,authMode="login";
-let state={mov:[],contas:[],orc:[],orcItens:[],orcCustos:[],orcFotos:[],orcRecebimentos:[],orcNfse:[],fixas:[],categorias:[],clientes:[],profile:null};
+let state={mov:[],contas:[],orc:[],orcItens:[],orcCustos:[],orcFotos:[],orcRecebimentos:[],orcNfse:[],fixas:[],categorias:[],clientes:[],profile:null ,contaLiquidacoes:[],compensacoes:[]};
 let selectedClientId=null;
 let editingOrcId=null;
 let movCategoryFilter="TODOS";
@@ -105,7 +105,7 @@ function restoreNavigation(){
 }
 
 async function loadAll(){
-  const [m,c,o,oi,oc,of,orx,onf,f,cat,cli,p]=await Promise.all([
+  const [m,c,o,oi,oc,of,orx,clq,cmp,onf,f,cat,cli,p]=await Promise.all([
     sb.from("movimentacoes").select("*").order("data",{ascending:false}).order("created_at",{ascending:false}),
     sb.from("contas").select("*").order("vencimento"),
     sb.from("orcamentos").select("*").order("created_at",{ascending:false}),
@@ -113,6 +113,8 @@ async function loadAll(){
     sb.from("orcamento_custos").select("*"),
     sb.from("orcamento_fotos").select("*").order("created_at",{ascending:true}),
     sb.from("orcamento_recebimentos").select("*").order("data_recebimento",{ascending:true}),
+    sb.from("conta_liquidacoes").select("*").order("data_liquidacao",{ascending:true}),
+    sb.from("compensacoes").select("*").order("data",{ascending:false}),
     sb.from("orcamento_nfse").select("*").order("data_emissao",{ascending:false}),
     sb.from("contas_fixas").select("*").order("descricao"),
     sb.from("categorias").select("*").eq("ativa",true).order("nome"),
@@ -121,7 +123,7 @@ async function loadAll(){
   ]);
   const er=m.error||c.error||o.error||oi.error||oc.error||of.error||orx.error||onf.error||f.error||cat.error||cli.error||p.error;
   if(er){alert(er.message);return}
-  state={mov:m.data||[],contas:c.data||[],orc:o.data||[],orcItens:oi.data||[],orcCustos:oc.data||[],orcFotos:of.data||[],orcRecebimentos:orx.data||[],orcNfse:onf.data||[],fixas:f.data||[],categorias:cat.data||[],clientes:cli.data||[],profile:p.data||null};
+  state={mov:m.data||[],contas:c.data||[],orc:o.data||[],orcItens:oi.data||[],orcCustos:oc.data||[],orcFotos:of.data||[],orcRecebimentos:orx.data||[],contaLiquidacoes:clq.data||[],compensacoes:cmp.data||[],orcNfse:onf.data||[],fixas:f.data||[],categorias:cat.data||[],clientes:cli.data||[],profile:p.data||null};
   await ensureDefaultCategories();renderCategoryUI();render();renderCalendar();renderFixas();renderFinancialReport();renderBudgetSummary();
 }
 
@@ -168,6 +170,50 @@ $("btnEntrada").onclick=()=>openMov("entrada");
 $("btnGasto").onclick=()=>openMov("saida");
 $("btnConta").onclick=()=>openConta();
 
+
+const liquidationLabels={
+  pix:"Pix",debito:"Débito",credito:"Crédito",dinheiro:"Dinheiro",
+  transferencia:"Transferência",compensacao:"Compensação / Permuta",outro:"Outro"
+};
+const immediateLiquidations=new Set(["pix","debito","dinheiro","transferencia","outro"]);
+function liquidationLabel(v){return liquidationLabels[v]||v||"Não informado"}
+function isCompensation(v){return v==="compensacao"}
+function impactsCash(v){return immediateLiquidations.has(v)}
+function syncLiquidationFields(){
+  const method=$("liquidationMethod")?.value||"pix";
+  $("creditDueWrap")?.classList.toggle("hidden",method!=="credito");
+  if($("creditDueDate"))$("creditDueDate").required=method==="credito";
+}
+if($("liquidationMethod"))$("liquidationMethod").onchange=syncLiquidationFields;
+
+function accountLiquidationInfo(account){
+  const rows=(state.contaLiquidacoes||[]).filter(r=>r.conta_id===account.id);
+  const liquidado=rows.reduce((s,r)=>s+Number(r.valor||0),0);
+  const total=Number(account.valor||0),saldo=Math.max(0,total-liquidado);
+  return {rows,liquidado,total,saldo,partial:liquidado>0&&saldo>0};
+}
+function compensationBalanceRows(account){
+  const rows=(state.compensacoes||[]).filter(x=>x.conta===account);
+  const by={};
+  rows.forEach(x=>{
+    const p=x.contraparte||"Sem contraparte";
+    by[p]=by[p]||{credito:0,debito:0,rows:[]};
+    if(x.direcao==="credito_usuario")by[p].credito+=Number(x.valor||0);
+    else by[p].debito+=Number(x.valor||0);
+    by[p].rows.push(x);
+  });
+  return Object.entries(by).map(([contraparte,v])=>({contraparte,...v,saldo:v.credito-v.debito})).sort((a,b)=>Math.abs(b.saldo)-Math.abs(a.saldo));
+}
+function renderCompensationSummary(){
+  const box=$("compensationSummary");if(!box||!current)return;
+  const groups=compensationBalanceRows(current);
+  box.innerHTML=groups.length?groups.map(g=>`<details class="comp-party"><summary><span><b>${esc(g.contraparte)}</b><small>Créditos ${brl(g.credito)} · Débitos ${brl(g.debito)}</small></span><b class="${g.saldo>=0?"positive":"negative"}">${g.saldo===0?"Compensado":g.saldo>0?`${brl(g.saldo)} a seu favor`:`${brl(Math.abs(g.saldo))} a favor da contraparte`}</b></summary><div>${g.rows.map(r=>`<div class="comp-row"><span>${dataBR(r.data)} · ${esc(r.descricao)}<small>${r.direcao==="credito_usuario"?"A seu favor":"A favor da contraparte"}</small></span><b>${brl(r.valor)}</b></div>`).join("")}</div></details>`).join(""):`<p class="meta">Nenhuma compensação registrada para ${accountName(current)}.</p>`;
+}
+async function insertCompensation({conta,contraparte,descricao,valor,direcao,data,referencia_tipo=null,referencia_id=null,observacao=null}){
+  if(!contraparte)return;
+  const {error}=await sb.from("compensacoes").insert({user_id:uid(),conta,contraparte,descricao,valor,direcao,data,referencia_tipo,referencia_id,observacao});
+  if(error)throw error;
+}
 function openMov(tipo,x=null,forcedDate=null,forcedAccount=null){
   if(forcedAccount)current=forcedAccount;
   $("mode").value="mov";$("editId").value=x?.id||"";
@@ -177,6 +223,11 @@ function openMov(tipo,x=null,forcedDate=null,forcedAccount=null){
   $("categoryWrap").classList.toggle("hidden",tipo==="entrada");
   $("priorityWrap").classList.add("hidden");
   fillCategorySelect($("categoria"),current,x?.categoria||(tipo==="entrada"?"Receita":""));
+  $("liquidationMethod").value=x?.forma_liquidacao||"pix";
+  $("liquidationCounterparty").value=x?.contraparte||"";
+  $("liquidationNote").value=x?.observacao||"";
+  $("creditDueDate").value="";
+  syncLiquidationFields();
   $("dateLabel").childNodes[0].nodeValue="Data ";
   $("modal").classList.remove("hidden");
 }
@@ -189,6 +240,11 @@ function openConta(x=null,forcedDate=null,forcedAccount=null){
   $("prioridade").value=x?.prioridade||"prioritaria";
   $("descricao").value=x?.descricao||"";formatBRMoneyInput($("valor"),x?.valor||0);
   $("data").value=x?.vencimento||forcedDate||hoje();
+  $("liquidationMethod").value=x?.forma_prevista||"pix";
+  $("liquidationCounterparty").value=x?.contraparte||"";
+  $("liquidationNote").value=x?.observacao||"";
+  $("creditDueDate").value="";
+  syncLiquidationFields();
   $("dateLabel").childNodes[0].nodeValue="Vencimento ";
   $("modal").classList.remove("hidden");
 }
@@ -196,16 +252,47 @@ $("closeModal").onclick=()=>$("modal").classList.add("hidden");
 
 $("modalForm").onsubmit=async e=>{
   e.preventDefault();
-  const editing=$("editId").value;
+  const editing=$("editId").value,method=$("liquidationMethod").value;
+  const contraparte=$("liquidationCounterparty").value.trim()||null,observacao=$("liquidationNote").value.trim()||null;
+  const valor=parseBRMoney($("valor").value),data=$("data").value;
+  if(!(valor>0))return alert("Informe um valor maior que zero.");
+
   if($("mode").value==="mov"){
     const tipoMov=$("data").dataset.tipo;
-    const p={user_id:uid(),conta:current,tipo:tipoMov,descricao:$("descricao").value.trim(),valor:parseBRMoney($("valor").value),data:$("data").value,origem:"manual",categoria:tipoMov==="entrada"?"Receita":$("categoria").value};
-    const q=editing?sb.from("movimentacoes").update(p).eq("id",editing):sb.from("movimentacoes").insert(p);
-    const {error}=await q;if(error)return alert(error.message);
+    if(tipoMov==="entrada"&&method==="credito")return alert("Crédito como obrigação futura é válido para despesas, não para entradas.");
+    const impacta_saldo=impactsCash(method);
+    const situacao=method==="credito"?"pendente":method==="compensacao"?"compensada":"quitada";
+    const p={user_id:uid(),conta:current,tipo:tipoMov,descricao:$("descricao").value.trim(),valor,data,origem:"manual",
+      categoria:tipoMov==="entrada"?"Receita":$("categoria").value,forma_liquidacao:method,impacta_saldo,contraparte,observacao,situacao};
+
+    if(editing){
+      const {error}=await sb.from("movimentacoes").update(p).eq("id",editing).eq("user_id",uid());
+      if(error)return alert(error.message);
+    }else{
+      const {data:mov,error}=await sb.from("movimentacoes").insert(p).select().single();
+      if(error)return alert(error.message);
+
+      if(method==="credito"&&tipoMov==="saida"){
+        const due=$("creditDueDate").value;
+        if(!due)return alert("Informe o vencimento da obrigação do crédito.");
+        const {error:ce}=await sb.from("contas").insert({
+          user_id:uid(),conta:current,descricao:`Crédito · ${p.descricao}`,valor,vencimento:due,prioridade:"prioritaria",status:"pendente",
+          categoria:p.categoria,contraparte,observacao,forma_prevista:"pix",origem:"credito",referencia_id:mov.id
+        });
+        if(ce)return alert("Despesa registrada, mas a obrigação do crédito não pôde ser criada: "+ce.message);
+      }
+      if(method==="compensacao"){
+        try{
+          await insertCompensation({conta:current,contraparte,descricao:p.descricao,valor,
+            direcao:tipoMov==="entrada"?"credito_usuario":"debito_usuario",data,referencia_tipo:"movimentacao",referencia_id:mov.id,observacao});
+        }catch(err){return alert("Movimentação registrada, mas a compensação precisa ser conferida: "+err.message)}
+      }
+    }
   }else{
-    const p={user_id:uid(),conta:current,descricao:$("descricao").value.trim(),valor:parseBRMoney($("valor").value),vencimento:$("data").value,prioridade:$("prioridade").value};
+    const p={user_id:uid(),conta:current,descricao:$("descricao").value.trim(),valor,vencimento:data,prioridade:$("prioridade").value,
+      categoria:"Outros",contraparte,observacao,forma_prevista:method};
     if(!editing)p.status="pendente";
-    const q=editing?sb.from("contas").update(p).eq("id",editing):sb.from("contas").insert(p);
+    const q=editing?sb.from("contas").update(p).eq("id",editing).eq("user_id",uid()):sb.from("contas").insert(p);
     const {error}=await q;if(error)return alert(error.message);
   }
   $("modal").classList.add("hidden");
@@ -223,19 +310,67 @@ async function delConta(id){
 }
 function editMov(id){const x=state.mov.find(x=>x.id===id);if(x)openMov(x.tipo,x)}
 function editConta(id){const x=state.contas.find(x=>x.id===id);if(x)openConta(x)}
-async function pagarConta(id){
+function pagarConta(id){
   const x=state.contas.find(x=>x.id===id);if(!x)return;
-  if(x.valor==null||Number(x.valor)<=0){
-    alert("Informe primeiro o valor real desta conta.");
-    openConta(x);
-    return;
-  }
-  let {error}=await sb.from("contas").update({status:"pago",pago_em:hoje()}).eq("id",id);
-  if(error)return alert(error.message);
-  ({error}=await sb.from("movimentacoes").insert({user_id:uid(),conta:x.conta,tipo:"saida",descricao:x.descricao,valor:x.valor,data:hoje(),origem:"conta_paga",categoria:"Outros"}));
-  if(error)return alert(error.message);
-  await loadAll();
+  if(x.valor==null||Number(x.valor)<=0){alert("Informe primeiro o valor real desta conta.");openConta(x);return}
+  const li=accountLiquidationInfo(x);
+  $("accountSettlementId").value=id;
+  $("accountSettlementTitle").textContent=x.descricao;
+  $("accountSettlementBalance").innerHTML=`<b>Total ${brl(li.total)}</b><span>Liquidado ${brl(li.liquidado)}</span><span>A liquidar ${brl(li.saldo)}</span>`;
+  formatBRMoneyInput($("accountSettlementAmount"),li.saldo);
+  $("accountSettlementDate").value=hoje();
+  $("accountSettlementMethod").value=x.forma_prevista||"pix";
+  $("accountSettlementCounterparty").value=x.contraparte||"";
+  $("accountSettlementNote").value="";
+  $("accountCreditDueDate").value="";
+  syncAccountSettlementMethod();
+  $("accountSettlementModal").classList.remove("hidden");
 }
+function syncAccountSettlementMethod(){
+  const credit=$("accountSettlementMethod").value==="credito";
+  $("accountCreditDueWrap").classList.toggle("hidden",!credit);
+  $("accountCreditDueDate").required=credit;
+}
+$("accountSettlementMethod").onchange=syncAccountSettlementMethod;
+$("closeAccountSettlement").onclick=()=>$("accountSettlementModal").classList.add("hidden");
+prepareMoneyInput($("accountSettlementAmount"));
+$("accountSettlementForm").onsubmit=async e=>{
+  e.preventDefault();
+  const id=$("accountSettlementId").value,x=state.contas.find(c=>c.id===id);if(!x)return;
+  const li=accountLiquidationInfo(x),valor=parseBRMoney($("accountSettlementAmount").value),method=$("accountSettlementMethod").value;
+  const data=$("accountSettlementDate").value,contraparte=$("accountSettlementCounterparty").value.trim()||x.contraparte||null;
+  const observacao=$("accountSettlementNote").value.trim()||null;
+  if(!(valor>0)||valor>li.saldo+0.009)return alert(`Informe um valor entre R$ 0,01 e ${brl(li.saldo)}.`);
+  const impacta_saldo=impactsCash(method);
+  let r=await sb.from("conta_liquidacoes").insert({user_id:uid(),conta_id:id,valor,data_liquidacao:data,forma_liquidacao:method,impacta_saldo,contraparte,observacao});
+  if(r.error)return alert("Liquidação: "+r.error.message);
+
+  if(impacta_saldo){
+    const origem=x.origem==="credito"||x.origem==="credito_liquidacao"?"liquidacao_credito":"conta_paga";
+    r=await sb.from("movimentacoes").insert({user_id:uid(),conta:x.conta,tipo:"saida",descricao:x.descricao,valor,data,origem,
+      categoria:x.categoria||"Outros",forma_liquidacao:method,impacta_saldo:true,contraparte,observacao,situacao:"quitada",referencia_id:id});
+    if(r.error)return alert("Liquidação salva, mas a saída financeira precisa ser conferida: "+r.error.message);
+  }else if(method==="compensacao"){
+    try{await insertCompensation({conta:x.conta,contraparte,descricao:`Liquidação: ${x.descricao}`,valor,direcao:"credito_usuario",data,referencia_tipo:"conta",referencia_id:id,observacao})}
+    catch(err){return alert("Liquidação salva, mas a compensação precisa ser conferida: "+err.message)}
+  }else if(method==="credito"){
+    const due=$("accountCreditDueDate").value;
+    if(!due)return alert("Informe o vencimento da nova obrigação do crédito.");
+    // Registra economicamente a despesa original sem mexer no saldo.
+    r=await sb.from("movimentacoes").insert({user_id:uid(),conta:x.conta,tipo:"saida",descricao:x.descricao,valor,data,origem:"conta_credito_economico",
+      categoria:x.categoria||"Outros",forma_liquidacao:"credito",impacta_saldo:false,contraparte,observacao,situacao:"pendente",referencia_id:id});
+    if(r.error)return alert(r.error.message);
+    r=await sb.from("contas").insert({user_id:uid(),conta:x.conta,descricao:`Crédito · ${x.descricao}`,valor,vencimento:due,prioridade:"prioritaria",status:"pendente",
+      categoria:x.categoria||"Outros",contraparte,observacao,forma_prevista:"pix",origem:"credito_liquidacao",referencia_id:id});
+    if(r.error)return alert("Obrigação no crédito: "+r.error.message);
+  }
+
+  const novo=li.liquidado+valor,quitada=novo>=li.total-0.009;
+  r=await sb.from("contas").update({status:quitada?"pago":"pendente",pago_em:quitada?data:null}).eq("id",id).eq("user_id",uid());
+  if(r.error)return alert("Liquidação registrada, mas a situação da obrigação precisa ser conferida: "+r.error.message);
+  $("accountSettlementModal").classList.add("hidden");
+  await loadAll();
+};
 
 $("btnTransfer").onclick=()=>{
   $("transferDirection").textContent=`${accountName(current)} → ${accountName(current==="PF"?"CNPJ":"PF")}`;
@@ -252,7 +387,7 @@ $("transferForm").onsubmit=async e=>{
   await loadAll();
 };
 
-function saldo(a){return state.mov.filter(x=>x.conta===a).reduce((s,x)=>s+(x.tipo==="entrada"?+x.valor:x.tipo==="saida"?-x.valor:0),0)}
+function saldo(a){return state.mov.filter(x=>x.conta===a&&x.impacta_saldo!==false).reduce((s,x)=>s+(x.tipo==="entrada"?+x.valor:x.tipo==="saida"?-x.valor:0),0)}
 const sum=a=>a.reduce((s,x)=>s+Number(x.valor),0);
 
 
@@ -367,7 +502,7 @@ function reportIncomeRows(conta,year,month=null){
 function reportExpenseRows(conta,year,month=null){
   return state.mov.filter(x=>{
     const d=String(x.data||"");
-    return x.conta===conta&&x.tipo==="saida"&&!isTransfer(x)&&d.startsWith(String(year))&&(month===null||d.slice(5,7)===String(month).padStart(2,"0"));
+    return x.conta===conta&&x.tipo==="saida"&&!isTransfer(x)&&x.origem!=="liquidacao_credito"&&d.startsWith(String(year))&&(month===null||d.slice(5,7)===String(month).padStart(2,"0"));
   });
 }
 function reportTransferRows(conta,year){
@@ -466,8 +601,8 @@ function render(){
     : movimentosConta.filter(x=>inferCategory(x)===movCategoryFilter);
   $("movList").innerHTML=listMov(movimentosFiltrados);
   const cs=state.contas.filter(x=>x.conta===current&&x.status==="pendente");
-  const totalOpen=cs.reduce((s,x)=>s+Number(x.valor||0),0);
-  const next30=cs.filter(x=>{const [y,m,d]=String(x.vencimento||"").slice(0,10).split("-").map(Number);const [ty,tm,td]=hoje().split("-").map(Number);if(!y||!ty)return false;const diff=Math.round((Date.UTC(y,m-1,d)-Date.UTC(ty,tm-1,td))/86400000);return diff>=0&&diff<=30}).reduce((s,x)=>s+Number(x.valor||0),0);
+  const totalOpen=cs.reduce((s,x)=>s+accountLiquidationInfo(x).saldo,0);
+  const next30=cs.filter(x=>{const [y,m,d]=String(x.vencimento||"").slice(0,10).split("-").map(Number);const [ty,tm,td]=hoje().split("-").map(Number);if(!y||!ty)return false;const diff=Math.round((Date.UTC(y,m-1,d)-Date.UTC(ty,tm-1,td))/86400000);return diff>=0&&diff<=30}).reduce((s,x)=>s+accountLiquidationInfo(x).saldo,0);
   if($("payableTotal"))$("payableTotal").textContent=brl(totalOpen);
   if($("payable30"))$("payable30").textContent=brl(next30);
   if($("payableCount"))$("payableCount").textContent=String(cs.length);
@@ -480,6 +615,7 @@ function render(){
   $("atrasadas").innerHTML=listConta(urgent,true);
   $("pagar").innerHTML=listConta(priority,true);
   $("pagas").innerHTML=listConta(wait,true);
+  renderCompensationSummary();
   if(current==="CNPJ")renderOrc();
 }
 function actionMenu(items){
@@ -490,7 +626,7 @@ function actionMenu(items){
 function listMov(a){
   return a.length?a.slice(0,60).map(x=>{
     const canEdit=x.origem!=="transferencia"&&x.origem!=="orcamento_pago"&&!String(x.origem||"").startsWith("orcamento_custo");
-    return `<div class="item movement-item"><div><b>${esc(x.descricao)}</b><div class="meta">${dataBR(x.data)} · ${x.tipo==="entrada"?"Entrada":"Gasto"} · ${esc(inferCategory(x))}</div></div><div class="item-value-actions"><b class="money-inline ${x.tipo==="entrada"?"positive":"negative"}">${x.tipo==="entrada"?"+":"-"} ${brl(x.valor)}</b>${actionMenu([canEdit?`<button onclick="editMov('${x.id}')">Editar</button>`:""])}</div></div>`;
+    return `<div class="item movement-item"><div><b>${esc(x.descricao)}</b><div class="meta">${dataBR(x.data)} · ${x.tipo==="entrada"?"Entrada":"Gasto"} · ${esc(inferCategory(x))}${x.forma_liquidacao?` · ${esc(liquidationLabel(x.forma_liquidacao))}`:""}${x.impacta_saldo===false?" · sem movimento bancário":""}${x.contraparte?` · ${esc(x.contraparte)}`:""}</div></div><div class="item-value-actions"><b class="money-inline ${x.tipo==="entrada"?"positive":"negative"}">${x.tipo==="entrada"?"+":"-"} ${brl(x.valor)}</b>${actionMenu([canEdit?`<button onclick="editMov('${x.id}')">Editar</button>`:""])}</div></div>`;
   }).join(""):`<p class="meta">Nenhum lançamento.</p>`;
 }
 function dueText(x){
@@ -502,11 +638,15 @@ function dueText(x){
   return `<span class="due">Vence em ${days} dias</span>`;
 }
 function listConta(a,open){
-  return a.length?a.map(x=>`<div class="item bill-item"><div><b>${esc(x.descricao)}</b><div class="meta">${dueText(x)} · ${priorityLabel(x)}</div></div><div class="item-value-actions"><b class="money-inline">${x.valor==null?"Valor pendente":brl(x.valor)}</b>${actionMenu([
-    open?`<button onclick="pagarConta('${x.id}')">Marcar paga</button>`:"",
-    open?`<button onclick="editConta('${x.id}')">Editar</button>`:"",
-    open?`<button onclick="delConta('${x.id}')">Remover conta</button>`:""
-  ])}</div></div>`).join(""):`<p class="meta">Nenhuma conta.</p>`;
+  return a.length?a.map(x=>{
+    const li=accountLiquidationInfo(x),display=li.saldo;
+    const status=li.partial?`Parcial · liquidado ${brl(li.liquidado)}`:li.liquidado>0&&li.saldo<=0?"Quitada":priorityLabel(x);
+    return `<div class="item bill-item"><div><b>${esc(x.descricao)}</b><div class="meta">${dueText(x)} · ${status}${x.forma_prevista?` · ${esc(liquidationLabel(x.forma_prevista))}`:""}${x.contraparte?` · ${esc(x.contraparte)}`:""}</div></div><div class="item-value-actions"><b class="money-inline">${x.valor==null?"Valor pendente":brl(display)}</b>${actionMenu([
+      open?`<button onclick="pagarConta('${x.id}')">Liquidar</button>`:"",
+      open?`<button onclick="editConta('${x.id}')">Editar</button>`:"",
+      open&&!li.liquidado?`<button onclick="delConta('${x.id}')">Remover conta</button>`:""
+    ])}</div></div>`;
+  }).join(""):`<p class="meta">Nenhuma conta.</p>`;
 }
 
 
@@ -1075,13 +1215,13 @@ function garantiaInfo(o){
 }
 function recebimentoInfo(o){
   const rs=state.orcRecebimentos.filter(r=>r.orcamento_id===o.id);
-  let recebido=rs.reduce((s,r)=>s+Number(r.valor||0),0);
-  const total=Number(o.total||0);
-  if(recebido<=0&&o.status==="pago")recebido=Number(o.valor_recebido||total||0);
-  const saldo=Math.max(0,total-recebido);
+  const liquidado=rs.reduce((s,r)=>s+Number(r.valor||0),0);
+  const recebido=rs.filter(r=>r.impacta_caixa!==false).reduce((s,r)=>s+Number(r.valor||0),0);
+  const compensado=rs.filter(r=>r.impacta_caixa===false||r.forma_liquidacao==="compensacao").reduce((s,r)=>s+Number(r.valor||0),0);
+  const total=Number(o.total||0), saldo=Math.max(0,total-liquidado);
   const vencido=saldo>0 && o.proximo_vencimento && String(o.proximo_vencimento)<hoje();
-  const cor=saldo<=0?"verde":(recebido>0&&!vencido?"laranja":"vermelho");
-  return {rs,recebido,total,saldo,vencido,cor};
+  const cor=saldo<=0?"verde":(liquidado>0&&!vencido?"laranja":"vermelho");
+  return {rs,recebido,compensado,liquidado,total,saldo,vencido,cor};
 }
 function pagarOrc(id){
   const o=state.orc.find(x=>x.id===id);if(!o)return;
@@ -1091,7 +1231,7 @@ function pagarOrc(id){
   $("paymentConclusionDate").value="";
   $("paymentNextDue").value=o.proximo_vencimento||"";
   $("paymentInstallment").value="";
-  $("paymentMethod").value=o.forma_pagamento||"PIX";
+  $("paymentMethod").value="pix";$("paymentCounterparty").value=o.cliente||"";$("paymentNote").value="";
   $("paymentAmount").value="";
   $("paymentBalanceInfo").innerHTML=`<b>Total ${brl(ri.total)}</b><span>Recebido ${brl(ri.recebido)}</span><span>A receber ${brl(ri.saldo)}</span>`;
   $("paymentModal").classList.remove("hidden");
@@ -1100,28 +1240,37 @@ prepareMoneyInput($("paymentAmount"));
 $("closePaymentModal").onclick=()=>$("paymentModal").classList.add("hidden");
 $("paymentForm").onsubmit=async e=>{
   e.preventDefault();
-  const id=$("paymentOrcId").value;
-  const o=state.orc.find(x=>x.id===id); if(!o)return;
-  const ri=recebimentoInfo(o);
-  const valor=parseBRMoney($("paymentAmount").value);
-  if(!(valor>0))return alert("Informe o valor recebido.");
-  if(valor>ri.saldo+0.009)return alert(`O valor recebido não pode ser maior que o saldo de ${brl(ri.saldo)}.`);
-  const payload={user_id:uid(),orcamento_id:id,valor,data_recebimento:$("paymentDate").value,forma_pagamento:$("paymentMethod").value,parcela:$("paymentInstallment").value.trim()||null};
+  const id=$("paymentOrcId").value,o=state.orc.find(x=>x.id===id);if(!o)return;
+  const ri=recebimentoInfo(o),valor=parseBRMoney($("paymentAmount").value),method=$("paymentMethod").value;
+  const contraparte=$("paymentCounterparty").value.trim()||o.cliente||null,observacao=$("paymentNote").value.trim()||null;
+  if(!(valor>0))return alert("Informe o valor liquidado.");
+  if(valor>ri.saldo+0.009)return alert(`O valor não pode ser maior que o saldo de ${brl(ri.saldo)}.`);
+  const impacta_caixa=method!=="compensacao";
+  const payload={user_id:uid(),orcamento_id:id,valor,data_recebimento:$("paymentDate").value,forma_pagamento:liquidationLabel(method),
+    forma_liquidacao:method,impacta_caixa,contraparte,observacao,parcela:$("paymentInstallment").value.trim()||null};
   let r=await sb.from("orcamento_recebimentos").insert(payload);
-  if(r.error)return alert("Recebimento: "+r.error.message);
-  const novoRecebido=ri.recebido+valor, quitado=novoRecebido>=ri.total-0.009;
-  const conclusao=$("paymentConclusionDate").value||null;
-  const up={proximo_vencimento:quitado?null:($("paymentNextDue").value||null),forma_pagamento_efetiva:$("paymentMethod").value};
+  if(r.error)return alert("Recebimento/liquidação: "+r.error.message);
+
+  const novoLiquidado=ri.liquidado+valor,quitado=novoLiquidado>=ri.total-0.009;
+  const novoFinanceiro=ri.recebido+(impacta_caixa?valor:0),conclusao=$("paymentConclusionDate").value||null;
+  const up={proximo_vencimento:quitado?null:($("paymentNextDue").value||null),forma_pagamento_efetiva:liquidationLabel(method)};
   if(conclusao){up.concluido_em=conclusao;up.garantia_meses=3;up.garantia_ate=addMonthsISO(conclusao,3)}
-  if(quitado){up.status="pago";up.pago_em=$("paymentDate").value;up.valor_recebido=novoRecebido}
-  else {up.status="aprovado";up.valor_recebido=novoRecebido}
+  if(quitado){up.status="pago";up.pago_em=$("paymentDate").value;up.valor_recebido=novoFinanceiro}
+  else {up.status="aprovado";up.valor_recebido=novoFinanceiro}
   r=await sb.from("orcamentos").update(up).eq("id",id).eq("user_id",uid());
-  if(r.error)return alert("Recebimento salvo, mas houve erro ao atualizar o orçamento: "+r.error.message);
-  // Caixa CNPJ recebe somente o dinheiro efetivamente recebido.
-  r=await sb.from("movimentacoes").insert({user_id:uid(),conta:"CNPJ",tipo:"entrada",descricao:`Recebimento orçamento ${o.numero} · ${o.cliente}`,valor,data:$("paymentDate").value,origem:"orcamento_recebimento",categoria:"Receita",referencia_id:id});
-  if(r.error)alert("Recebimento registrado, mas a entrada no caixa precisa ser conferida: "+r.error.message);
+  if(r.error)return alert("Liquidação salva, mas houve erro ao atualizar o orçamento: "+r.error.message);
+
+  if(impacta_caixa){
+    r=await sb.from("movimentacoes").insert({user_id:uid(),conta:"CNPJ",tipo:"entrada",descricao:`Recebimento orçamento ${o.numero} · ${o.cliente}`,valor,
+      data:$("paymentDate").value,origem:"orcamento_recebimento",categoria:"Receita",referencia_id:id,forma_liquidacao:method,impacta_saldo:true,contraparte,observacao,situacao:"quitada"});
+    if(r.error)alert("Liquidação registrada, mas a entrada no caixa precisa ser conferida: "+r.error.message);
+  }else{
+    try{await insertCompensation({conta:"CNPJ",contraparte,descricao:`Orçamento ${o.numero} · ${o.cliente}`,valor,direcao:"credito_usuario",
+      data:$("paymentDate").value,referencia_tipo:"orcamento",referencia_id:id,observacao})}
+    catch(err){return alert("Serviço liquidado, mas a compensação precisa ser conferida: "+err.message)}
+  }
   $("paymentModal").classList.add("hidden");
-  alert(quitado?"Pagamento concluído. Orçamento quitado.":"Recebimento parcial registrado.");
+  alert(quitado?"Serviço totalmente liquidado.":`Liquidação parcial registrada. Saldo: ${brl(ri.total-novoLiquidado)}`);
   await loadAll();
 };
 
@@ -1571,7 +1720,7 @@ function budgetCard(o){
   return `<details class="item budget-record"><summary><div><b>Orçamento ${o.numero} · ${esc(o.cliente)}</b><div class="meta">${dataBR(o.data)}${o.equipamento_modelo?` · ${esc(o.equipamento_modelo)}`:""}</div><span class="status-pill ${o.status}">${({orcamento:"Rascunho",rascunho:"Rascunho",enviado:"Enviado",aprovado:"Aprovado",pago:"Pago"}[o.status]||o.status)}</span>${gi?`<span class="warranty-pill ${gi.ativa?"active":"ended"}">${gi.ativa?"Garantia ativa":"Garantia encerrada"} · ${dataBR(gi.ate)}</span>`:""}</div><b class="money-inline">${brl(o.total)}</b></summary><div class="budget-detail">
     <div class="meta"><b>Prestador:</b> ${esc(o.prestador||"-")}</div>
     <div class="meta"><b>Pagamento:</b> ${esc(o.forma_pagamento||"Não informado")} · ${esc(o.condicao_pagamento||"Não informada")}${o.condicao_pagamento_detalhe?` · ${esc(o.condicao_pagamento_detalhe)}`:""}${o.forma_pagamento_efetiva?` · recebido via ${esc(o.forma_pagamento_efetiva)}`:""}</div>
-    ${["aprovado","pago"].includes(o.status)?`<div class="receivable-status ${ri.cor}"><b>${ri.cor==="verde"?"Pagamento concluído":ri.vencido?"Pagamento pendente / parcela vencida":ri.recebido>0?"Pagamento parcial":"Aguardando pagamento"}</b><span>Recebido ${moneySpan(ri.recebido)}</span><span>A receber ${moneySpan(ri.saldo)}</span>${o.proximo_vencimento&&ri.saldo>0?`<span>Próximo vencimento ${dataBR(o.proximo_vencimento)}</span>`:""}</div>`:""}
+    ${["aprovado","pago"].includes(o.status)?`<div class="receivable-status ${ri.cor}"><b>${ri.cor==="verde"?"Pagamento concluído":ri.vencido?"Pagamento pendente / parcela vencida":ri.recebido>0?"Pagamento parcial":"Aguardando pagamento"}</b><span>Recebido em dinheiro ${moneySpan(ri.recebido)}</span>${ri.compensado>0?`<span>Compensado ${moneySpan(ri.compensado)}</span>`:""}<span>A receber ${moneySpan(ri.saldo)}</span>${o.proximo_vencimento&&ri.saldo>0?`<span>Próximo vencimento ${dataBR(o.proximo_vencimento)}</span>`:""}</div>`:""}
     <div class="budget-split"><span>Total cobrado <b class="money-inline">${brl(o.total)}</b></span><span>Gastos <b class="money-inline">${brl(custoItens+custoServico)}</b></span><span>Resultado ${o.status==="pago"?"real":"previsto"} <b class="money-inline">${brl(o.status==="pago"?o.resultado:resultado)}</b></span></div>
     <div class="photo-counts"><span>Antes (${antes})</span><span>Durante (${durante})</span><span>Depois (${depois})</span></div>
     ${its.map(i=>{
@@ -1700,7 +1849,7 @@ function serviceCost(o){
 }
 function trackedRevenue(start,end){
   const t={nfse:0,dispensed:0,pending:0,total:0};
-  state.orcRecebimentos.filter(r=>financeDateInRange(r.data_recebimento,start,end)).forEach(r=>{
+  state.orcRecebimentos.filter(r=>r.impacta_caixa!==false&&financeDateInRange(r.data_recebimento,start,end)).forEach(r=>{
     const o=state.orc.find(x=>x.id===r.orcamento_id);if(!o)return;
     const v=Number(r.valor||0),f=budgetFiscalStatus(o);t.total+=v;
     if(f==="nfse_emitida")t.nfse+=v;else if(f==="dispensada_pf")t.dispensed+=v;else t.pending+=v;
