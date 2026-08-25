@@ -1431,3 +1431,154 @@ body.touch-landscape-budget{
   overflow-x:hidden!important;
 }
 
+
+/* =========================================================
+   V8.9.3 — PAISAGEM FORÇADA EM GRADE DESKTOP
+   Sem detecção de touch/hover. Se estiver deitado e houver
+   largura mínima, Itens comerciais usa a estrutura desktop.
+   ========================================================= */
+@media (orientation: landscape) and (min-width: 650px){
+  #orcItens{
+    width:100%!important;
+    overflow-x:auto!important;
+    overflow-y:visible!important;
+    -webkit-overflow-scrolling:touch!important;
+    padding-bottom:8px!important;
+  }
+
+  .budget-item-headings{
+    display:grid!important;
+    width:100%!important;
+    min-width:1000px!important;
+    grid-template-columns:
+      110px
+      minmax(230px,1fr)
+      70px
+      120px
+      120px
+      120px
+      135px
+      40px!important;
+    gap:8px!important;
+    align-items:end!important;
+  }
+
+  #orcItens .budget-item-row{
+    position:relative!important;
+    display:grid!important;
+    width:100%!important;
+    min-width:1000px!important;
+    grid-template-columns:
+      110px
+      minmax(230px,1fr)
+      70px
+      120px
+      120px
+      120px
+      135px
+      40px!important;
+    gap:8px!important;
+    align-items:center!important;
+    padding:4px 0!important;
+    margin:0!important;
+    border:0!important;
+    border-bottom:1px solid #eef2f7!important;
+    border-radius:0!important;
+    background:transparent!important;
+    box-shadow:none!important;
+  }
+
+  #orcItens .budget-item-row > label.mobile-item-field,
+  #orcItens .budget-item-row > div.mobile-item-field{
+    display:contents!important;
+  }
+
+  #orcItens .budget-item-row .mobile-item-label{
+    display:none!important;
+  }
+
+  #orcItens .budget-item-row > *,
+  #orcItens .budget-item-row .item-description-field,
+  #orcItens .budget-item-row .item-supply-field,
+  #orcItens .budget-item-row .item-value-field,
+  #orcItens .budget-item-row .item-cost-field,
+  #orcItens .budget-item-row .item-total-field{
+    grid-column:auto!important;
+    grid-row:auto!important;
+    margin:0!important;
+    padding-right:0!important;
+  }
+
+  #orcItens .budget-item-row input,
+  #orcItens .budget-item-row select{
+    width:100%!important;
+    min-width:0!important;
+    height:42px!important;
+    min-height:42px!important;
+    box-sizing:border-box!important;
+    padding:7px 9px!important;
+    font-size:14px!important;
+  }
+
+  #orcItens .budget-item-row .iTotal{
+    width:100%!important;
+    height:42px!important;
+    min-height:42px!important;
+    box-sizing:border-box!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:flex-end!important;
+    padding:7px 9px!important;
+    border:1px solid #d9e0e8!important;
+    border-radius:10px!important;
+    background:#f8fafc!important;
+    white-space:nowrap!important;
+  }
+
+  #orcItens .budget-item-row .remove-budget-item{
+    position:static!important;
+    grid-column:auto!important;
+    grid-row:auto!important;
+    width:38px!important;
+    min-width:38px!important;
+    height:38px!important;
+    padding:0!important;
+    margin:0!important;
+    align-self:center!important;
+    justify-self:center!important;
+  }
+
+  #orcItens .budget-item-row.supplied-by-client{
+    grid-template-columns:
+      110px
+      minmax(230px,1fr)
+      70px
+      120px
+      120px
+      120px
+      135px
+      40px!important;
+  }
+
+  #orcItens .budget-item-row.supplied-by-client .item-value-field,
+  #orcItens .budget-item-row.supplied-by-client .item-cost-field{
+    display:contents!important;
+  }
+
+  #orcItens .budget-item-row.supplied-by-client .item-value-field input,
+  #orcItens .budget-item-row.supplied-by-client .item-cost-field input{
+    visibility:hidden!important;
+    pointer-events:none!important;
+  }
+
+  #orcItens .budget-item-row.supplied-by-client .iTotal{
+    justify-content:center!important;
+    background:#ecfdf5!important;
+    color:#0f766e!important;
+  }
+
+  /* Nada de scroll horizontal na página inteira */
+  html,body{
+    overflow-x:hidden!important;
+  }
+}

@@ -1,31 +1,30 @@
-# Meu Financeiro V8.9.2 — Paisagem Igual ao Desktop
+# Meu Financeiro V8.9.3 — Paisagem Forçada em Grade Desktop
 
 ## Diagnóstico
-O breakpoint da V8.9.1 era acionado de forma inconsistente e regras antigas do layout mobile ainda mantinham os campos em cards/quebras de linha.
+A detecção por touch/hover não foi aplicada de forma confiável no aparelho testado.
+Por isso o orçamento continuava usando os cards mobile mesmo deitado.
 
 ## Correção
-A aplicação agora identifica:
-- dispositivo touch;
-- orientação paisagem.
+A regra agora é simples:
+- orientação paisagem;
+- largura mínima de 650px.
 
-Quando ambas são verdadeiras, o `body` recebe a classe `touch-landscape-budget`.
-
-Somente em `Itens comerciais`, essa classe força a mesma estrutura visual de grade usada no desktop:
+Nessas condições, `Itens comerciais` usa obrigatoriamente a grade:
 Tipo | Descrição | Qtd. | Fornecimento | Valor unitário | Custo interno | Total | Excluir
 
+Não depende mais de `hover`, `touch`, `maxTouchPoints` ou classe JavaScript.
+
 ## Preservação
-- Retrato continua com o layout mobile em cards.
-- Desktop continua como já estava.
-- A rotação não recarrega nem reconstrói o formulário.
-- Dados digitados permanecem no mesmo DOM.
-- Scroll horizontal, quando necessário, fica somente em Itens comerciais.
-- Nenhuma regra financeira ou de orçamento foi alterada.
-- Nenhuma mudança no Supabase.
+- Retrato continua com cards mobile.
+- Desktop continua compatível com a mesma grade.
+- Sem alteração de dados.
+- Sem alteração financeira.
+- Sem alteração no Supabase.
+- Se a tela não comportar 1000px, o scroll fica somente em Itens comerciais.
 
 ## Teste
-1. Abrir/criar orçamento no celular em retrato.
-2. Digitar um valor/descrição.
-3. Girar para paisagem.
-4. Confirmar a grade em uma única linha como no desktop.
-5. Voltar ao retrato.
-6. Confirmar preservação dos dados.
+1. Atualizar os arquivos.
+2. Fechar e reabrir o app/PWA.
+3. Abrir edição do orçamento.
+4. Girar o celular.
+5. Conferir a linha completa igual ao desktop.
