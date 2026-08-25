@@ -1,30 +1,24 @@
-# Meu Financeiro V8.9.3 — Paisagem Forçada em Grade Desktop
+# Meu Financeiro V8.9.4 — Linha Única no Orçamento em Paisagem
 
 ## Diagnóstico
-A detecção por touch/hover não foi aplicada de forma confiável no aparelho testado.
-Por isso o orçamento continuava usando os cards mobile mesmo deitado.
+Os títulos já estavam em grade, porém regras mobile antigas ainda forçavam:
+- Descrição a ocupar uma linha inteira;
+- Total a ocupar uma linha inteira;
+- wrappers dos campos a se comportarem como cards.
+
+Por isso o orçamento continuava quebrado mesmo em paisagem.
 
 ## Correção
-A regra agora é simples:
-- orientação paisagem;
-- largura mínima de 650px.
-
-Nessas condições, `Itens comerciais` usa obrigatoriamente a grade:
-Tipo | Descrição | Qtd. | Fornecimento | Valor unitário | Custo interno | Total | Excluir
-
-Não depende mais de `hover`, `touch`, `maxTouchPoints` ou classe JavaScript.
+No modo paisagem:
+- cada wrapper do item é uma célula real da grade;
+- cada campo recebe explicitamente sua coluna;
+- todos os 8 elementos ficam na mesma linha:
+  Tipo | Descrição | Qtd. | Fornecimento | Valor unitário | Custo interno | Total | Excluir
+- regras mobile de `grid-column:1/-1` são anuladas;
+- scroll horizontal, quando necessário, fica apenas em Itens comerciais.
 
 ## Preservação
-- Retrato continua com cards mobile.
-- Desktop continua compatível com a mesma grade.
-- Sem alteração de dados.
-- Sem alteração financeira.
-- Sem alteração no Supabase.
-- Se a tela não comportar 1000px, o scroll fica somente em Itens comerciais.
-
-## Teste
-1. Atualizar os arquivos.
-2. Fechar e reabrir o app/PWA.
-3. Abrir edição do orçamento.
-4. Girar o celular.
-5. Conferir a linha completa igual ao desktop.
+- Retrato não foi alterado.
+- Nenhuma regra de orçamento foi alterada.
+- Nenhuma regra financeira foi alterada.
+- Nenhuma mudança no Supabase.
