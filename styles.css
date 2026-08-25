@@ -1743,3 +1743,145 @@ body.touch-landscape-budget{
     overflow-x:hidden!important;
   }
 }
+
+/* =========================================================
+   V8.9.5 — COMPACTAÇÃO DO ORÇAMENTO EM PAISAGEM
+   Mantém linha única e garante + Item / Salvar visíveis.
+   ========================================================= */
+@media (orientation: landscape) and (min-width:650px){
+
+  /* usa melhor a largura real do aparelho */
+  #orcFormWrap,
+  #orcForm{
+    width:100%!important;
+    max-width:none!important;
+    box-sizing:border-box!important;
+  }
+
+  #orcFormWrap{
+    padding-left:10px!important;
+    padding-right:10px!important;
+  }
+
+  #orcForm{
+    padding-left:10px!important;
+    padding-right:10px!important;
+  }
+
+  /* cabeçalho dos itens: título e botão + Item sempre na mesma faixa */
+  #orcForm .item-head{
+    display:flex!important;
+    align-items:center!important;
+    justify-content:space-between!important;
+    gap:10px!important;
+    flex-wrap:nowrap!important;
+    width:100%!important;
+    box-sizing:border-box!important;
+  }
+
+  #orcForm .item-head>div{
+    min-width:0!important;
+    flex:1 1 auto!important;
+  }
+
+  #orcForm #addItem{
+    flex:0 0 auto!important;
+    min-width:76px!important;
+    white-space:nowrap!important;
+    padding:9px 12px!important;
+  }
+
+  /* grade mais compacta para caber melhor na largura de celular deitado */
+  .budget-item-headings,
+  #orcItens .budget-item-row{
+    min-width:920px!important;
+    grid-template-columns:
+      105px
+      minmax(210px,1fr)
+      66px
+      112px
+      108px
+      108px
+      130px
+      40px!important;
+    column-gap:7px!important;
+  }
+
+  #orcItens .budget-item-row input,
+  #orcItens .budget-item-row select{
+    height:40px!important;
+    min-height:40px!important;
+    padding:6px 8px!important;
+    font-size:13px!important;
+  }
+
+  #orcItens .budget-item-row .iTotal{
+    height:40px!important;
+    min-height:40px!important;
+    padding:6px 8px!important;
+    font-size:13px!important;
+  }
+
+  #orcItens .budget-item-row .remove-budget-item{
+    width:36px!important;
+    min-width:36px!important;
+    height:36px!important;
+  }
+
+  /* resumo final mais compacto */
+  #orcForm .budget-summary,
+  #orcForm .orc-summary-grid,
+  #orcForm .totals-grid{
+    gap:6px!important;
+  }
+
+  /* ações finais ocupam toda a largura sem cortar o botão */
+  #orcForm .form-actions,
+  #orcForm .orc-form-actions,
+  #orcForm .budget-form-actions,
+  #orcForm .actions{
+    display:flex!important;
+    align-items:center!important;
+    justify-content:flex-end!important;
+    gap:10px!important;
+    flex-wrap:nowrap!important;
+    width:100%!important;
+    max-width:100%!important;
+    box-sizing:border-box!important;
+  }
+
+  #orcForm #saveOrcBtn{
+    flex:0 1 360px!important;
+    width:auto!important;
+    max-width:360px!important;
+    min-width:220px!important;
+    box-sizing:border-box!important;
+    white-space:nowrap!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+  }
+
+  #orcForm .mobile-budget-back,
+  #orcForm [type="button"].cancel,
+  #orcForm .cancel-orc{
+    flex:0 0 auto!important;
+  }
+
+  /* se o botão estiver fora de um wrapper conhecido, ainda impede estouro */
+  #saveOrcBtn{
+    max-width:calc(100vw - 180px)!important;
+  }
+
+  /* reduz largura excessiva de cards/containers internos no paisagem */
+  #orcForm .internal-box,
+  #orcForm .nfse-section,
+  #orcForm .photo-stage-actions{
+    max-width:100%!important;
+    box-sizing:border-box!important;
+  }
+
+  /* continua proibindo scroll horizontal da página inteira */
+  html,body{
+    overflow-x:hidden!important;
+  }
+}
