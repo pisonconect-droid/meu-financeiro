@@ -1,69 +1,29 @@
-# Meu Financeiro V8.8.0 — Cartões de Crédito e Faturas
+# Meu Financeiro V8.9.0 — Períodos Mensais + UX Paisagem dos Orçamentos
 
 ## Estado
 ENTREGA PARA REVISÃO HUMANA. Não homologada.
 
-## Estrutura criada
-### Cartões
-- Nome/apelido
-- PF ou CNPJ
-- Dia de fechamento
-- Dia de vencimento
-- Ativo/inativo
+## Períodos mensais
+- Período inicial = mês atual.
+- Entradas do mês, Gastos do mês e Resultado do mês usam o período selecionado.
+- O saldo atual não é reiniciado ao trocar o mês.
+- O histórico não é apagado.
+- O seletor permite mês anterior, mês seguinte, escolha direta e retorno ao mês atual.
+- Ao consultar outro mês, aparece `Período anterior`.
+- A lista `Dia a dia` acompanha o período selecionado.
+- Contas, faturas, recebimentos e demais obrigações não são encerrados ou apagados na virada do mês.
 
-### Faturas
-- Cartão
-- Fechamento
-- Vencimento
-- Estado: aberta / quitada antecipadamente / paga
-- Data e forma de pagamento
-- Vínculo com a saída financeira do pagamento
-
-## Regra de ciclo
-A data da compra é comparada ao fechamento do cartão.
-- Compra até o fechamento: pertence ao ciclo que fecha naquele mês.
-- Compra após o fechamento: pertence ao ciclo seguinte.
-- O vencimento é a primeira data configurada que ocorre depois do fechamento.
-- Dias inexistentes (29/30/31) usam o último dia válido do mês.
-- Cálculo usa datas civis locais, sem UTC.
-
-## Compra no Crédito
-- registra gasto econômico;
-- `impacta_saldo=false`;
-- exige selecionar cartão;
-- calcula fatura automaticamente;
-- não cria nova conta comum em `contas`;
-- a compra aparece individualmente no histórico com cartão e fatura.
-
-## Bloco Cartões de crédito
-As faturas ficam separadas de Urgentes / Prioritárias / Podem esperar.
-A fatura mostra total, quantidade de compras, vencimento e situação.
-`Ver compras` abre sua composição.
-
-## Pagamento da fatura
-- uma única saída bancária pelo total da fatura;
-- compras não geram nova saída;
-- pagamento antes do vencimento = `Quitada antecipadamente`;
-- pagamento no vencimento ou depois = `Paga`;
-- não existe pagamento parcial nesta MEP.
-
-## Total a pagar
-Soma contas comuns abertas + faturas abertas.
-As compras da fatura não são somadas novamente como obrigações.
-
-## Histórico anterior
-Compras no Crédito já existentes continuam exatamente como estavam.
-Nenhuma associação a cartão/fatura é inventada.
-Nenhum saldo histórico é recalculado.
+## Orçamento em paisagem
+- Retrato preserva os cards atuais.
+- Em paisagem, celular/tablet entre 560 e 1100 px mostra Itens comerciais em linha, semelhante ao desktop.
+- Descrição recebe maior largura.
+- Quantidade permanece compacta.
+- Tipo, Fornecimento, Valor, Custo e Total ficam alinhados.
+- Se necessário, o scroll horizontal fica restrito à área de Itens comerciais.
+- A rotação é apenas CSS: não recarrega formulário e não altera os dados digitados.
 
 ## Banco
-Novas tabelas:
-- `cartoes_credito`
-- `cartao_faturas`
-
-Novas referências em `movimentacoes`:
-- `cartao_id`
-- `fatura_cartao_id`
+Nenhuma alteração de Supabase é necessária nesta MEP.
 
 ## Arquivos alterados
 - index.html
@@ -71,7 +31,6 @@ Novas referências em `movimentacoes`:
 - styles.css
 - README.md
 - manifest.webmanifest
-- supabase_v8_8_0_cartoes_faturas.sql
 
 ## Não executado
 - commit

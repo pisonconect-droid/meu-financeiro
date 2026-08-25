@@ -14,6 +14,46 @@ let privacyHidden=localStorage.getItem("mf_privacy_hidden")==="1";
 const $=id=>document.getElementById(id);
 const brl=v=>Number(v||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
 const hoje=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;};
+
+let selectedPeriod=null;
+function currentYearMonth(){
+  const d=new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+}
+function normalizePeriod(v){return /^\d{4}-\d{2}$/.test(String(v||""))?String(v):currentYearMonth()}
+function periodLabel(v){
+  const [y,m]=normalizePeriod(v).split("-").map(Number);
+  return new Date(y,m-1,1).toLocaleDateString("pt-BR",{month:"long",year:"numeric"}).replace(/^./,c=>c.toUpperCase());
+}
+function shiftPeriod(v,delta){
+  const [y,m]=normalizePeriod(v).split("-").map(Number),d=new Date(y,m-1+delta,1);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+}
+function ensureSelectedPeriod(){if(!selectedPeriod)selectedPeriod=currentYearMonth()}
+function updatePeriodSelectorUI(){
+  ensureSelectedPeriod();
+  const historical=selectedPeriod!==currentYearMonth();
+  if($("periodCurrentLabel"))$("periodCurrentLabel").textContent=periodLabel(selectedPeriod);
+  if($("periodMonthPicker"))$("periodMonthPicker").value=selectedPeriod;
+  $("periodHistoricalBadge")?.classList.toggle("hidden",!historical);
+  $("periodToday")?.classList.toggle("hidden",!historical);
+}
+function setSelectedPeriod(v){
+  selectedPeriod=normalizePeriod(v);
+  updatePeriodSelectorUI();
+  render();
+}
+function initPeriodSelector(){
+  ensureSelectedPeriod();updatePeriodSelectorUI();
+  if($("periodPrev"))$("periodPrev").onclick=()=>setSelectedPeriod(shiftPeriod(selectedPeriod,-1));
+  if($("periodNext"))$("periodNext").onclick=()=>setSelectedPeriod(shiftPeriod(selectedPeriod,1));
+  if($("periodToday"))$("periodToday").onclick=()=>setSelectedPeriod(currentYearMonth());
+  if($("periodCurrentLabel"))$("periodCurrentLabel").onclick=()=>{
+    const p=$("periodMonthPicker");
+    if(p?.showPicker)p.showPicker();else p?.click();
+  };
+  if($("periodMonthPicker"))$("periodMonthPicker").onchange=e=>e.target.value&&setSelectedPeriod(e.target.value);
+}
 const dataBR=s=>{if(!s)return"";const[y,m,d]=s.split("-");return`${d}/${m}/${y}`};
 const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
 const uid=()=>session?.user?.id;
@@ -126,7 +166,7 @@ async function loadAll(){
   const er=m.error||c.error||o.error||oi.error||oc.error||of.error||orx.error||clq.error||cmp.error||onf.error||f.error||cat.error||cli.error||cc.error||inv.error||p.error;
   if(er){alert(er.message);return}
   state={mov:m.data||[],contas:c.data||[],orc:o.data||[],orcItens:oi.data||[],orcCustos:oc.data||[],orcFotos:of.data||[],orcRecebimentos:orx.data||[],contaLiquidacoes:clq.data||[],compensacoes:cmp.data||[],orcNfse:onf.data||[],fixas:f.data||[],categorias:cat.data||[],clientes:cli.data||[],cartoes:cc.data||[],faturasCartao:inv.data||[],profile:p.data||null};
-  await ensureDefaultCategories();renderCategoryUI();render();renderCalendar();renderFixas();renderFinancialReport();renderBudgetSummary();
+  await ensureDefaultCategories();initPeriodSelector();renderCategoryUI();render();renderCalendar();renderFixas();renderFinancialReport();renderBudgetSummary();
 }
 
 document.querySelectorAll("[data-account]").forEach(b=>b.onclick=()=>openArea(b.dataset.account));
@@ -690,9 +730,11 @@ function renderFinancialReport(){
     : `<p class="meta">Nenhum gasto registrado neste ano.</p>`;
 }
 function render(){
+  ensureSelectedPeriod();
+  updatePeriodSelectorUI();
   $("saldoPF").textContent=brl(saldo("PF"));
   $("saldoCNPJ").textContent=brl(saldo("CNPJ"));
-  const agora=new Date(),mes=agora.getMonth()+1,ano=agora.getFullYear();
+  const [ano,mes]=selectedPeriod.split("-").map(Number);
   if(current){
     const entradas=reportIncomeRows(current,ano,mes).reduce((s,x)=>s+Number(x.valor||0),0);
     const gastos=reportExpenseRows(current,ano,mes).reduce((s,x)=>s+Number(x.valor||0),0);
@@ -715,7 +757,7 @@ function render(){
   $("saldoAtual").textContent=brl(s);
   $("saldoAtual").className="money-value "+(s>0?"positive":s<0?"negative":"");
   $("statusSaldo").textContent=s>0?"POSITIVO":s<0?"NEGATIVO":"ZERADO";
-  const movimentosConta=state.mov.filter(x=>x.conta===current);
+  const movimentosConta=state.mov.filter(x=>x.conta===current&&String(x.data||"").slice(0,7)===selectedPeriod);
   const movimentosFiltrados=movCategoryFilter==="TODOS"
     ? movimentosConta
     : movimentosConta.filter(x=>inferCategory(x)===movCategoryFilter);

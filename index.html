@@ -5,12 +5,12 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111827">
 <title>Meu Financeiro</title>
-<link rel="stylesheet" href="styles.css?v=8.8.0">
+<link rel="stylesheet" href="styles.css?v=8.9.0">
 
 <link rel="icon" type="image/png" href="favicon.png?v=8.3.1">
 <link rel="apple-touch-icon" href="apple-touch-icon.png?v=8.3.1">
 <meta name="theme-color" content="#071b15">
-<link rel="manifest" href="manifest.webmanifest?v=8.8.0">
+<link rel="manifest" href="manifest.webmanifest?v=8.9.0">
 
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -48,6 +48,16 @@
 
 <section id="area" class="view">
 <div class="card saldo"><h2 id="accountName"></h2><small>Saldo atual</small><strong class="money-value" id="saldoAtual">R$ 0,00</strong><b id="statusSaldo">ZERADO</b></div>
+<div id="periodSelector" class="period-selector">
+  <button id="periodPrev" type="button" title="Mês anterior" aria-label="Mês anterior">‹</button>
+  <div class="period-center">
+    <button id="periodCurrentLabel" type="button" class="period-label"></button>
+    <span id="periodHistoricalBadge" class="period-historical-badge hidden">Período anterior</span>
+  </div>
+  <button id="periodNext" type="button" title="Mês seguinte" aria-label="Mês seguinte">›</button>
+  <button id="periodToday" type="button" class="period-today hidden">Mês atual</button>
+  <input id="periodMonthPicker" type="month" class="hidden-period-picker" aria-label="Selecionar período">
+</div>
 <div class="month-summary">
   <div class="summary-card summary-income"><span id="summaryLabel1">Entradas do mês</span><strong class="money-value" id="summaryValue1">R$ 0,00</strong></div>
   <div class="summary-card summary-expense"><span id="summaryLabel2">Gastos do mês</span><strong class="money-value" id="summaryValue2">R$ 0,00</strong></div>
@@ -502,5 +512,5 @@
 <button class="danger remove-cost remove-soft" type="button" title="Remover custo" aria-label="Remover custo"><span aria-hidden="true">🗑</span></button></div></template>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script><script src="config.js"></script><script src="app.js?v=8.8.0"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script><script src="config.js"></script><script src="app.js?v=8.9.0"></script>
 </body></html>
