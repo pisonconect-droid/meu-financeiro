@@ -1,40 +1,20 @@
-# Meu Financeiro V8.9.0 — Períodos Mensais + UX Paisagem dos Orçamentos
+# Meu Financeiro V8.9.1 — Correção do Modo Paisagem
 
-## Estado
-ENTREGA PARA REVISÃO HUMANA. Não homologada.
+## Diagnóstico
+O celular em modo paisagem reportou largura aproximada de 1157 px.
+A V8.9.0 ativava o layout paisagem somente até 1100 px, portanto o aparelho ficava fora do breakpoint.
 
-## Períodos mensais
-- Período inicial = mês atual.
-- Entradas do mês, Gastos do mês e Resultado do mês usam o período selecionado.
-- O saldo atual não é reiniciado ao trocar o mês.
-- O histórico não é apagado.
-- O seletor permite mês anterior, mês seguinte, escolha direta e retorno ao mês atual.
-- Ao consultar outro mês, aparece `Período anterior`.
-- A lista `Dia a dia` acompanha o período selecionado.
-- Contas, faturas, recebimentos e demais obrigações não são encerrados ou apagados na virada do mês.
+## Correção
+- O modo paisagem mobile/tablet agora aceita até 1400 px quando o dispositivo reporta `hover:none`.
+- Mantido fallback até 1100 px para navegadores móveis sem detecção consistente.
+- Desktop comum permanece preservado.
+- Nenhuma regra de orçamento foi alterada.
+- Nenhuma regra financeira foi alterada.
+- Nenhuma mudança no Supabase.
 
-## Orçamento em paisagem
-- Retrato preserva os cards atuais.
-- Em paisagem, celular/tablet entre 560 e 1100 px mostra Itens comerciais em linha, semelhante ao desktop.
-- Descrição recebe maior largura.
-- Quantidade permanece compacta.
-- Tipo, Fornecimento, Valor, Custo e Total ficam alinhados.
-- Se necessário, o scroll horizontal fica restrito à área de Itens comerciais.
-- A rotação é apenas CSS: não recarrega formulário e não altera os dados digitados.
-
-## Banco
-Nenhuma alteração de Supabase é necessária nesta MEP.
-
-## Arquivos alterados
-- index.html
-- app.js
-- styles.css
-- README.md
-- manifest.webmanifest
-
-## Não executado
-- commit
-- push
-- deploy
-- publicação
-- homologação
+## Teste
+1. Abrir criação/edição de orçamento no celular em retrato.
+2. Digitar algum campo.
+3. Girar o aparelho.
+4. Conferir Itens comerciais em formato de linha semelhante ao desktop.
+5. Voltar ao retrato e confirmar que os dados permanecem.
