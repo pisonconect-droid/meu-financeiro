@@ -1,20 +1,31 @@
-# Meu Financeiro V8.9.1 — Correção do Modo Paisagem
+# Meu Financeiro V8.9.2 — Paisagem Igual ao Desktop
 
 ## Diagnóstico
-O celular em modo paisagem reportou largura aproximada de 1157 px.
-A V8.9.0 ativava o layout paisagem somente até 1100 px, portanto o aparelho ficava fora do breakpoint.
+O breakpoint da V8.9.1 era acionado de forma inconsistente e regras antigas do layout mobile ainda mantinham os campos em cards/quebras de linha.
 
 ## Correção
-- O modo paisagem mobile/tablet agora aceita até 1400 px quando o dispositivo reporta `hover:none`.
-- Mantido fallback até 1100 px para navegadores móveis sem detecção consistente.
-- Desktop comum permanece preservado.
-- Nenhuma regra de orçamento foi alterada.
-- Nenhuma regra financeira foi alterada.
+A aplicação agora identifica:
+- dispositivo touch;
+- orientação paisagem.
+
+Quando ambas são verdadeiras, o `body` recebe a classe `touch-landscape-budget`.
+
+Somente em `Itens comerciais`, essa classe força a mesma estrutura visual de grade usada no desktop:
+Tipo | Descrição | Qtd. | Fornecimento | Valor unitário | Custo interno | Total | Excluir
+
+## Preservação
+- Retrato continua com o layout mobile em cards.
+- Desktop continua como já estava.
+- A rotação não recarrega nem reconstrói o formulário.
+- Dados digitados permanecem no mesmo DOM.
+- Scroll horizontal, quando necessário, fica somente em Itens comerciais.
+- Nenhuma regra financeira ou de orçamento foi alterada.
 - Nenhuma mudança no Supabase.
 
 ## Teste
-1. Abrir criação/edição de orçamento no celular em retrato.
-2. Digitar algum campo.
-3. Girar o aparelho.
-4. Conferir Itens comerciais em formato de linha semelhante ao desktop.
-5. Voltar ao retrato e confirmar que os dados permanecem.
+1. Abrir/criar orçamento no celular em retrato.
+2. Digitar um valor/descrição.
+3. Girar para paisagem.
+4. Confirmar a grade em uma única linha como no desktop.
+5. Voltar ao retrato.
+6. Confirmar preservação dos dados.

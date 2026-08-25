@@ -2159,3 +2159,15 @@ function prepareMoneyInput(el){
   el.addEventListener("blur",()=>formatBRMoneyInput(el));
 }
 
+
+
+function syncTouchLandscapeBudget(){
+  const touch=(navigator.maxTouchPoints||0)>0 || "ontouchstart" in window;
+  const landscape=window.matchMedia?.("(orientation: landscape)")?.matches || window.innerWidth>window.innerHeight;
+  document.body.classList.toggle("touch-landscape-budget",Boolean(touch&&landscape));
+}
+window.addEventListener("resize",syncTouchLandscapeBudget,{passive:true});
+window.addEventListener("orientationchange",()=>setTimeout(syncTouchLandscapeBudget,80),{passive:true});
+document.addEventListener("DOMContentLoaded",syncTouchLandscapeBudget);
+setTimeout(syncTouchLandscapeBudget,0);
+

@@ -1288,3 +1288,146 @@ input[inputmode="decimal"]{font-variant-numeric:tabular-nums}
 @media (orientation:landscape) and (min-width:560px) and (max-width:1100px){
   #orcItens{overflow-x:auto;overflow-y:visible;-webkit-overflow-scrolling:touch;padding-bottom:6px}
 }
+
+
+/* =========================================================
+   V8.9.2 — TOUCH PAISAGEM = GRADE DESKTOP EM ITENS COMERCIAIS
+   Override final para vencer regras mobile antigas.
+   ========================================================= */
+body.touch-landscape-budget #orcItens{
+  width:100%!important;
+  overflow-x:auto!important;
+  overflow-y:visible!important;
+  -webkit-overflow-scrolling:touch;
+  padding-bottom:6px!important;
+}
+body.touch-landscape-budget .budget-item-headings{
+  display:grid!important;
+  width:100%!important;
+  min-width:980px!important;
+  grid-template-columns:
+    minmax(105px,.72fr)
+    minmax(220px,1.45fr)
+    minmax(68px,.50fr)
+    minmax(115px,.85fr)
+    minmax(112px,.85fr)
+    minmax(112px,.85fr)
+    minmax(132px,1fr)
+    40px!important;
+  gap:8px!important;
+  align-items:end!important;
+  padding:0!important;
+}
+body.touch-landscape-budget .budget-item-row{
+  position:relative!important;
+  display:grid!important;
+  width:100%!important;
+  min-width:980px!important;
+  grid-template-columns:
+    minmax(105px,.72fr)
+    minmax(220px,1.45fr)
+    minmax(68px,.50fr)
+    minmax(115px,.85fr)
+    minmax(112px,.85fr)
+    minmax(112px,.85fr)
+    minmax(132px,1fr)
+    40px!important;
+  gap:8px!important;
+  align-items:center!important;
+  padding:4px 0!important;
+  margin:0!important;
+  border:0!important;
+  border-bottom:1px solid #eef2f7!important;
+  border-radius:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+body.touch-landscape-budget .budget-item-row > .mobile-item-field{
+  display:contents!important;
+}
+body.touch-landscape-budget .budget-item-row .mobile-item-label{
+  display:none!important;
+}
+body.touch-landscape-budget .budget-item-row > *,
+body.touch-landscape-budget .budget-item-row .item-description-field,
+body.touch-landscape-budget .budget-item-row .item-total-field,
+body.touch-landscape-budget .budget-item-row .item-supply-field,
+body.touch-landscape-budget .budget-item-row .item-value-field,
+body.touch-landscape-budget .budget-item-row .item-cost-field{
+  grid-column:auto!important;
+  grid-row:auto!important;
+  margin:0!important;
+}
+body.touch-landscape-budget .budget-item-row input,
+body.touch-landscape-budget .budget-item-row select{
+  width:100%!important;
+  min-width:0!important;
+  min-height:42px!important;
+  height:42px!important;
+  box-sizing:border-box!important;
+  padding:7px 9px!important;
+  font-size:14px!important;
+}
+body.touch-landscape-budget .budget-item-row .iTotal{
+  width:100%!important;
+  min-width:0!important;
+  min-height:42px!important;
+  height:42px!important;
+  box-sizing:border-box!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  padding:7px 9px!important;
+  border:1px solid #d9e0e8!important;
+  border-radius:10px!important;
+  background:#f8fafc!important;
+  white-space:nowrap!important;
+}
+body.touch-landscape-budget .budget-item-row .remove-budget-item{
+  position:static!important;
+  grid-column:auto!important;
+  grid-row:auto!important;
+  width:38px!important;
+  min-width:38px!important;
+  height:38px!important;
+  padding:0!important;
+  margin:0!important;
+  align-self:center!important;
+  justify-self:center!important;
+  border-radius:10px!important;
+}
+body.touch-landscape-budget .budget-item-row .item-supply-field{
+  padding-right:0!important;
+}
+/* Material fornecido pelo cliente: mantém a mesma linha e indicação sem preço */
+body.touch-landscape-budget .budget-item-row.supplied-by-client{
+  grid-template-columns:
+    minmax(105px,.72fr)
+    minmax(220px,1.45fr)
+    minmax(68px,.50fr)
+    minmax(115px,.85fr)
+    minmax(112px,.85fr)
+    minmax(112px,.85fr)
+    minmax(132px,1fr)
+    40px!important;
+}
+body.touch-landscape-budget .budget-item-row.supplied-by-client .item-value-field,
+body.touch-landscape-budget .budget-item-row.supplied-by-client .item-cost-field{
+  display:contents!important;
+}
+body.touch-landscape-budget .budget-item-row.supplied-by-client .item-value-field input,
+body.touch-landscape-budget .budget-item-row.supplied-by-client .item-cost-field input{
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
+body.touch-landscape-budget .budget-item-row.supplied-by-client .iTotal{
+  justify-content:center!important;
+  color:#0f766e!important;
+  background:#ecfdf5!important;
+}
+
+/* Página não ganha scroll horizontal: somente a grade dos itens. */
+body.touch-landscape-budget{
+  overflow-x:hidden!important;
+}
+
