@@ -5,12 +5,12 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111827">
 <title>Meu Financeiro</title>
-<link rel="stylesheet" href="styles.css?v=8.9.5">
+<link rel="stylesheet" href="styles.css?v=8.9.6">
 
 <link rel="icon" type="image/png" href="favicon.png?v=8.3.1">
 <link rel="apple-touch-icon" href="apple-touch-icon.png?v=8.3.1">
 <meta name="theme-color" content="#071b15">
-<link rel="manifest" href="manifest.webmanifest?v=8.9.5">
+<link rel="manifest" href="manifest.webmanifest?v=8.9.6">
 
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -219,17 +219,19 @@
 <label>Descrição<textarea id="orcDesc"></textarea></label>
 </div>
 <div class="head item-head"><div><h3>Itens comerciais</h3><small>Valor cobrado aparece para o cliente. Custo real fica interno.</small></div><button type="button" id="addItem" class="small">+ Item</button></div>
-<div class="budget-item-headings">
-  <span>Tipo</span>
-  <span>Descrição</span>
-  <span>Qtd.</span>
-  <span>Fornecimento</span>
-  <span>Valor unitário</span>
-  <span>Custo interno</span>
-  <span>Total do item</span>
-  <span></span>
+<div class="budget-items-scroll">
+  <div class="budget-item-headings">
+    <span>Tipo</span>
+    <span>Descrição</span>
+    <span>Qtd.</span>
+    <span>Fornecimento</span>
+    <span>Valor unitário</span>
+    <span>Custo interno</span>
+    <span>Total do item</span>
+    <span></span>
+  </div>
+  <div id="orcItens"></div>
 </div>
-<div id="orcItens"></div>
 <details class="internal-box" open><summary>Custos internos do serviço</summary><p class="meta">Gasolina, almoço, pedágio, ajudante e outros custos que o cliente não vê.</p><div class="section-action"><button type="button" id="addCostBtn" class="small">+ Custo interno</button></div><div id="orcCustos"></div></details>
 <details class="internal-box" open><summary>Fotos do serviço</summary>
   <p class="meta">Registre o serviço em três etapas: Antes → Durante → Depois.</p>
@@ -512,5 +514,5 @@
 <button class="danger remove-cost remove-soft" type="button" title="Remover custo" aria-label="Remover custo"><span aria-hidden="true">🗑</span></button></div></template>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script><script src="config.js"></script><script src="app.js?v=8.9.5"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script><script src="config.js"></script><script src="app.js?v=8.9.6"></script>
 </body></html>
