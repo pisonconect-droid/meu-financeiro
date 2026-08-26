@@ -2034,3 +2034,6 @@ body.touch-landscape-budget{
     overflow-x:hidden!important;
   }
 }
+
+/* V8.9.7 — exportação de histórico */
+#btnExportHistory{min-width:38px;height:38px;padding:0 10px;font-weight:900}

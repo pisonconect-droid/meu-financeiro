@@ -210,6 +210,7 @@ function openAccountCalendar(account,save=true){
 
 $("btnEntrada").onclick=()=>openMov("entrada");
 $("btnGasto").onclick=()=>openMov("saida");
+$("btnExportHistory").onclick=()=>current&&downloadHistoryCsv(current);
 $("btnConta").onclick=()=>openConta();
 
 
@@ -728,6 +729,66 @@ function renderFinancialReport(){
   $("annualCategoryRows").innerHTML=cats.length
     ? cats.map(([cat,val])=>`<div class="category-report-row"><span>${esc(cat)}</span><strong class="money-inline">${brl(val)}</strong></div>`).join("")
     : `<p class="meta">Nenhum gasto registrado neste ano.</p>`;
+}
+
+function csvEscape(v){const s=String(v??"");return `"${s.replaceAll('"','""')}"`;}
+function exportHistoryRows(account){
+  const rows=[],add=r=>rows.push(r);
+  (state.mov||[]).filter(x=>x.conta===account).forEach(x=>add({
+    data:x.data||"",conta:account,tipo:x.tipo==="entrada"?"Entrada":"Saída",descricao:x.descricao||"",
+    categoria:inferCategory(x)||"",valor:Number(x.valor||0),forma:liquidationLabel(x.forma_liquidacao||""),
+    impacta:x.impacta_saldo===false?"Não":"Sim",contraparte:x.contraparte||"",origem:x.origem||"",
+    situacao:x.situacao||"",referencia:x.referencia_id||"",observacao:x.observacao||"",fonte:"movimentacoes"
+  }));
+  if(account==="CNPJ"){
+    (state.orcRecebimentos||[]).forEach(r=>{
+      const o=(state.orc||[]).find(x=>x.id===r.orcamento_id);
+      add({data:r.data_recebimento||"",conta:"CNPJ",tipo:"Recebimento orçamento",
+        descricao:o?`Orçamento ${o.numero} · ${o.cliente||""}`:"Recebimento de orçamento",categoria:"Receita",
+        valor:Number(r.valor||0),forma:liquidationLabel(r.forma_liquidacao||r.forma_pagamento||""),
+        impacta:r.impacta_caixa===false?"Não":"Sim",contraparte:r.contraparte||o?.cliente||"",
+        origem:"orcamento_recebimentos",situacao:o?.status||"",referencia:r.orcamento_id||"",
+        observacao:r.observacao||"",fonte:"orcamento_recebimentos"});
+    });
+  }
+  (state.contaLiquidacoes||[]).forEach(r=>{
+    const c=(state.contas||[]).find(x=>x.id===r.conta_id);
+    if(c?.conta!==account)return;
+    add({data:r.data_liquidacao||"",conta:account,tipo:"Liquidação de obrigação",descricao:c?.descricao||"",
+      categoria:c?.categoria||"",valor:Number(r.valor||0),forma:liquidationLabel(r.forma_liquidacao||""),
+      impacta:r.impacta_saldo===false?"Não":"Sim",contraparte:r.contraparte||c?.contraparte||"",
+      origem:"conta_liquidacoes",situacao:c?.status||"",referencia:r.conta_id||"",
+      observacao:r.observacao||"",fonte:"conta_liquidacoes"});
+  });
+  (state.compensacoes||[]).filter(r=>r.conta===account).forEach(r=>add({
+    data:r.data||"",conta:account,tipo:r.direcao==="credito_usuario"?"Compensação a favor":"Compensação a pagar",
+    descricao:r.descricao||"",categoria:"Compensação / Permuta",valor:Number(r.valor||0),
+    forma:"Compensação / Permuta",impacta:"Não",contraparte:r.contraparte||"",
+    origem:r.referencia_tipo||"compensacoes",situacao:"Compensada",referencia:r.referencia_id||"",
+    observacao:r.observacao||"",fonte:"compensacoes"
+  }));
+  return rows.sort((a,b)=>String(a.data).localeCompare(String(b.data)));
+}
+function downloadHistoryCsv(account){
+  const rows=exportHistoryRows(account);
+  let entradas=0,saidas=0;
+  rows.forEach(r=>{
+    if(r.impacta!=="Sim")return;
+    const t=String(r.tipo).toLowerCase();
+    if(t.includes("entrada")||t.includes("recebimento"))entradas+=r.valor;
+    else if(t.includes("saída")||t.includes("liquidação"))saidas+=r.valor;
+  });
+  const headers=["Data","Conta","Tipo","Descrição","Categoria","Valor","Forma de pagamento/liquidação","Impacta saldo?","Contraparte","Origem","Situação","Referência","Observação","Fonte técnica"];
+  const lines=[headers.map(csvEscape).join(";")];
+  rows.forEach(r=>lines.push([r.data,r.conta,r.tipo,r.descricao,r.categoria,r.valor.toFixed(2).replace(".",","),r.forma,r.impacta,r.contraparte,r.origem,r.situacao,r.referencia,r.observacao,r.fonte].map(csvEscape).join(";")));
+  lines.push("");
+  [["RESUMO",""],["Entradas com impacto em caixa",entradas],["Saídas com impacto em caixa",saidas],["Saldo calculado pelo histórico exportado",entradas-saidas],["Saldo exibido no app",saldo(account)]].forEach(([label,val])=>{
+    const row=[label,"","","","",typeof val==="number"?val.toFixed(2).replace(".",","):"","","","","","","","",""];
+    lines.push(row.map(csvEscape).join(";"));
+  });
+  const blob=new Blob(["\uFEFF"+lines.join("\r\n")],{type:"text/csv;charset=utf-8"});
+  const url=URL.createObjectURL(blob),a=document.createElement("a");
+  a.href=url;a.download=`historico_${account}_${hoje()}.csv`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 function render(){
   ensureSelectedPeriod();
