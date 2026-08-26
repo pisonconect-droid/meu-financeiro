@@ -833,10 +833,23 @@ function renderPfBankReconciliation(){
   $("pfReconUnclassified").textContent=brl(reconSumBy("a_classificar"));
 }
 function parseMoneyCsv(v){return Number(String(v||"0").trim().replace(/\./g,"").replace(",","."));}
+function parseSemicolonCsvLine(line){
+  const out=[]; let cur="",quoted=false;
+  for(let i=0;i<line.length;i++){
+    const ch=line[i];
+    if(ch==='"'){
+      if(quoted&&line[i+1]==='"'){cur+='"';i++}
+      else quoted=!quoted;
+    }else if(ch===";"&&!quoted){out.push(cur);cur=""}
+    else cur+=ch;
+  }
+  out.push(cur);
+  return out.map(x=>x.trim());
+}
 function parsePfReconciliationCsv(text){
   const lines=String(text||"").replace(/^\uFEFF/,"").split(/\r?\n/).filter(Boolean),meta={},entries=[]; let header=false;
   for(const line of lines){
-    const c=line.split(";").map(x=>x.trim());
+    const c=parseSemicolonCsvLine(line);
     if(c[0]==="META"){meta[c[1]]=c[2];continue}
     if(c[0]==="data"){header=true;continue}
     if(!header)continue;
@@ -848,6 +861,9 @@ function parsePfReconciliationCsv(text){
 }
 async function importPfReconciliationFile(file){
   const {meta:m,entries:e}=parsePfReconciliationCsv(await file.text());
+  const keys=e.map(x=>x.source_key).filter(Boolean);
+  if(keys.length!==e.length)return alert("Conciliação recusada: existe linha sem identificador técnico.");
+  if(new Set(keys).size!==keys.length)return alert("Conciliação recusada: existem identificadores técnicos duplicados no arquivo.");
   const entradas=e.filter(x=>x.direcao==="entrada").reduce((s,x)=>s+x.valor,0);
   const saidas=e.filter(x=>x.direcao==="saida").reduce((s,x)=>s+x.valor,0);
   const saldoInicial=parseMoneyCsv(m.saldo_inicial),saldoFinal=saldoInicial+entradas-saidas;

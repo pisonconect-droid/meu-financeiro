@@ -1,34 +1,34 @@
-# Meu Financeiro V8.9.8 — Conciliação Bancária PF · Nubank
+# Meu Financeiro V8.9.9 — Correção da Importação da Conciliação PF
 
-**Escopo exclusivo PF.** CNPJ e Orçamentos não recebem mudança de regra.
+## Causa raiz
+O CSV usa `;` como separador. Algumas observações também continham `;`.
+O parser V8.9.8 usava `split(";")`, deslocando colunas e fazendo várias linhas
+receberem a mesma `source_key`.
 
-Fonte de verdade:
-- 01/08/2026 a 24/08/2026
-- Saldo inicial R$ 4,34
-- Entradas R$ 3.159,00
-- Saídas R$ 3.105,38
-- Saldo final R$ 57,96
+O Supabase bloqueou corretamente a duplicidade pela constraint:
+`bank_reconciliation_entries_user_id_reconciliation_id_source_key`.
 
-A conciliação fica em tabelas próprias no Supabase e não apaga/regrava `movimentacoes`.
-Quando há conciliação fechada, o saldo PF parte de R$ 57,96 e soma somente movimentos posteriores a 24/08.
+## Correção
+- Parser CSV agora entende campos entre aspas.
+- CSV foi regravado com escaping/quoting correto.
+- Antes de tocar no banco, o app valida:
+  - todas as linhas possuem `source_key`;
+  - nenhuma `source_key` está duplicada;
+  - entradas, saídas e saldo fecham exatamente com os metadados.
+- A reimportação usa a mesma conciliação e remove suas linhas anteriores antes
+  de inserir o conjunto validado.
 
-Separações visíveis:
-- receitas reais
-- despesas reais
-- transferências próprias
-- transferências de terceiros
-- pagamentos de fatura
-- a classificar
+## Fonte de verdade PF Nubank
+- Saldo inicial: R$ 4,34
+- Entradas: R$ 3.159,00
+- Saídas: R$ 3.105,38
+- Saldo final: R$ 57,96
 
-R$ 3.009,00 de transferências próprias afetam banco, mas não receita.
-R$ 150,00 de terceiros permanecem pendentes de classificação econômica.
-R$ 468,33 de pagamento de fatura afetam banco sem duplicar despesa de consumo.
-R$ 133,40 permanecem `A classificar`.
+## Supabase
+Nenhum SQL adicional é necessário após a estrutura V8.9.8 já ter sido criada.
 
-Ordem:
-1. executar `supabase_v8_9_8_conciliacao_pf_nubank.sql`;
-2. atualizar arquivos do GitHub;
-3. em PF, importar `conciliacao_pf_nubank_2026-08.csv`;
-4. validar saldo R$ 57,96.
-
-Sem commit, push, deploy ou homologação automáticos.
+## Preservação
+- CNPJ não alterado.
+- Orçamentos não alterados.
+- Movimentações históricas não apagadas/regravadas.
+- Nenhuma homologação automática.

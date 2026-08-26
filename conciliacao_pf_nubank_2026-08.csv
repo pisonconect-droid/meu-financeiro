@@ -34,11 +34,11 @@ data;direcao;valor;contraparte;descricao;classificacao;categoria_sugerida;classi
 2026-08-23;entrada;100,00;Giliane de Oliveira Souza;Movimento bancário;transferencia_terceiro;;nao;Transferência recebida de terceiro — pendente de classificação.;PF-NUBANK-202608-025
 2026-08-02;saida;50,00;Ultra Posto de Serviços;Movimento bancário;despesa;Combustível;sim;;PF-NUBANK-202608-026
 2026-08-02;saida;9,79;Mercado Aroquense;Movimento bancário;despesa;Mercado/Alimentação;sim;;PF-NUBANK-202608-027
-2026-08-05;saida;200,00;Pagamento de fatura;Movimento bancário;pagamento_fatura;;sim;Liquidação bancária; não duplicar despesa já registrada.;PF-NUBANK-202608-028
-2026-08-05;saida;12,00;Pagamento de fatura;Movimento bancário;pagamento_fatura;;sim;Liquidação bancária; não duplicar despesa já registrada.;PF-NUBANK-202608-029
+2026-08-05;saida;200,00;Pagamento de fatura;Movimento bancário;pagamento_fatura;;sim;"Liquidação bancária;  não duplicar despesa já registrada.";PF-NUBANK-202608-028
+2026-08-05;saida;12,00;Pagamento de fatura;Movimento bancário;pagamento_fatura;;sim;"Liquidação bancária;  não duplicar despesa já registrada.";PF-NUBANK-202608-029
 2026-08-06;saida;38,00;PIX Marketplace;Movimento bancário;despesa;;sim;;PF-NUBANK-202608-030
 2026-08-06;saida;4,53;Indústria de Pães e Doces Aroquense;Movimento bancário;despesa;Mercado/Alimentação;sim;;PF-NUBANK-202608-031
-2026-08-06;saida;50,00;Pagamento de fatura;Movimento bancário;pagamento_fatura;;sim;Liquidação bancária; não duplicar despesa já registrada.;PF-NUBANK-202608-032
+2026-08-06;saida;50,00;Pagamento de fatura;Movimento bancário;pagamento_fatura;;sim;"Liquidação bancária;  não duplicar despesa já registrada.";PF-NUBANK-202608-032
 2026-08-07;saida;50,00;Ultra Posto;Movimento bancário;despesa;Combustível;sim;;PF-NUBANK-202608-033
 2026-08-08;saida;4,50;Eduardo Shinji Tiba;Movimento bancário;despesa;;sim;;PF-NUBANK-202608-034
 2026-08-09;saida;21,75;Drogaria Moller;Movimento bancário;despesa;Saúde/Farmácia;sim;;PF-NUBANK-202608-035
@@ -54,8 +54,8 @@ data;direcao;valor;contraparte;descricao;classificacao;categoria_sugerida;classi
 2026-08-19;saida;15,90;EmporioE;Movimento bancário;despesa;Mercado/Alimentação;sim;;PF-NUBANK-202608-045
 2026-08-19;saida;10,99;Supermercado Lacerda;Movimento bancário;despesa;Mercado/Alimentação;sim;;PF-NUBANK-202608-046
 2026-08-19;saida;10,00;Maria do Socorro;Movimento bancário;despesa;;sim;;PF-NUBANK-202608-047
-2026-08-19;saida;103,40;Débito em conta;Movimento bancário;a_classificar;;nao;Finalidade insuficiente no extrato; manter A classificar.;PF-NUBANK-202608-048
-2026-08-20;saida;30,00;Débito em conta;Movimento bancário;a_classificar;;nao;Finalidade insuficiente no extrato; manter A classificar.;PF-NUBANK-202608-049
+2026-08-19;saida;103,40;Débito em conta;Movimento bancário;a_classificar;;nao;"Finalidade insuficiente no extrato;  manter A classificar.";PF-NUBANK-202608-048
+2026-08-20;saida;30,00;Débito em conta;Movimento bancário;a_classificar;;nao;"Finalidade insuficiente no extrato;  manter A classificar.";PF-NUBANK-202608-049
 2026-08-20;saida;100,00;Ultra Posto;Movimento bancário;despesa;Combustível;sim;;PF-NUBANK-202608-050
 2026-08-20;saida;200,00;Josué Martins de Melo;Movimento bancário;despesa;;sim;;PF-NUBANK-202608-051
 2026-08-20;saida;10,00;Jair Lima da Silva;Movimento bancário;despesa;;sim;;PF-NUBANK-202608-052
@@ -73,8 +73,8 @@ data;direcao;valor;contraparte;descricao;classificacao;categoria_sugerida;classi
 2026-08-22;saida;31,00;Bolanhus Salgateria;Movimento bancário;despesa;Alimentação;sim;;PF-NUBANK-202608-064
 2026-08-22;saida;124,90;Mercearia dos Bichos;Movimento bancário;despesa;;sim;;PF-NUBANK-202608-065
 2026-08-22;saida;8,99;Mercado WC Ltda;Movimento bancário;despesa;Mercado/Alimentação;sim;;PF-NUBANK-202608-066
-2026-08-22;saida;203,24;Pagamento de fatura;Movimento bancário;pagamento_fatura;;sim;Liquidação bancária; não duplicar despesa já registrada.;PF-NUBANK-202608-067
-2026-08-22;saida;3,09;Pagamento de fatura;Movimento bancário;pagamento_fatura;;sim;Liquidação bancária; não duplicar despesa já registrada.;PF-NUBANK-202608-068
+2026-08-22;saida;203,24;Pagamento de fatura;Movimento bancário;pagamento_fatura;;sim;"Liquidação bancária;  não duplicar despesa já registrada.";PF-NUBANK-202608-067
+2026-08-22;saida;3,09;Pagamento de fatura;Movimento bancário;pagamento_fatura;;sim;"Liquidação bancária;  não duplicar despesa já registrada.";PF-NUBANK-202608-068
 2026-08-22;saida;9,00;RevistariaE;Movimento bancário;despesa;;sim;;PF-NUBANK-202608-069
 2026-08-22;saida;895,79;Andorinha Hiper;Movimento bancário;despesa;Mercado/Alimentação;sim;;PF-NUBANK-202608-070
 2026-08-23;saida;50,00;Ultra Posto;Movimento bancário;despesa;Combustível;sim;;PF-NUBANK-202608-071
