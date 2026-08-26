@@ -1,0 +1,82 @@
+﻿META;conta;PF
+META;banco;Nubank
+META;periodo_inicio;2026-08-01
+META;periodo_fim;2026-08-24
+META;saldo_inicial;4,34
+META;total_entradas;3159,00
+META;total_saidas;3105,38
+META;saldo_final;57,96
+data;direcao;valor;contraparte;descricao;classificacao;categoria_sugerida;classificacao_confirmada;observacao;source_key
+2026-08-02;entrada;19,00;Pedro José de Santana Filho;Movimento bancário;transferencia_propria;;sim;;PF-NUBANK-202608-001
+2026-08-02;entrada;30,00;Giliane de Oliveira Souza;Movimento bancário;transferencia_terceiro;;nao;Transferência recebida de terceiro — pendente de classificação.;PF-NUBANK-202608-002
+2026-08-02;entrada;20,00;Giliane de Oliveira Souza;Movimento bancário;transferencia_terceiro;;nao;Transferência recebida de terceiro — pendente de classificação.;PF-NUBANK-202608-003
+2026-08-05;entrada;250,00;Pedro José de Santana Filho;Movimento bancário;transferencia_propria;;sim;;PF-NUBANK-202608-004
+2026-08-06;entrada;50,00;Pedro José de Santana Filho;Movimento bancário;transferencia_propria;;sim;;PF-NUBANK-202608-005
+2026-08-07;entrada;50,00;Pedro José de Santana Filho;Movimento bancário;transferencia_propria;;sim;;PF-NUBANK-202608-006
+2026-08-09;entrada;39,00;Pedro José de Santana Filho;Movimento bancário;transferencia_propria;;sim;;PF-NUBANK-202608-007
+2026-08-09;entrada;5,00;Pedro José de Santana Filho via Mercado Pago/Open Banking;Movimento bancário;transferencia_propria;;sim;;PF-NUBANK-202608-008
+2026-08-11;entrada;69,00;Pedro José de Santana Filho;Movimento bancário;transferencia_propria;;sim;;PF-NUBANK-202608-009
+2026-08-12;entrada;100,00;Pedro José de Santana Filho;Movimento bancário;transferencia_propria;;sim;;PF-NUBANK-202608-010
+2026-08-14;entrada;50,00;Pedro José de Santana Filho;Movimento bancário;transferencia_propria;;sim;;PF-NUBANK-202608-011
+2026-08-15;entrada;10,00;Pedro José de Santana Filho;Movimento bancário;transferencia_propria;;sim;;PF-NUBANK-202608-012
+2026-08-18;entrada;37,00;Pedro José de Santana Filho;Movimento bancário;transferencia_propria;;sim;;PF-NUBANK-202608-013
+2026-08-19;entrada;50,00;Pedro José de Santana Filho;Movimento bancário;transferencia_propria;;sim;;PF-NUBANK-202608-014
+2026-08-19;entrada;150,00;Pedro José de Santana Filho;Movimento bancário;transferencia_propria;;sim;;PF-NUBANK-202608-015
+2026-08-20;entrada;200,00;Pedro José de Santana Filho;Movimento bancário;transferencia_propria;;sim;;PF-NUBANK-202608-016
+2026-08-20;entrada;150,00;Pedro José de Santana Filho;Movimento bancário;transferencia_propria;;sim;;PF-NUBANK-202608-017
+2026-08-21;entrada;150,00;Pedro José de Santana Filho;Movimento bancário;transferencia_propria;;sim;;PF-NUBANK-202608-018
+2026-08-22;entrada;200,00;Pedro José de Santana Filho;Movimento bancário;transferencia_propria;;sim;;PF-NUBANK-202608-019
+2026-08-22;entrada;170,00;Pedro José de Santana Filho;Movimento bancário;transferencia_propria;;sim;;PF-NUBANK-202608-020
+2026-08-22;entrada;600,00;Pedro José de Santana Filho;Movimento bancário;transferencia_propria;;sim;;PF-NUBANK-202608-021
+2026-08-22;entrada;250,00;Pedro José de Santana Filho;Movimento bancário;transferencia_propria;;sim;;PF-NUBANK-202608-022
+2026-08-22;entrada;100,00;Pedro José de Santana Filho;Movimento bancário;transferencia_propria;;sim;;PF-NUBANK-202608-023
+2026-08-23;entrada;310,00;Pedro José de Santana Filho;Movimento bancário;transferencia_propria;;sim;;PF-NUBANK-202608-024
+2026-08-23;entrada;100,00;Giliane de Oliveira Souza;Movimento bancário;transferencia_terceiro;;nao;Transferência recebida de terceiro — pendente de classificação.;PF-NUBANK-202608-025
+2026-08-02;saida;50,00;Ultra Posto de Serviços;Movimento bancário;despesa;Combustível;sim;;PF-NUBANK-202608-026
+2026-08-02;saida;9,79;Mercado Aroquense;Movimento bancário;despesa;Mercado/Alimentação;sim;;PF-NUBANK-202608-027
+2026-08-05;saida;200,00;Pagamento de fatura;Movimento bancário;pagamento_fatura;;sim;Liquidação bancária; não duplicar despesa já registrada.;PF-NUBANK-202608-028
+2026-08-05;saida;12,00;Pagamento de fatura;Movimento bancário;pagamento_fatura;;sim;Liquidação bancária; não duplicar despesa já registrada.;PF-NUBANK-202608-029
+2026-08-06;saida;38,00;PIX Marketplace;Movimento bancário;despesa;;sim;;PF-NUBANK-202608-030
+2026-08-06;saida;4,53;Indústria de Pães e Doces Aroquense;Movimento bancário;despesa;Mercado/Alimentação;sim;;PF-NUBANK-202608-031
+2026-08-06;saida;50,00;Pagamento de fatura;Movimento bancário;pagamento_fatura;;sim;Liquidação bancária; não duplicar despesa já registrada.;PF-NUBANK-202608-032
+2026-08-07;saida;50,00;Ultra Posto;Movimento bancário;despesa;Combustível;sim;;PF-NUBANK-202608-033
+2026-08-08;saida;4,50;Eduardo Shinji Tiba;Movimento bancário;despesa;;sim;;PF-NUBANK-202608-034
+2026-08-09;saida;21,75;Drogaria Moller;Movimento bancário;despesa;Saúde/Farmácia;sim;;PF-NUBANK-202608-035
+2026-08-09;saida;20,00;Ultra Posto;Movimento bancário;despesa;Combustível;sim;;PF-NUBANK-202608-036
+2026-08-11;saida;19,90;EmporioE;Movimento bancário;despesa;Mercado/Alimentação;sim;;PF-NUBANK-202608-037
+2026-08-11;saida;50,00;Auto Posto Atencioso;Movimento bancário;despesa;Combustível;sim;;PF-NUBANK-202608-038
+2026-08-12;saida;31,80;EmporioE;Movimento bancário;despesa;Mercado/Alimentação;sim;;PF-NUBANK-202608-039
+2026-08-12;saida;62,00;Auto Posto Atencioso;Movimento bancário;despesa;Combustível;sim;;PF-NUBANK-202608-040
+2026-08-14;saida;19,90;EmporioE;Movimento bancário;despesa;Mercado/Alimentação;sim;;PF-NUBANK-202608-041
+2026-08-15;saida;50,00;Ultra Posto;Movimento bancário;despesa;Combustível;sim;;PF-NUBANK-202608-042
+2026-08-18;saida;15,90;Empório & Distribuidora de Alimentos e Bebidas;Movimento bancário;despesa;Mercado/Alimentação;sim;;PF-NUBANK-202608-043
+2026-08-18;saida;12,99;Supermercado Lacerda de Osasco;Movimento bancário;despesa;Mercado/Alimentação;sim;;PF-NUBANK-202608-044
+2026-08-19;saida;15,90;EmporioE;Movimento bancário;despesa;Mercado/Alimentação;sim;;PF-NUBANK-202608-045
+2026-08-19;saida;10,99;Supermercado Lacerda;Movimento bancário;despesa;Mercado/Alimentação;sim;;PF-NUBANK-202608-046
+2026-08-19;saida;10,00;Maria do Socorro;Movimento bancário;despesa;;sim;;PF-NUBANK-202608-047
+2026-08-19;saida;103,40;Débito em conta;Movimento bancário;a_classificar;;nao;Finalidade insuficiente no extrato; manter A classificar.;PF-NUBANK-202608-048
+2026-08-20;saida;30,00;Débito em conta;Movimento bancário;a_classificar;;nao;Finalidade insuficiente no extrato; manter A classificar.;PF-NUBANK-202608-049
+2026-08-20;saida;100,00;Ultra Posto;Movimento bancário;despesa;Combustível;sim;;PF-NUBANK-202608-050
+2026-08-20;saida;200,00;Josué Martins de Melo;Movimento bancário;despesa;;sim;;PF-NUBANK-202608-051
+2026-08-20;saida;10,00;Jair Lima da Silva;Movimento bancário;despesa;;sim;;PF-NUBANK-202608-052
+2026-08-20;saida;30,00;Chicana;Movimento bancário;despesa;;sim;;PF-NUBANK-202608-053
+2026-08-20;saida;47,97;Emporio Rio Pequeno;Movimento bancário;despesa;Mercado/Alimentação;sim;;PF-NUBANK-202608-054
+2026-08-21;saida;27,00;Motoyuki;Movimento bancário;despesa;;sim;;PF-NUBANK-202608-055
+2026-08-21;saida;3,65;Rodoanel Pedágio;Movimento bancário;despesa;Pedágio;sim;;PF-NUBANK-202608-056
+2026-08-21;saida;28,90;AF Bras;Movimento bancário;despesa;;sim;;PF-NUBANK-202608-057
+2026-08-21;saida;24,00;Soberana do Bras;Movimento bancário;despesa;;sim;;PF-NUBANK-202608-058
+2026-08-21;saida;4,00;MP Samuel Confeco;Movimento bancário;despesa;;sim;;PF-NUBANK-202608-059
+2026-08-21;saida;4,00;MP Samuel Confeco;Movimento bancário;despesa;;sim;;PF-NUBANK-202608-060
+2026-08-21;saida;10,00;Felipe da Silva Neves;Movimento bancário;despesa;;sim;;PF-NUBANK-202608-061
+2026-08-22;saida;42,50;Center Okinalar;Movimento bancário;despesa;;sim;;PF-NUBANK-202608-062
+2026-08-22;saida;4,00;MP Samuel Confeco;Movimento bancário;despesa;;sim;;PF-NUBANK-202608-063
+2026-08-22;saida;31,00;Bolanhus Salgateria;Movimento bancário;despesa;Alimentação;sim;;PF-NUBANK-202608-064
+2026-08-22;saida;124,90;Mercearia dos Bichos;Movimento bancário;despesa;;sim;;PF-NUBANK-202608-065
+2026-08-22;saida;8,99;Mercado WC Ltda;Movimento bancário;despesa;Mercado/Alimentação;sim;;PF-NUBANK-202608-066
+2026-08-22;saida;203,24;Pagamento de fatura;Movimento bancário;pagamento_fatura;;sim;Liquidação bancária; não duplicar despesa já registrada.;PF-NUBANK-202608-067
+2026-08-22;saida;3,09;Pagamento de fatura;Movimento bancário;pagamento_fatura;;sim;Liquidação bancária; não duplicar despesa já registrada.;PF-NUBANK-202608-068
+2026-08-22;saida;9,00;RevistariaE;Movimento bancário;despesa;;sim;;PF-NUBANK-202608-069
+2026-08-22;saida;895,79;Andorinha Hiper;Movimento bancário;despesa;Mercado/Alimentação;sim;;PF-NUBANK-202608-070
+2026-08-23;saida;50,00;Ultra Posto;Movimento bancário;despesa;Combustível;sim;;PF-NUBANK-202608-071
+2026-08-23;saida;300,00;Bar do José Maria;Movimento bancário;despesa;;sim;;PF-NUBANK-202608-072
+2026-08-24;saida;50,00;Ultra Posto;Movimento bancário;despesa;Combustível;sim;;PF-NUBANK-202608-073

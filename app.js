@@ -1,6 +1,6 @@
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 let session=null,current=null,authMode="login";
-let state={mov:[],contas:[],orc:[],orcItens:[],orcCustos:[],orcFotos:[],orcRecebimentos:[],orcNfse:[],fixas:[],categorias:[],clientes:[],profile:null,contaLiquidacoes:[],compensacoes:[],cartoes:[],faturasCartao:[]};
+let state={mov:[],contas:[],orc:[],orcItens:[],orcCustos:[],orcFotos:[],orcRecebimentos:[],orcNfse:[],fixas:[],categorias:[],clientes:[],profile:null,contaLiquidacoes:[],compensacoes:[],cartoes:[],faturasCartao:[],bankReconciliations:[],bankReconciliationEntries:[]};
 let selectedClientId=null;
 let editingOrcId=null;
 let movCategoryFilter="TODOS";
@@ -145,7 +145,7 @@ function restoreNavigation(){
 }
 
 async function loadAll(){
-  const [m,c,o,oi,oc,of,orx,clq,cmp,onf,f,cat,cli,cc,inv,p]=await Promise.all([
+  const [m,c,o,oi,oc,of,orx,clq,cmp,onf,f,cat,cli,cc,inv,br,bre,p]=await Promise.all([
     sb.from("movimentacoes").select("*").order("data",{ascending:false}).order("created_at",{ascending:false}),
     sb.from("contas").select("*").order("vencimento"),
     sb.from("orcamentos").select("*").order("created_at",{ascending:false}),
@@ -161,11 +161,13 @@ async function loadAll(){
     sb.from("clientes").select("*").order("nome"),
     sb.from("cartoes_credito").select("*").order("nome"),
     sb.from("cartao_faturas").select("*").order("vencimento",{ascending:true}),
+    sb.from("bank_reconciliations").select("*").order("periodo_fim",{ascending:false}),
+    sb.from("bank_reconciliation_entries").select("*").order("data",{ascending:true}),
     sb.from("profiles").select("*").eq("id",uid()).maybeSingle()
   ]);
-  const er=m.error||c.error||o.error||oi.error||oc.error||of.error||orx.error||clq.error||cmp.error||onf.error||f.error||cat.error||cli.error||cc.error||inv.error||p.error;
+  const er=m.error||c.error||o.error||oi.error||oc.error||of.error||orx.error||clq.error||cmp.error||onf.error||f.error||cat.error||cli.error||cc.error||inv.error||br.error||bre.error||p.error;
   if(er){alert(er.message);return}
-  state={mov:m.data||[],contas:c.data||[],orc:o.data||[],orcItens:oi.data||[],orcCustos:oc.data||[],orcFotos:of.data||[],orcRecebimentos:orx.data||[],contaLiquidacoes:clq.data||[],compensacoes:cmp.data||[],orcNfse:onf.data||[],fixas:f.data||[],categorias:cat.data||[],clientes:cli.data||[],cartoes:cc.data||[],faturasCartao:inv.data||[],profile:p.data||null};
+  state={mov:m.data||[],contas:c.data||[],orc:o.data||[],orcItens:oi.data||[],orcCustos:oc.data||[],orcFotos:of.data||[],orcRecebimentos:orx.data||[],contaLiquidacoes:clq.data||[],compensacoes:cmp.data||[],orcNfse:onf.data||[],fixas:f.data||[],categorias:cat.data||[],clientes:cli.data||[],cartoes:cc.data||[],faturasCartao:inv.data||[],bankReconciliations:br.data||[],bankReconciliationEntries:bre.data||[],profile:p.data||null};
   await ensureDefaultCategories();initPeriodSelector();renderCategoryUI();render();renderCalendar();renderFixas();renderFinancialReport();renderBudgetSummary();
 }
 
@@ -211,6 +213,7 @@ function openAccountCalendar(account,save=true){
 $("btnEntrada").onclick=()=>openMov("entrada");
 $("btnGasto").onclick=()=>openMov("saida");
 $("btnExportHistory").onclick=()=>current&&downloadHistoryCsv(current);
+$("pfReconFile").onchange=e=>{const f=e.target.files?.[0];if(f)importPfReconciliationFile(f);e.target.value="";};
 $("btnConta").onclick=()=>openConta();
 
 
@@ -548,7 +551,18 @@ $("transferForm").onsubmit=async e=>{
   await loadAll();
 };
 
-function saldo(a){return state.mov.filter(x=>x.conta===a&&x.impacta_saldo!==false).reduce((s,x)=>s+(x.tipo==="entrada"?+x.valor:x.tipo==="saida"?-x.valor:0),0)}
+function latestBankReconciliation(account){
+  return (state.bankReconciliations||[]).filter(r=>r.conta===account&&r.status==="conciliado").sort((a,b)=>String(b.periodo_fim).localeCompare(String(a.periodo_fim)))[0]||null;
+}
+function saldoMovimentosApos(account,date){
+  return state.mov.filter(x=>x.conta===account&&x.impacta_saldo!==false&&String(x.data||"")>String(date||""))
+    .reduce((s,x)=>s+(x.tipo==="entrada"?+x.valor:x.tipo==="saida"?-x.valor:0),0);
+}
+function saldo(a){
+  const recon=latestBankReconciliation(a);
+  if(recon)return Number(recon.saldo_final||0)+saldoMovimentosApos(a,recon.periodo_fim);
+  return state.mov.filter(x=>x.conta===a&&x.impacta_saldo!==false).reduce((s,x)=>s+(x.tipo==="entrada"?+x.valor:x.tipo==="saida"?-x.valor:0),0);
+}
 const sum=a=>a.reduce((s,x)=>s+Number(x.valor),0);
 
 
@@ -790,6 +804,66 @@ function downloadHistoryCsv(account){
   const url=URL.createObjectURL(blob),a=document.createElement("a");
   a.href=url;a.download=`historico_${account}_${hoje()}.csv`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
+
+function pfReconEntries(){
+  const r=latestBankReconciliation("PF");
+  return r?(state.bankReconciliationEntries||[]).filter(x=>x.reconciliation_id===r.id):[];
+}
+function reconSumBy(classification){
+  return pfReconEntries().filter(x=>x.classificacao===classification).reduce((s,x)=>s+Number(x.valor||0),0);
+}
+function renderPfBankReconciliation(){
+  const wrap=$("pfBankReconciliationWrap"); if(!wrap)return;
+  wrap.classList.toggle("hidden",current!=="PF"); if(current!=="PF")return;
+  const r=latestBankReconciliation("PF");
+  if(!r){
+    $("pfReconPeriod").textContent="Nenhuma conciliação importada";
+    $("pfReconEquation").textContent="Importe o arquivo de conciliação PF Nubank.";
+    ["pfReconBalance","pfReconRevenue","pfReconExpenses","pfReconOwnTransfers","pfReconThirdTransfers","pfReconCardPayments","pfReconUnclassified"].forEach(id=>$(id).textContent=brl(0));
+    return;
+  }
+  $("pfReconPeriod").textContent=`Nubank · ${dataBR(r.periodo_inicio)} a ${dataBR(r.periodo_fim)}`;
+  $("pfReconEquation").textContent=`${brl(r.saldo_inicial)} + ${brl(r.total_entradas)} - ${brl(r.total_saidas)} = ${brl(r.saldo_final)}`;
+  $("pfReconBalance").textContent=brl(saldo("PF"));
+  $("pfReconRevenue").textContent=brl(reconSumBy("receita"));
+  $("pfReconExpenses").textContent=brl(reconSumBy("despesa"));
+  $("pfReconOwnTransfers").textContent=brl(reconSumBy("transferencia_propria"));
+  $("pfReconThirdTransfers").textContent=brl(reconSumBy("transferencia_terceiro"));
+  $("pfReconCardPayments").textContent=brl(reconSumBy("pagamento_fatura"));
+  $("pfReconUnclassified").textContent=brl(reconSumBy("a_classificar"));
+}
+function parseMoneyCsv(v){return Number(String(v||"0").trim().replace(/\./g,"").replace(",","."));}
+function parsePfReconciliationCsv(text){
+  const lines=String(text||"").replace(/^\uFEFF/,"").split(/\r?\n/).filter(Boolean),meta={},entries=[]; let header=false;
+  for(const line of lines){
+    const c=line.split(";").map(x=>x.trim());
+    if(c[0]==="META"){meta[c[1]]=c[2];continue}
+    if(c[0]==="data"){header=true;continue}
+    if(!header)continue;
+    entries.push({data:c[0],direcao:c[1],valor:parseMoneyCsv(c[2]),contraparte:c[3]||"",descricao:c[4]||"",
+      classificacao:c[5]||"a_classificar",categoria_sugerida:c[6]||"",classificacao_confirmada:c[7]==="sim",
+      observacao:c[8]||"",source_key:c[9]||""});
+  }
+  return{meta,entries};
+}
+async function importPfReconciliationFile(file){
+  const {meta:m,entries:e}=parsePfReconciliationCsv(await file.text());
+  const entradas=e.filter(x=>x.direcao==="entrada").reduce((s,x)=>s+x.valor,0);
+  const saidas=e.filter(x=>x.direcao==="saida").reduce((s,x)=>s+x.valor,0);
+  const saldoInicial=parseMoneyCsv(m.saldo_inicial),saldoFinal=saldoInicial+entradas-saidas;
+  const cents=x=>Math.round(Number(x||0)*100);
+  if(cents(entradas)!==cents(parseMoneyCsv(m.total_entradas))||cents(saidas)!==cents(parseMoneyCsv(m.total_saidas))||cents(saldoFinal)!==cents(parseMoneyCsv(m.saldo_final)))
+    return alert(`Conciliação recusada: ${brl(saldoInicial)} + ${brl(entradas)} - ${brl(saidas)} = ${brl(saldoFinal)}.`);
+  if(m.conta!=="PF"||m.banco!=="Nubank")return alert("Arquivo não corresponde à PF Nubank.");
+  const payload={user_id:uid(),conta:"PF",banco:"Nubank",periodo_inicio:m.periodo_inicio,periodo_fim:m.periodo_fim,saldo_inicial:saldoInicial,
+    total_entradas:entradas,total_saidas:saidas,saldo_final:saldoFinal,status:"conciliado",fonte:"extrato_bancario"};
+  const {data:r,error}=await sb.from("bank_reconciliations").upsert(payload,{onConflict:"user_id,conta,banco,periodo_inicio,periodo_fim"}).select("*").single();
+  if(error)return alert("Conciliação: "+error.message);
+  const del=await sb.from("bank_reconciliation_entries").delete().eq("reconciliation_id",r.id); if(del.error)return alert("Conciliação: "+del.error.message);
+  const rows=e.map(x=>({...x,user_id:uid(),reconciliation_id:r.id,conta:"PF",banco:"Nubank",impacta_saldo:true}));
+  const ins=await sb.from("bank_reconciliation_entries").insert(rows); if(ins.error)return alert("Conciliação: "+ins.error.message);
+  await loadAll(); alert(`Conciliação PF concluída. Saldo bancário em ${dataBR(m.periodo_fim)}: ${brl(saldoFinal)}.`);
+}
 function render(){
   ensureSelectedPeriod();
   updatePeriodSelectorUI();
@@ -818,6 +892,8 @@ function render(){
   $("saldoAtual").textContent=brl(s);
   $("saldoAtual").className="money-value "+(s>0?"positive":s<0?"negative":"");
   $("statusSaldo").textContent=s>0?"POSITIVO":s<0?"NEGATIVO":"ZERADO";
+  $("saldoAtual")?.previousElementSibling && ($("saldoAtual").previousElementSibling.textContent=current==="PF"&&latestBankReconciliation("PF")?"Saldo bancário":"Saldo atual");
+  renderPfBankReconciliation();
   const movimentosConta=state.mov.filter(x=>x.conta===current&&String(x.data||"").slice(0,7)===selectedPeriod);
   const movimentosFiltrados=movCategoryFilter==="TODOS"
     ? movimentosConta
