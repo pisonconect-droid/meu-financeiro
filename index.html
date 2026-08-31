@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111827">
 <title>Meu Financeiro</title>
-<link rel="stylesheet" href="styles.css?v=8.9.9">
+<link rel="stylesheet" href="styles.css?v=8.10.1">
 
 <link rel="icon" type="image/png" href="favicon.png?v=8.3.1">
 <link rel="apple-touch-icon" href="apple-touch-icon.png?v=8.3.1">
@@ -47,7 +47,7 @@
 </section>
 
 <section id="area" class="view">
-<div class="card saldo"><h2 id="accountName"></h2><small>Saldo atual</small><strong class="money-value" id="saldoAtual">R$ 0,00</strong><b id="statusSaldo">ZERADO</b></div>
+<div class="card saldo"><h2 id="accountName"></h2><small>Saldo atual</small><strong class="money-value" id="saldoAtual">R$ 0,00</strong><b id="statusSaldo">ZERADO</b><small id="bankBalanceLegacyNote" class="bank-balance-legacy-note hidden"></small></div>
 <div id="periodSelector" class="period-selector">
   <button id="periodPrev" type="button" title="Mês anterior" aria-label="Mês anterior">‹</button>
   <div class="period-center">
@@ -168,7 +168,7 @@
     <div class="annual-kpis">
       <div><span id="annualIncomeLabel">Entradas</span><strong class="money-value" id="annualIncome">R$ 0,00</strong></div>
       <div><span id="annualExpenseLabel">Gastos</span><strong class="money-value" id="annualExpense">R$ 0,00</strong></div>
-      <div><span>Resultado</span><strong class="money-value" id="annualResult">R$ 0,00</strong></div>
+      <div><span id="annualResultLabel">Resultado</span><strong class="money-value" id="annualResult">R$ 0,00</strong></div>
       <div><span>Transferências</span><strong class="money-value" id="annualTransfers">R$ 0,00</strong></div>
     </div>
 
@@ -177,7 +177,7 @@
         <h3>Por mês</h3>
         <div class="table-scroll">
           <table class="report-table">
-            <thead><tr><th>Mês</th><th id="monthlyIncomeHead">Entradas</th><th>Gastos</th><th>Resultado</th></tr></thead>
+            <thead><tr><th>Mês</th><th id="monthlyIncomeHead">Entradas</th><th>Gastos</th><th id="monthlyResultHead">Resultado</th></tr></thead>
             <tbody id="annualMonthlyRows"></tbody>
           </table>
         </div>
@@ -538,5 +538,5 @@
 <button class="danger remove-cost remove-soft" type="button" title="Remover custo" aria-label="Remover custo"><span aria-hidden="true">🗑</span></button></div></template>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script><script src="config.js"></script><script src="app.js?v=8.9.9"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script><script src="config.js"></script><script src="app.js?v=8.10.1"></script>
 </body></html>

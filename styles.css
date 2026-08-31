@@ -2048,3 +2048,8 @@ body.touch-landscape-budget{
 .bank-recon-cards small{display:block;color:#64748b;font-size:.72rem}.bank-recon-cards b{display:block;margin-top:4px;font-size:.95rem}
 @media(max-width:800px){.bank-recon-cards{grid-template-columns:repeat(2,minmax(0,1fr))}.bank-reconciliation-head{align-items:flex-start;flex-direction:column}}
 @media(max-width:430px){.bank-recon-cards{grid-template-columns:1fr}}
+
+/* V8.10.1 — separação visual entre caixa e eventos econômicos */
+.bank-balance-legacy-note{display:block;max-width:680px;margin-top:10px;padding-top:9px;border-top:1px solid #e5e7eb;color:#92400e;line-height:1.35}
+.economic-movement{border-style:dashed;background:#fffbeb}
+.economic-value{color:#92400e}
