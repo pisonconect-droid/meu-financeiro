@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111827">
 <title>Meu Financeiro</title>
-<link rel="stylesheet" href="styles.css?v=8.10.1">
+<link rel="stylesheet" href="styles.css?v=8.10.2-auth">
 
 <link rel="icon" type="image/png" href="favicon.png?v=8.3.1">
 <link rel="apple-touch-icon" href="apple-touch-icon.png?v=8.3.1">
@@ -48,6 +48,7 @@
 
 <section id="area" class="view">
 <div class="card saldo"><h2 id="accountName"></h2><small>Saldo atual</small><strong class="money-value" id="saldoAtual">R$ 0,00</strong><b id="statusSaldo">ZERADO</b><small id="bankBalanceLegacyNote" class="bank-balance-legacy-note hidden"></small></div>
+<div id="budgetBalanceCard" class="card saldo budget-balance-card hidden"><h2>Saldo dos Orçamentos</h2><small>Posição pendente dos serviços</small><strong class="money-value" id="budgetBalanceValue">R$ 0,00</strong><small id="budgetBalanceComposition">A receber R$ 0,00 − A pagar R$ 0,00</small></div>
 <div id="periodSelector" class="period-selector">
   <button id="periodPrev" type="button" title="Mês anterior" aria-label="Mês anterior">‹</button>
   <div class="period-center">
@@ -414,6 +415,15 @@
 <label class="check-row"><input id="modORC" type="checkbox"> Orçamentos</label>
 <button class="primary">Salvar módulos</button>
 </form>
+<!-- V8.10.2 TEMPORARIO: remover com o modal e os blocos JS/CSS identificados. -->
+<button id="openV8102Regularization" class="v8102-admin-entry" type="button">Regularização V8.10.2</button>
+</div></div>
+
+<!-- V8.10.2 TEMPORARIO: nunca executa ao carregar. -->
+<div id="v8102RegularizationModal" class="modal hidden"><div class="card modal-card wide-modal v8102-admin-modal">
+<div class="head"><div><h2>Regularização V8.10.2</h2><small>Operações autenticadas, históricas e individuais</small></div><button id="closeV8102Regularization" type="button">×</button></div>
+<p class="v8102-admin-warning">Revise o JSON exibido. Cada botão chama somente sua RPC após confirmação explícita.</p>
+<div id="v8102Operations" class="v8102-operations"></div>
 </div></div>
 
 <div id="clientModal" class="modal hidden"><div class="modal-card client-modal-card">
@@ -538,5 +548,5 @@
 <button class="danger remove-cost remove-soft" type="button" title="Remover custo" aria-label="Remover custo"><span aria-hidden="true">🗑</span></button></div></template>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script><script src="config.js"></script><script src="app.js?v=8.10.1"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script><script src="config.js"></script><script src="app.js?v=8.10.2-auth-access"></script>
 </body></html>
