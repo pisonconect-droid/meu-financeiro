@@ -1,6 +1,6 @@
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 let session=null,current=null,authMode="login";
-let state={mov:[],contas:[],orc:[],orcItens:[],orcCustos:[],orcFotos:[],orcRecebimentos:[],orcNfse:[],fixas:[],categorias:[],clientes:[],profile:null,contaLiquidacoes:[],compensacoes:[],cartoes:[],faturasCartao:[],bankReconciliations:[],bankReconciliationEntries:[]};
+let state={mov:[],contas:[],orc:[],orcItens:[],orcCustos:[],orcFotos:[],orcRecebimentos:[],orcNfse:[],fixas:[],categorias:[],clientes:[],profile:null,contaLiquidacoes:[],compensacoes:[],cartoes:[],faturasCartao:[],bankReconciliations:[],bankReconciliationEntries:[],balanceBaselines:[]};
 let selectedClientId=null;
 let editingOrcId=null;
 let movCategoryFilter="TODOS";
@@ -168,7 +168,7 @@ function restoreNavigation(){
 }
 
 async function loadAll(){
-  const [m,c,o,oi,oc,of,orx,clq,cmp,onf,f,cat,cli,cc,inv,br,bre,p]=await Promise.all([
+  const [m,c,o,oi,oc,of,orx,clq,cmp,onf,f,cat,cli,cc,inv,br,bre,bb,p]=await Promise.all([
     sb.from("movimentacoes").select("*").order("data",{ascending:false}).order("created_at",{ascending:false}),
     sb.from("contas").select("*").order("vencimento"),
     sb.from("orcamentos").select("*").order("created_at",{ascending:false}),
@@ -186,11 +186,13 @@ async function loadAll(){
     sb.from("cartao_faturas").select("*").order("vencimento",{ascending:true}),
     sb.from("bank_reconciliations").select("*").order("periodo_fim",{ascending:false}),
     sb.from("bank_reconciliation_entries").select("*").order("data",{ascending:true}),
+    sb.from("account_balance_baselines").select("*").eq("ativo",true).order("data_referencia",{ascending:false}),
     sb.from("profiles").select("*").eq("id",uid()).maybeSingle()
   ]);
-  const er=m.error||c.error||o.error||oi.error||oc.error||of.error||orx.error||clq.error||cmp.error||onf.error||f.error||cat.error||cli.error||cc.error||inv.error||br.error||bre.error||p.error;
+  const baselineUnavailable=bb.error&&["42P01","PGRST205"].includes(bb.error.code);
+  const er=m.error||c.error||o.error||oi.error||oc.error||of.error||orx.error||clq.error||cmp.error||onf.error||f.error||cat.error||cli.error||cc.error||inv.error||br.error||bre.error||(baselineUnavailable?null:bb.error)||p.error;
   if(er){alert(er.message);return}
-  state={mov:m.data||[],contas:c.data||[],orc:o.data||[],orcItens:oi.data||[],orcCustos:oc.data||[],orcFotos:of.data||[],orcRecebimentos:orx.data||[],contaLiquidacoes:clq.data||[],compensacoes:cmp.data||[],orcNfse:onf.data||[],fixas:f.data||[],categorias:cat.data||[],clientes:cli.data||[],cartoes:cc.data||[],faturasCartao:inv.data||[],bankReconciliations:br.data||[],bankReconciliationEntries:bre.data||[],profile:p.data||null};
+  state={mov:m.data||[],contas:c.data||[],orc:o.data||[],orcItens:oi.data||[],orcCustos:oc.data||[],orcFotos:of.data||[],orcRecebimentos:orx.data||[],contaLiquidacoes:clq.data||[],compensacoes:cmp.data||[],orcNfse:onf.data||[],fixas:f.data||[],categorias:cat.data||[],clientes:cli.data||[],cartoes:cc.data||[],faturasCartao:inv.data||[],bankReconciliations:br.data||[],bankReconciliationEntries:bre.data||[],balanceBaselines:baselineUnavailable?[]:(bb.data||[]),profile:p.data||null};
   await ensureDefaultCategories();initPeriodSelector();renderCategoryUI();render();renderCalendar();renderFixas();renderFinancialReport();renderBudgetSummary();
 }
 
@@ -577,12 +579,30 @@ $("transferForm").onsubmit=async e=>{
 function latestBankReconciliation(account){
   return (state.bankReconciliations||[]).filter(r=>r.conta===account&&r.status==="conciliado").sort((a,b)=>String(b.periodo_fim).localeCompare(String(a.periodo_fim)))[0]||null;
 }
+function activeBalanceBaseline(account){
+  return (state.balanceBaselines||[]).filter(b=>b.conta===account&&b.ativo!==false)
+    .sort((a,b)=>String(b.ativado_em||b.created_at||"").localeCompare(String(a.ativado_em||a.created_at||"")))[0]||null;
+}
+function isAfterBalanceBaseline(x,baseline){
+  if(!baseline)return true;
+  const movementDate=String(x.data||"").slice(0,10),referenceDate=String(baseline.data_referencia||"").slice(0,10);
+  if(movementDate>referenceDate)return true;
+  if(movementDate<referenceDate)return false;
+  return String(x.created_at||"")>String(baseline.ativado_em||baseline.created_at||"");
+}
 function saldoMovimentosApos(account,date){
   return state.mov.filter(x=>isBankMovement(x)&&x.conta===account&&String(x.data||"")>String(date||""))
     .reduce((s,x)=>s+(x.tipo==="entrada"?+x.valor:x.tipo==="saida"?-x.valor:0),0);
 }
-function isBankMovement(x){return x?.impacta_saldo!==false&&x?.ativa_economica!==false}
+function isBankMovement(x){return x?.impacta_saldo!==false&&x?.ativa_economica!==false&&x?.historico_pre_marco!==true}
+function currentBalanceMovements(account){
+  const baseline=account==="CNPJ"?activeBalanceBaseline(account):null;
+  return (state.mov||[]).filter(x=>x.conta===account&&isBankMovement(x)&&isAfterBalanceBaseline(x,baseline));
+}
 function saldo(a){
+  const baseline=a==="CNPJ"?activeBalanceBaseline(a):null;
+  if(baseline)return Number(baseline.saldo_inicial||0)+currentBalanceMovements(a)
+    .reduce((s,x)=>s+(x.tipo==="entrada"?+x.valor:x.tipo==="saida"?-x.valor:0),0);
   const recon=latestBankReconciliation(a);
   if(recon)return Number(recon.saldo_final||0)+saldoMovimentosApos(a,recon.periodo_fim);
   return state.mov.filter(x=>x.conta===a&&isBankMovement(x)).reduce((s,x)=>s+(x.tipo==="entrada"?+x.valor:x.tipo==="saida"?-x.valor:0),0);
@@ -595,13 +615,19 @@ function businessReceivables(){
     return acc;
   },{total:0,liquidado:0,saldo:0});
 }
-function businessPayables(){
+function businessGeneralPayables(){
   const contas=(state.contas||[]).filter(c=>c.conta==="CNPJ"&&c.status==="pendente"&&c.ativa!==false);
   const obrigacoes=contas.reduce((s,c)=>s+accountLiquidationInfo(c).saldo,0);
   const faturas=(state.faturasCartao||[]).filter(f=>f.conta==="CNPJ"&&f.status==="aberta").reduce((s,f)=>s+invoiceTotal(f),0);
   return {obrigacoes,faturas,total:obrigacoes+faturas};
 }
 function businessEconomicResult(){return eligibleBudgets().reduce((s,o)=>s+Number(o.total||0)-serviceCost(o),0)}
+function budgetFinancialPosition(){
+  const receivables=businessReceivables();
+  const budgetAccounts=(state.contas||[]).filter(c=>c.conta==="CNPJ"&&c.ativa!==false&&c.orcamento_id);
+  const aPagar=budgetAccounts.reduce((s,c)=>s+accountLiquidationInfo(c).saldo,0);
+  return {aReceber:receivables.saldo,aPagar,saldoPendente:receivables.saldo-aPagar,resultadoEconomico:businessEconomicResult()};
+}
 function ambiguousLegacyBudgetCosts(){
   return (state.mov||[]).filter(x=>x.conta==="CNPJ"&&x.impacta_saldo===true&&["orcamento_custo_item","orcamento_custo_servico"].includes(x.origem));
 }
@@ -710,20 +736,28 @@ async function deleteCategory(id){
 
 
 function isTransfer(x){return x.origem==="transferencia"||inferCategory(x)==="Transferência"}
+function bankMovementsForReport(conta,year,month=null){
+  const baseline=conta==="CNPJ"?activeBalanceBaseline(conta):null;
+  if(!baseline)return (state.mov||[]).filter(x=>x.conta===conta&&isBankMovement(x));
+  const periodEnd=month===null?`${year}-12-31`:`${year}-${String(month).padStart(2,"0")}-31`;
+  return periodEnd<String(baseline.data_referencia||"").slice(0,10)
+    ?(state.mov||[]).filter(x=>x.conta===conta&&isBankMovement(x))
+    :currentBalanceMovements(conta);
+}
 function reportIncomeRows(conta,year,month=null){
-  return state.mov.filter(x=>{
+  return bankMovementsForReport(conta,year,month).filter(x=>{
     const d=String(x.data||"");
     return x.conta===conta&&isBankMovement(x)&&x.tipo==="entrada"&&!isTransfer(x)&&d.startsWith(String(year))&&(month===null||d.slice(5,7)===String(month).padStart(2,"0"));
   });
 }
 function reportExpenseRows(conta,year,month=null){
-  return state.mov.filter(x=>{
+  return bankMovementsForReport(conta,year,month).filter(x=>{
     const d=String(x.data||"");
     return x.conta===conta&&isBankMovement(x)&&x.tipo==="saida"&&!isTransfer(x)&&d.startsWith(String(year))&&(month===null||d.slice(5,7)===String(month).padStart(2,"0"));
   });
 }
 function reportTransferRows(conta,year){
-  return state.mov.filter(x=>x.conta===conta&&isTransfer(x)&&String(x.data||"").startsWith(String(year)));
+  return bankMovementsForReport(conta,year).filter(x=>isTransfer(x)&&String(x.data||"").startsWith(String(year)));
 }
 function availableReportYears(conta){
   const yrs=new Set([new Date().getFullYear()]);
@@ -804,8 +838,8 @@ function exportHistoryRows(account){
       add({data:r.data_recebimento||"",conta:"CNPJ",tipo:"Recebimento orçamento",
         descricao:o?`Orçamento ${o.numero} · ${o.cliente||""}`:"Recebimento de orçamento",categoria:"Receita",
         valor:Number(r.valor||0),forma:liquidationLabel(r.forma_liquidacao||r.forma_pagamento||""),
-        impacta:r.impacta_caixa===false?"Não":"Sim",contraparte:r.contraparte||o?.cliente||"",
-        origem:"orcamento_recebimentos",situacao:o?.status||"",referencia:r.orcamento_id||"",
+        impacta:r.historico_pre_marco===true?"Não (pré-Marco)":r.impacta_caixa===false?"Não":"Sim",contraparte:r.contraparte||o?.cliente||"",
+        origem:r.origem_registro||"orcamento_recebimentos",situacao:o?.status||"",referencia:r.orcamento_id||"",
         observacao:r.observacao||"",fonte:"orcamento_recebimentos"});
     });
   }
@@ -814,8 +848,8 @@ function exportHistoryRows(account){
     if(c?.conta!==account)return;
     add({data:r.data_liquidacao||"",conta:account,tipo:"Liquidação de obrigação",descricao:c?.descricao||"",
       categoria:c?.categoria||"",valor:Number(r.valor||0),forma:liquidationLabel(r.forma_liquidacao||""),
-      impacta:r.impacta_saldo===false?"Não":"Sim",contraparte:r.contraparte||c?.contraparte||"",
-      origem:"conta_liquidacoes",situacao:c?.status||"",referencia:r.conta_id||"",
+      impacta:r.historico_pre_marco===true?"Não (pré-Marco)":r.impacta_saldo===false?"Não":"Sim",contraparte:r.contraparte||c?.contraparte||"",
+      origem:r.origem_registro||"conta_liquidacoes",situacao:c?.status||"",referencia:r.conta_id||"",
       observacao:r.observacao||"",fonte:"conta_liquidacoes"});
   });
   (state.compensacoes||[]).filter(r=>r.conta===account).forEach(r=>add({
@@ -830,7 +864,7 @@ function exportHistoryRows(account){
 function downloadHistoryCsv(account){
   const rows=exportHistoryRows(account);
   let entradas=0,saidas=0;
-  (state.mov||[]).filter(x=>x.conta===account&&isBankMovement(x)).forEach(x=>{
+  currentBalanceMovements(account).forEach(x=>{
     if(x.tipo==="entrada")entradas+=Number(x.valor||0);
     else if(x.tipo==="saida")saidas+=Number(x.valor||0);
   });
@@ -930,13 +964,13 @@ function render(){
   const [ano,mes]=selectedPeriod.split("-").map(Number);
   if(current){
     const entradas=reportIncomeRows(current,ano,mes).reduce((s,x)=>s+Number(x.valor||0),0),gastos=reportExpenseRows(current,ano,mes).reduce((s,x)=>s+Number(x.valor||0),0);
-    const cnpj=current==="CNPJ",receivables=cnpj?businessReceivables():null,payables=cnpj?businessPayables():null;
+    const cnpj=current==="CNPJ",position=cnpj?budgetFinancialPosition():null;
     $("summaryLabel1").textContent=cnpj?"A receber":"Entradas do mês";
-    $("summaryLabel2").textContent=cnpj?"A pagar":"Gastos do mês";
+    $("summaryLabel2").textContent=cnpj?"A pagar dos orçamentos":"Gastos do mês";
     $("summaryLabel3").textContent=cnpj?"Resultado dos orçamentos":"Resultado do mês";
-    $("summaryValue1").textContent=brl(cnpj?receivables.saldo:entradas);
-    $("summaryValue2").textContent=brl(cnpj?payables.total:gastos);
-    const monthResult=cnpj?businessEconomicResult():entradas-gastos;
+    $("summaryValue1").textContent=brl(cnpj?position.aReceber:entradas);
+    $("summaryValue2").textContent=brl(cnpj?position.aPagar:gastos);
+    const monthResult=cnpj?position.resultadoEconomico:entradas-gastos;
     $("summaryValue3").textContent=brl(monthResult);
     const resultCard=$("summaryValue3")?.closest(".summary-card");
     if(resultCard){
@@ -947,14 +981,22 @@ function render(){
   }
   if(!current)return;
   const s=saldo(current);
+  const position=current==="CNPJ"?budgetFinancialPosition():null,budgetBalanceCard=$("budgetBalanceCard");
+  if(budgetBalanceCard)budgetBalanceCard.classList.toggle("hidden",current!=="CNPJ");
+  if(position&&$("budgetBalanceValue")){
+    $("budgetBalanceValue").textContent=brl(position.saldoPendente);
+    $("budgetBalanceValue").className="money-value "+(position.saldoPendente>0?"positive":position.saldoPendente<0?"negative":"");
+    $("budgetBalanceComposition").textContent=`A receber ${brl(position.aReceber)} − A pagar ${brl(position.aPagar)}`;
+  }
   $("saldoAtual").textContent=brl(s);
   $("saldoAtual").className="money-value "+(s>0?"positive":s<0?"negative":"");
   $("statusSaldo").textContent=s>0?"POSITIVO":s<0?"NEGATIVO":"ZERADO";
-  $("saldoAtual")?.previousElementSibling && ($("saldoAtual").previousElementSibling.textContent=current==="CNPJ"||latestBankReconciliation("PF")?"Saldo bancário":"Saldo atual");
+  $("saldoAtual")?.previousElementSibling && ($("saldoAtual").previousElementSibling.textContent=current==="CNPJ"?"Saldo Real":latestBankReconciliation("PF")?"Saldo bancário":"Saldo atual");
   const legacy=ambiguousLegacyBudgetCosts(),legacyTotal=legacy.reduce((n,x)=>n+Number(x.valor||0),0),legacyNote=$("bankBalanceLegacyNote");
   if(legacyNote){
     legacyNote.classList.toggle("hidden",current!=="CNPJ"||!legacy.length);
-    legacyNote.textContent=legacy.length?`${legacy.length} custo(s) legado(s), ${brl(legacyTotal)}, aguardam classificação humana e permanecem conforme registrados.`:"";
+    const baseline=activeBalanceBaseline("CNPJ");
+    legacyNote.textContent=legacy.length?(baseline?`${legacy.length} custo(s) legado(s), ${brl(legacyTotal)}, preservados no histórico anterior ao Marco Zero.`:`${legacy.length} custo(s) legado(s), ${brl(legacyTotal)}, aguardam classificação humana e permanecem conforme registrados.`):"";
   }
   renderPfBankReconciliation();
   const movimentosConta=state.mov.filter(x=>x.conta===current&&x.ativa_economica!==false&&String(x.data||"").slice(0,7)===selectedPeriod);
@@ -2220,10 +2262,86 @@ if($("moduleSettingsForm"))$("moduleSettingsForm").onsubmit=async e=>{
   applyModulePrefs();$("moduleSettingsModal").classList.add("hidden");
 };
 
+// V8.10.2 TEMPORARIO: configuração isolada; remover todo o bloco após a regularização.
+const V8102_OPERATIONS={
+  marco:{title:"1. Configurar Marco Zero",rpc:"configurar_marco_zero_v8102",button:"Configurar Marco Zero",fixed:{conta:"CNPJ",data_referencia:"2026-09-01",saldo_inicial:"1000.00",observacao:"Marco Zero conferido pelo usuário",chave:"marco-zero-cnpj-2026-09-01"},summary:"CNPJ · 01/09/2026 · R$ 1.000,00 · Marco Zero conferido pelo usuário",fields:[]},
+  orc5:{title:"2. Regularizar Orçamento 5",rpc:"registrar_baixa_historica_orcamento_v8102",button:"Regularizar Orçamento 5",fixed:{orcamento_id:"14e08369-f858-4731-8afc-2ff32efc6fed",valor:"3500.00",chave:"regularizacao-historica-orc5-3500-v8102",observacao:"Regularização histórica do Orçamento 5"},summary:"14e08369-f858-4731-8afc-2ff32efc6fed · R$ 3.500,00",fields:["data_original","forma_original"]},
+  orc6:{title:"3. Regularizar Orçamento 6",rpc:"registrar_baixa_historica_orcamento_v8102",button:"Regularizar Orçamento 6",fixed:{orcamento_id:"2c7e537e-c829-4b13-a416-56c6c9ff17a5",valor:"4000.00",chave:"regularizacao-historica-orc6-4000-v8102",observacao:"Regularização histórica do Orçamento 6"},summary:"2c7e537e-c829-4b13-a416-56c6c9ff17a5 · R$ 4.000,00",fields:["data_original","forma_original"]},
+  pistao:{title:"4. Regularizar Pistão",rpc:"regularizar_obrigacao_historica_orcamento_v8102",button:"Regularizar Pistão",fixed:{orcamento_id:"2c7e537e-c829-4b13-a416-56c6c9ff17a5",item_id:"f8b797ab-c3d9-4a39-96f5-431f073d6c8d",descricao:"recuperação pistão da caçamba",valor_total:"5000.00",valor_liquidado:"2500.00",chave:"regularizacao-historica-pistao-orc6-v8102",observacao:"Regularização histórica do custo do pistão"},summary:"Orçamento 6 · Item f8b797ab-c3d9-4a39-96f5-431f073d6c8d<br>recuperação pistão da caçamba · R$ 5.000,00 · liquidado R$ 2.500,00",fields:["data_obrigacao","data_liquidacao","forma_original","contraparte"]}
+};
+const v8102FieldHtml=name=>{
+  if(name==="forma_original")return `<label>Forma original (confirmar)<select name="${name}" required><option value="">Selecione</option><option value="pix">Pix</option><option value="debito">Débito</option><option value="dinheiro">Dinheiro</option><option value="transferencia">Transferência</option><option value="outro">Outro</option></select></label>`;
+  const labels={data_original:"Data original",data_obrigacao:"Data da obrigação",data_liquidacao:"Data da liquidação",contraparte:"Contraparte"};
+  return `<label>${labels[name]} (confirmar)<input name="${name}" ${name.startsWith("data_")?'type="date" max="2026-09-06"':""} required></label>`;
+};
+function renderV8102Operations(){
+  const host=$("v8102Operations");if(!host)return;
+  host.innerHTML=Object.entries(V8102_OPERATIONS).map(([kind,cfg])=>`<form class="v8102-operation" data-v8102-operation="${kind}"><h3>${cfg.title}</h3><p>${cfg.summary}</p>${cfg.fields.length?`<div class="v8102-fields">${cfg.fields.map(v8102FieldHtml).join("")}<label class="full-field">Observação<input name="observacao" value="${esc(cfg.fixed.observacao)}"></label></div>`:""}<pre class="v8102-payload"></pre><button class="primary v8102-run" type="submit" disabled>${cfg.button}</button><pre class="v8102-result" aria-live="polite"></pre></form>`).join("");
+}
+let v8102OperationRunning=false;
+function v8102Raw(form){
+  const cfg=V8102_OPERATIONS[form.dataset.v8102Operation];
+  return{...cfg.fixed,...Object.fromEntries(new FormData(form).entries())};
+}
+function v8102Payload(kind,raw){
+  if(kind==="marco")return{p_conta:raw.conta,p_data_referencia:raw.data_referencia,p_saldo_inicial:Number(raw.saldo_inicial),p_observacao:raw.observacao,p_chave_idempotencia:raw.chave};
+  if(kind==="orc5"||kind==="orc6")return{p_orcamento_id:raw.orcamento_id,p_valor:Number(raw.valor),p_data_original:raw.data_original,p_forma_original:raw.forma_original,p_observacao:raw.observacao||null,p_chave_idempotencia:raw.chave};
+  return{p_orcamento_id:raw.orcamento_id,p_item_id:raw.item_id,p_descricao:raw.descricao,p_valor_total:Number(raw.valor_total),p_valor_liquidado:Number(raw.valor_liquidado),p_data_obrigacao:raw.data_obrigacao,p_data_liquidacao:raw.data_liquidacao,p_forma_original:raw.forma_original,p_contraparte:raw.contraparte,p_observacao:raw.observacao||null,p_chave_idempotencia:raw.chave};
+}
+function v8102SetBusy(busy){
+  v8102OperationRunning=busy;
+  document.querySelectorAll(".v8102-run").forEach(button=>button.disabled=busy||button.closest("form").dataset.v8102Ready!=="true");
+}
+function v8102RefreshForm(form){
+  const kind=form.dataset.v8102Operation,cfg=V8102_OPERATIONS[kind],raw=v8102Raw(form);
+  const ready=cfg.fields.every(name=>String(raw[name]||"").trim());
+  form.dataset.v8102Ready=String(ready);
+  form.querySelector(".v8102-payload").textContent=JSON.stringify(v8102Payload(kind,raw),null,2);
+  form.querySelector(".v8102-run").disabled=v8102OperationRunning||!ready;
+}
+async function executeV8102Operation(form){
+  const {data:authData,error:authError}=await sb.auth.getSession();
+  if(authError||!authData.session?.user)throw new Error("Sessão autenticada não encontrada. Entre novamente no aplicativo.");
+  const kind=form.dataset.v8102Operation,cfg=V8102_OPERATIONS[kind],payload=v8102Payload(kind,v8102Raw(form));
+  if(!confirm(`Confirma a execução exclusiva de ${cfg.rpc}?\\n\\n${JSON.stringify(payload,null,2)}`))return;
+  const {data,error}=await sb.rpc(cfg.rpc,payload);
+  if(error)throw error;
+  form.querySelector(".v8102-result").textContent=JSON.stringify(data,null,2);
+  await loadAll();
+}
+function ensureV8102Access(){
+  const settingsForm=$("moduleSettingsForm");
+  if(settingsForm&&!$("openV8102Regularization")){
+    settingsForm.insertAdjacentHTML("afterend",'<!-- V8.10.2 TEMPORARIO --><button id="openV8102Regularization" class="v8102-admin-entry" type="button">Regularização V8.10.2</button>');
+  }
+  if(!$("v8102RegularizationModal")){
+    document.body.insertAdjacentHTML("beforeend",'<div id="v8102RegularizationModal" class="modal hidden"><div class="card modal-card wide-modal v8102-admin-modal"><div class="head"><div><h2>Regularização V8.10.2</h2><small>Operações autenticadas, históricas e individuais</small></div><button id="closeV8102Regularization" type="button">×</button></div><p class="v8102-admin-warning">Revise o JSON exibido. Cada botão chama somente sua RPC após confirmação explícita.</p><div id="v8102Operations" class="v8102-operations"></div></div></div>');
+  }
+}
+function initV8102Regularization(){
+  ensureV8102Access();
+  const modal=$("v8102RegularizationModal");if(!modal||!$("openV8102Regularization"))return;
+  renderV8102Operations();
+  $("openV8102Regularization").onclick=()=>{$("moduleSettingsModal").classList.add("hidden");modal.classList.remove("hidden");document.querySelectorAll(".v8102-operation").forEach(v8102RefreshForm)};
+  $("closeV8102Regularization").onclick=()=>{if(!v8102OperationRunning)modal.classList.add("hidden")};
+  document.querySelectorAll(".v8102-operation").forEach(form=>{
+    form.addEventListener("input",()=>v8102RefreshForm(form));
+    form.addEventListener("change",()=>v8102RefreshForm(form));
+    v8102RefreshForm(form);
+    form.onsubmit=async event=>{
+      event.preventDefault();
+      if(v8102OperationRunning||form.dataset.v8102Ready!=="true")return;
+      const result=form.querySelector(".v8102-result");result.textContent="";v8102SetBusy(true);
+      try{await executeV8102Operation(form)}catch(error){result.textContent=`ERRO: ${error.message||String(error)}`}finally{v8102SetBusy(false)}
+    };
+  });
+}
+initV8102Regularization();
+
 function monthKey(v){return String(v||"").slice(0,7)}
 function financialRows(){
   const area=current==="CNPJ"?"CNPJ":"PF";
-  return (state.mov||[]).filter(m=>m.conta===area&&isBankMovement(m)&&!isTransfer(m));
+  return currentBalanceMovements(area).filter(m=>!isTransfer(m));
 }
 function openFinancialSummary(){
   $("financialSummaryModal").classList.remove("hidden");
