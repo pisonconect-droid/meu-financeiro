@@ -2264,7 +2264,7 @@ if($("moduleSettingsForm"))$("moduleSettingsForm").onsubmit=async e=>{
 
 // V8.10.2 TEMPORARIO: configuração isolada; remover todo o bloco após a regularização.
 const V8102_OPERATIONS={
-  marco:{title:"1. Configurar Marco Zero",rpc:"configurar_marco_zero_v8102",button:"Configurar Marco Zero",fixed:{conta:"CNPJ",data_referencia:"2026-09-01",saldo_inicial:"1000.00",observacao:"Marco Zero conferido pelo usuário",chave:"marco-zero-cnpj-2026-09-01"},summary:"CNPJ · 01/09/2026 · R$ 1.000,00 · Marco Zero conferido pelo usuário",fields:[]},
+  marco:{title:"1. Configurar Marco Zero",rpc:"configurar_marco_zero_v8102",button:"Configurar Marco Zero",fixed:{conta:"CNPJ",data_referencia:"2026-09-08",saldo_inicial:"773.87",observacao:"Marco Zero CNPJ conferido pelo usuário em 08/09/2026",chave:"marco-zero-cnpj-2026-09-08-77387"},summary:"CNPJ · 08/09/2026 · R$ 773,87 · Marco Zero CNPJ conferido pelo usuário em 08/09/2026",fields:[]},
   orc5:{title:"2. Regularizar Orçamento 5",rpc:"registrar_baixa_historica_orcamento_v8102",button:"Regularizar Orçamento 5",fixed:{orcamento_id:"14e08369-f858-4731-8afc-2ff32efc6fed",valor:"3500.00",chave:"regularizacao-historica-orc5-3500-v8102",observacao:"Regularização histórica do Orçamento 5"},summary:"14e08369-f858-4731-8afc-2ff32efc6fed · R$ 3.500,00",fields:["data_original","forma_original"]},
   orc6:{title:"3. Regularizar Orçamento 6",rpc:"registrar_baixa_historica_orcamento_v8102",button:"Regularizar Orçamento 6",fixed:{orcamento_id:"2c7e537e-c829-4b13-a416-56c6c9ff17a5",valor:"4000.00",chave:"regularizacao-historica-orc6-4000-v8102",observacao:"Regularização histórica do Orçamento 6"},summary:"2c7e537e-c829-4b13-a416-56c6c9ff17a5 · R$ 4.000,00",fields:["data_original","forma_original"]},
   pistao:{title:"4. Regularizar Pistão",rpc:"regularizar_obrigacao_historica_orcamento_v8102",button:"Regularizar Pistão",fixed:{orcamento_id:"2c7e537e-c829-4b13-a416-56c6c9ff17a5",item_id:"f8b797ab-c3d9-4a39-96f5-431f073d6c8d",descricao:"recuperação pistão da caçamba",valor_total:"5000.00",valor_liquidado:"2500.00",chave:"regularizacao-historica-pistao-orc6-v8102",observacao:"Regularização histórica do custo do pistão"},summary:"Orçamento 6 · Item f8b797ab-c3d9-4a39-96f5-431f073d6c8d<br>recuperação pistão da caçamba · R$ 5.000,00 · liquidado R$ 2.500,00",fields:["data_obrigacao","data_liquidacao","forma_original","contraparte"]}
@@ -2272,7 +2272,7 @@ const V8102_OPERATIONS={
 const v8102FieldHtml=name=>{
   if(name==="forma_original")return `<label>Forma original (confirmar)<select name="${name}" required><option value="">Selecione</option><option value="pix">Pix</option><option value="debito">Débito</option><option value="dinheiro">Dinheiro</option><option value="transferencia">Transferência</option><option value="outro">Outro</option></select></label>`;
   const labels={data_original:"Data original",data_obrigacao:"Data da obrigação",data_liquidacao:"Data da liquidação",contraparte:"Contraparte"};
-  return `<label>${labels[name]} (confirmar)<input name="${name}" ${name.startsWith("data_")?'type="date" max="2026-09-06"':""} required></label>`;
+  return `<label>${labels[name]} (confirmar)<input name="${name}" ${name.startsWith("data_")?'type="date" max="2026-09-08"':""} required></label>`;
 };
 function renderV8102Operations(){
   const host=$("v8102Operations");if(!host)return;
